@@ -234,6 +234,17 @@ def _strip_module_suffix(target: str) -> str:
             return base[: -len(suffix)]
     return base
 
+def _has_artifact_dirs(build_dir: Path) -> bool:
+    """True if the build tree contains any artifact directory
+    (`module/`, `extramodules/`, or `pkg/`). If not, it's a log-only
+    tree and missing .ko files are expected, not a problem."""
+    if (build_dir / "pkg").is_dir():
+        return True
+    for name in ("module", "extramodules"):
+        for d in build_dir.rglob(name):
+            if d.is_dir():
+                return True
+    return False
 
 # ---------------------------------------------------------------------------
 # Integrity checks (log-aware)
@@ -253,13 +264,20 @@ def check_integrity(
 
     modules = _find_module_artifacts(build_dir)
 
-    # Real issue: log claims LD [M] for a module, but no artifact on disk.
+        # Real issue: log claims LD [M] AND the tree actually contains
+    # artifact dirs (so we know the build was expected to leave .ko files).
     if result.log_ld_modules:
-        missing = sorted(m for m in result.log_ld_modules if m not in modules)
-        if missing:
-            issues.append(
-                "log claims to link modules "
-                f"{missing} but no matching .ko/.ko.zst found on disk"
+        if _has_artifact_dirs(build_dir):
+            missing = sorted(m for m in result.log_ld_modules if m not in modules)
+            if missing:
+                issues.append(
+                    "log claims to link modules "
+                    f"{missing} but no matching .ko/.ko.zst found on disk"
+                )
+        else:
+            notes.append(
+                "log-only tree (no module/ or pkg/ dir); "
+                "artifact check skipped"
             )
 
     # Informational: log says the build was already up to date.
