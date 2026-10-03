@@ -1,411 +1,596 @@
-#!/usr/bin/env bash
-#
-# harvest-make-logs.sh
-# Collect & noise-filter make.log files from nvidia driver kernel builds.
-#
-# Feltételezett struktúra a DIAG_ROOT alatt:
-#   nvidia-<label>/{normal-kernels,rt-kernels}/linux*-nvidia-<label>/...
-#   (a jövőben bármennyi nvidia-* branch lehet; automatikusan felderítjük)
-#
-# Telepítés: /usr/local/bin/harvest-make-logs
-#
-set -euo pipefail
+#!/usr/bin/env python3
+"""
+harvest-nvidia-logs
+===================
+
+Collect and noise-filter `make.log` files produced by DKMS when building
+the legacy NVIDIA 340xx / 390xx (and future) driver branches against
+multiple Manjaro kernels.
+
+Scans a diag tree like::
+
+    ~/diag/
+      nvidia-340xx/
+        normal-kernels/linux61-nvidia-340xx/src/nvidia/340.108/6.1.187-2-MANJARO/x86_64/log/make.log
+        rt-kernels/...
+      nvidia-390xx/
+        normal-kernels/...
+        rt-kernels/...
+
+and produces::
+
+    ~/diag/harvest/
+      INDEX.md                        <- LLM- and human-friendly summary
+      340xx/normal/6.1.187-2-MANJARO/
+        00-header.txt
+        01-errors.txt
+        02-warnings.txt              <- clean, dedup'd, counted
+        03-noise.txt                 <- known noise, dedup'd, counted
+        summary.txt
+      ...
+      (builds without make.log get a 'Not-built' marker)
+
+Install::
+
+    sudo install -m 755 harvest-nvidia-logs /usr/local/bin/harvest-nvidia-logs
+
+No external dependencies — Python 3.10+ stdlib only.
+"""
+
+from __future__ import annotations
+
+import argparse
+import os
+import re
+import sys
+from collections import Counter, defaultdict
+from dataclasses import dataclass, field
+from datetime import datetime
+from pathlib import Path
+
+
+__version__ = "0.1.0"
+
 
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
-DIAG_ROOT="${DIAG_ROOT:-$HOME/diag}"
-HARVEST_DIR="${HARVEST_DIR:-$DIAG_ROOT/harvest}"
-HEADER_LINES="${HEADER_LINES:-10}"
 
-# Zaj-minták. Ezek a 03-noise.txt-be mennek (összesítve), és kikerülnek a
-# 02-warnings.txt-ből.
-NOISE_PATTERNS=(
-    'warning: objtool:.*data relocation to !ENDBR'
-    'warning: objtool:.*return with modified stack frame'
-    'warning: objtool:.*unreachable instruction'
-    'warning: objtool:.*sibling call from callable instruction'
-    'warning: objtool:.*call to __fentry__'
+DEFAULT_HEADER_LINES = 10
+DEFAULT_DIAG_ROOT = Path.home() / "diag"
+DEFAULT_HARVEST_SUBDIR = "harvest"
+
+# Warning signatures considered "known noise" from the kernel build system
+# (mostly objtool on legacy driver blobs). Applied AFTER normalization, so
+# patterns are matched against the normalized form (paths stripped,
+# symbols collapsed).
+NOISE_PATTERNS: list[re.Pattern[str]] = [
+    re.compile(r"warning: objtool:.*data relocation to !ENDBR"),
+    re.compile(r"warning: objtool:.*relocation to !ENDBR"),
+    re.compile(r"warning: objtool:.*'naked' return found in (?:MITIGATION_)?RETHUNK build"),
+    re.compile(r"warning: objtool:.*missing int3 after ret"),
+    re.compile(r"warning: objtool:.*unannotated intra-function call"),
+    re.compile(r"warning: objtool:.*return with modified stack frame"),
+    re.compile(r"warning: objtool:.*unreachable instruction"),
+    re.compile(r"warning: objtool:.*sibling call from callable instruction"),
+    re.compile(r"warning: objtool:.*call to __fentry__"),
+]
+
+# Regex helpers for normalization
+RE_BEFORE_WARNING = re.compile(r"^.*?(?=warning:)")
+RE_QUOTED_PATH    = re.compile(r"'[^']*'")
+RE_SYMBOL_PLUS_HEX = re.compile(r"[.A-Za-z_][\w.]*\+0x[0-9a-fA-F]+")
+RE_HEX            = re.compile(r"0x[0-9a-fA-F]+")
+
+# Regex: an "error" line worth capturing. Deliberately conservative:
+# matches compiler errors, linker errors, make aborts.
+ERROR_RE = re.compile(
+    r"(: error:|Error [0-9]+|\*\*\* \[|undefined reference to|ld: cannot)"
 )
 
+
 # ---------------------------------------------------------------------------
-# Helpers
+# Data model
 # ---------------------------------------------------------------------------
-log()  { printf '[harvest] %s\n' "$*" >&2; }
-warn() { printf '[harvest][warn] %s\n' "$*" >&2; }
 
-usage() {
-    cat <<EOF
-Usage: $(basename "$0") [-d DIAG_ROOT] [-o HARVEST_DIR] [-h]
+@dataclass
+class BuildResult:
+    branch: str            # e.g. "340xx"
+    variant: str           # "normal" | "rt"
+    build_name: str        # e.g. "linux61-nvidia-340xx"
+    build_dir: Path
+    out_dir: Path
+    kernel_ver: str | None
+    driver_ver: str | None
+    log_path: Path | None
+    log_size: int = 0
+    log_lines: int = 0
+    status: str = "unknown"       # failed | warnings | clean | not-built
+    err_count: int = 0
+    noise_total: int = 0
+    noise_uniq: int = 0
+    clean_total: int = 0
+    clean_uniq: int = 0
+    clean_signatures: Counter[str] = field(default_factory=Counter)
+    noise_signatures: Counter[str] = field(default_factory=Counter)
+    error_excerpt: list[str] = field(default_factory=list)
 
-  -d DIAG_ROOT     Base diag directory (default: \$HOME/diag, env DIAG_ROOT)
-  -o HARVEST_DIR   Output directory   (default: \$DIAG_ROOT/harvest)
-  -h               Show this help
 
-A DIAG_ROOT alatt az összes 'nvidia-*' mappát felderíti, azokon belül
-a 'normal-kernels' és 'rt-kernels' alkönyvtárakat dolgozza fel.
-EOF
-}
+# ---------------------------------------------------------------------------
+# Normalization
+# ---------------------------------------------------------------------------
+
+def normalize_warning(line: str) -> str:
+    """Collapse a raw warning line into a stable, groupable signature."""
+    line = line.rstrip("\r\n")
+
+    # 1. Drop everything before "warning:" (path prefix etc.)
+    m = RE_BEFORE_WARNING.match(line)
+    if m:
+        line = line[m.end():]
+
+    # 2. Replace quoted paths with '<path>'
+    line = RE_QUOTED_PATH.sub("'<path>'", line)
+
+    # 3. Replace "symbol+0xHEX" with "<func>+0xADDR"
+    line = RE_SYMBOL_PLUS_HEX.sub("<func>+0xADDR", line)
+
+    # 4. Any remaining hex literal -> 0xADDR
+    line = RE_HEX.sub("0xADDR", line)
+
+    return line.strip()
+
+
+def is_noise(signature: str) -> bool:
+    return any(p.search(signature) for p in NOISE_PATTERNS)
+
+
+# ---------------------------------------------------------------------------
+# Discovery
+# ---------------------------------------------------------------------------
+
+def find_builds(diag_root: Path) -> list[tuple[str, str, Path]]:
+    """Return (branch_label, variant, build_dir) for every build found.
+
+    branch_label is the part after 'nvidia-', e.g. '340xx'.
+    Auto-discovers any 'nvidia-*' directory, so new branches
+    (470xx, 580xx, ...) are picked up without code changes.
+    """
+    results: list[tuple[str, str, Path]] = []
+    for branch_dir in sorted(diag_root.glob("nvidia-*")):
+        if not branch_dir.is_dir():
+            continue
+        branch = branch_dir.name[len("nvidia-"):]
+
+        for variant, sub in (("normal", "normal-kernels"),
+                              ("rt",     "rt-kernels")):
+            var_root = branch_dir / sub
+            if not var_root.is_dir():
+                continue
+            for build_dir in sorted(var_root.iterdir()):
+                if build_dir.is_dir() and build_dir.name.startswith("linux"):
+                    results.append((branch, variant, build_dir))
+    return results
+
+
+def find_make_log(build_dir: Path) -> Path | None:
+    src = build_dir / "src"
+    if not src.is_dir():
+        return None
+    for p in src.rglob("make.log"):
+        if p.is_file():
+            return p
+    return None
+
+
+def extract_versions(log_path: Path) -> tuple[str | None, str | None]:
+    """Return (kernel_ver, driver_ver) from a path like
+    .../src/nvidia/<driver>/<kernel>/x86_64/log/make.log
+    """
+    # make.log -> log -> x86_64 -> <kernel> -> <driver>
+    kernel = log_path.parent.parent.parent.name
+    driver = log_path.parent.parent.parent.parent.name
+    if kernel in ("src", "nvidia", "build", ""):
+        return None, None
+    return kernel, driver
+
+
+# ---------------------------------------------------------------------------
+# Per-build processing
+# ---------------------------------------------------------------------------
+
+def _write_counter(path: Path, counter: Counter[str]) -> None:
+    lines = [f"{count:>8}  {sig}" for sig, count in counter.most_common()]
+    path.write_text("\n".join(lines) + ("\n" if lines else ""))
+
+
+def _write_summary(r: BuildResult) -> None:
+    out: list[str] = []
+    out.append(f"build:           {r.build_name}")
+    out.append(f"driver:          {r.branch}")
+    out.append(f"variant:         {r.variant}")
+    out.append(f"kernel:          {r.kernel_ver or 'unknown'}")
+    out.append(f"nvidia version:  {r.driver_ver or 'unknown'}")
+    out.append(f"status:          {r.status}")
+    out.append(f"log path:        {r.log_path if r.log_path else '(none)'}")
+    if r.log_path:
+        out.append(f"log size:        {r.log_size} bytes")
+        out.append(f"log lines:       {r.log_lines}")
+    out.append(f"build dir:       {r.build_dir}")
+    out.append("")
+    out.append(f"errors:          {r.err_count}")
+    out.append(f"warnings clean:  {r.clean_total}  (unique: {r.clean_uniq})")
+    out.append(f"warnings noise:  {r.noise_total}  (unique: {r.noise_uniq})")
+
+    if r.clean_signatures:
+        out.append("")
+        out.append("=== Top clean warning groups ===")
+        for sig, count in r.clean_signatures.most_common(25):
+            out.append(f"{count:>8}  {sig}")
+
+    if r.error_excerpt:
+        out.append("")
+        out.append("=== Error excerpt (first 20) ===")
+        out.extend(r.error_excerpt)
+
+    (r.out_dir / "summary.txt").write_text("\n".join(out) + "\n")
+
+
+def process_build(
+    branch: str,
+    variant: str,
+    build_dir: Path,
+    harvest_root: Path,
+    header_lines: int,
+    quiet: bool = False,
+) -> BuildResult:
+    build_name = build_dir.name
+    log_path = find_make_log(build_dir)
+    kernel_ver, driver_ver = (None, None)
+    if log_path is not None:
+        kernel_ver, driver_ver = extract_versions(log_path)
+
+    leaf = kernel_ver or build_name
+    out_dir = harvest_root / branch / variant / leaf
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    result = BuildResult(
+        branch=branch,
+        variant=variant,
+        build_name=build_name,
+        build_dir=build_dir,
+        out_dir=out_dir,
+        kernel_ver=kernel_ver,
+        driver_ver=driver_ver,
+        log_path=log_path,
+    )
+
+    # --- not-built case --------------------------------------------------
+    if log_path is None:
+        result.status = "not-built"
+        (out_dir / "Not-built").write_text("")
+        _write_summary(result)
+        _log(f"not-built: {branch}/{variant}/{build_name}", quiet)
+        return result
+
+    # --- stats -----------------------------------------------------------
+    result.log_size = log_path.stat().st_size
+
+    header_lines_list: list[str] = []
+    error_lines: list[tuple[int, str]] = []
+    clean_counter: Counter[str] = Counter()
+    noise_counter: Counter[str] = Counter()
+    line_no = 0
+
+    with log_path.open("r", encoding="utf-8", errors="replace") as f:
+        for raw in f:
+            line_no += 1
+            line = raw.rstrip("\r\n")
+
+            if line_no <= header_lines:
+                header_lines_list.append(line)
+
+            if ERROR_RE.search(line):
+                error_lines.append((line_no, line))
+
+            if "warning:" in line:
+                sig = normalize_warning(line)
+                if sig:
+                    if is_noise(sig):
+                        noise_counter[sig] += 1
+                    else:
+                        clean_counter[sig] += 1
+
+    result.log_lines = line_no
+    result.err_count = len(error_lines)
+    result.error_excerpt = [f"{i}: {ln}" for i, ln in error_lines[:20]]
+    result.clean_signatures = clean_counter
+    result.noise_signatures = noise_counter
+    result.clean_total = sum(clean_counter.values())
+    result.clean_uniq = len(clean_counter)
+    result.noise_total = sum(noise_counter.values())
+    result.noise_uniq = len(noise_counter)
+
+    # --- write per-build files ------------------------------------------
+    (out_dir / "00-header.txt").write_text(
+        "\n".join(header_lines_list) + ("\n" if header_lines_list else "")
+    )
+    (out_dir / "01-errors.txt").write_text(
+        "".join(f"{i}: {ln}\n" for i, ln in error_lines)
+    )
+    _write_counter(out_dir / "02-warnings.txt", clean_counter)
+    _write_counter(out_dir / "03-noise.txt", noise_counter)
+
+    # --- status ----------------------------------------------------------
+    if result.err_count > 0:
+        result.status = "failed"
+    elif result.clean_total > 0:
+        result.status = "warnings"
+    else:
+        result.status = "clean"
+
+    _write_summary(result)
+    _log(
+        f"{branch}/{variant}/{build_name}  kernel={kernel_ver or '?'}  "
+        f"status={result.status}  "
+        f"({result.log_lines} lines / {result.log_size} B)",
+        quiet,
+    )
+    return result
+
+
+# ---------------------------------------------------------------------------
+# INDEX.md generation
+# ---------------------------------------------------------------------------
+
+def _branch_list(branches: set[str]) -> str:
+    return ", ".join(sorted(branches))
+
+
+def generate_index(
+    results: list[BuildResult],
+    diag_root: Path,
+    harvest_root: Path,
+) -> None:
+    idx_path = harvest_root / "INDEX.md"
+
+    by_status = Counter(r.status for r in results)
+
+    # Aggregate clean-warning signatures across builds
+    sig_map: dict[str, list[tuple[BuildResult, int]]] = defaultdict(list)
+    for r in results:
+        for sig, count in r.clean_signatures.items():
+            sig_map[sig].append((r, count))
+
+    multi: list[tuple[str, int, int, set[str]]] = []     # sig, builds, hits, combos
+    single: list[tuple[str, BuildResult, int]] = []      # sig, result, hits
+
+    for sig, occurrences in sig_map.items():
+        builds = len(occurrences)
+        hits = sum(c for _, c in occurrences)
+        combos = {f"{r.branch}/{r.variant}" for r, _ in occurrences}
+        if builds > 1:
+            multi.append((sig, builds, hits, combos))
+        else:
+            single.append((sig, occurrences[0][0], occurrences[0][1]))
+
+    multi.sort(key=lambda x: (-x[1], -x[2], x[0]))
+    single.sort(key=lambda x: (-x[2], x[0]))
+
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S %z")
+    out: list[str] = []
+    A = out.append
+
+    A(f"# Harvest Index — {now}")
+    A("")
+
+    # --- Overview --------------------------------------------------------
+    A("## Overview")
+    A("")
+    A(f"- **Diag root:** `{diag_root}`")
+    A(f"- **Harvest:**   `{harvest_root}`")
+    A(f"- **Branches:**  {_branch_list({r.branch for r in results})}")
+    A(
+        f"- **Builds:** {len(results)} — "
+        f"❗{by_status['failed']} failed, "
+        f"⚠{by_status['warnings']} warn, "
+        f"✅{by_status['clean']} clean, "
+        f"🚫{by_status['not-built']} not-built"
+    )
+    A(
+        f"- **Signatures:** {len(sig_map)} total — "
+        f"{len(multi)} across multiple builds, "
+        f"{len(single)} unique to one build"
+    )
+    A("")
+
+    # --- Legend ----------------------------------------------------------
+    A("## Legend")
+    A("")
+    A("| Symbol | Status | Meaning |")
+    A("|:------:|--------|---------|")
+    A("| ❗ | failed    | make.log exists, real errors found — **blocker** |")
+    A("| ⚠  | warnings  | built, no errors, non-noise warnings to review |")
+    A("| ✅ | clean     | built, no errors, only known noise |")
+    A("| 🚫 | not-built | no make.log at all |")
+    A("")
+    A("Per-build detail lives in the harvest tree, one directory per kernel: "
+      "`00-header.txt`, `01-errors.txt`, `02-warnings.txt`, `03-noise.txt`, "
+      "`summary.txt`.")
+    A("")
+
+    # --- Status table ----------------------------------------------------
+    A("## Status table")
+    A("")
+    A("| # | Branch | Variant | Kernel | Driver | Status | Err | Clean (uniq/total) | Noise |")
+    A("|---|--------|---------|--------|--------|:------:|----:|-------------------:|------:|")
+    sorted_results = sorted(
+        results,
+        key=lambda r: (r.branch, r.variant, r.kernel_ver or r.build_name),
+    )
+    for i, r in enumerate(sorted_results, 1):
+        sym = {"failed": "❗", "warnings": "⚠", "clean": "✅",
+               "not-built": "🚫"}.get(r.status, "?")
+        kernel = r.kernel_ver or r.build_name
+        driver = r.driver_ver or "-"
+        A(
+            f"| {i} | {r.branch} | {r.variant} | {kernel} | {driver} | "
+            f"{sym} {r.status} | {r.err_count} | "
+            f"{r.clean_uniq} / {r.clean_total} | {r.noise_total} |"
+        )
+    A("")
+
+    # --- Failures --------------------------------------------------------
+    failed = [r for r in results if r.status == "failed"]
+    if failed:
+        A("## ❗ Failures — fix these first")
+        A("")
+        A("Full error list in each build's `01-errors.txt`. Excerpt below.")
+        A("")
+        for r in failed:
+            A(f"### {r.branch} / {r.variant} / {r.kernel_ver or r.build_name} "
+              f"— {r.driver_ver or '?'}  ({r.err_count} errors)")
+            A("")
+            A(f"Path: `{r.out_dir.relative_to(harvest_root)}`")
+            A("")
+            A("```")
+            for ln in r.error_excerpt[:15]:
+                A(ln)
+            A("```")
+            A("")
+
+    # --- Cross-build signatures -----------------------------------------
+    A("## 🔁 Cross-build signatures")
+    A("")
+    A("Warnings appearing in **more than one build**. "
+      "Fixing the top signature fixes the most builds at once.")
+    A("")
+    if multi:
+        A("| # | Builds | Hits | Signature | Branches |")
+        A("|---|-------:|-----:|-----------|----------|")
+        for i, (sig, builds, hits, combos) in enumerate(multi, 1):
+            A(f"| {i} | {builds} | {hits} | `{sig}` | {', '.join(sorted(combos))} |")
+    else:
+        A("_No cross-build signatures — every warning is unique to a single build._")
+    A("")
+
+    # --- Unique to one build --------------------------------------------
+    A("## 🧩 Unique to one build")
+    A("")
+    A("Warnings in exactly **one** build. Usually kernel- or config-specific, "
+      "not driver bugs.")
+    A("")
+    if single:
+        A("| Build | Hits | Signature |")
+        A("|-------|-----:|-----------|")
+        for sig, r, hits in single:
+            ident = f"{r.branch}/{r.variant}/{r.kernel_ver or r.build_name}"
+            A(f"| {ident} | {hits} | `{sig}` |")
+    else:
+        A("_No unique-to-one-build warnings._")
+    A("")
+
+    # --- Not built -------------------------------------------------------
+    not_built = [r for r in results if r.status == "not-built"]
+    if not_built:
+        A("## 🚫 Not built (no make.log)")
+        A("")
+        for r in not_built:
+            A(f"- `{r.branch} / {r.variant} / {r.build_name}`")
+        A("")
+
+    A("---")
+    A("_End of index. Per-build detail files live in the harvest tree._")
+
+    idx_path.write_text("\n".join(out) + "\n")
+
 
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
-while getopts ':d:o:h' opt; do
-    case "$opt" in
-        d) DIAG_ROOT="$OPTARG" ;;
-        o) HARVEST_DIR="$OPTARG" ;;
-        h) usage; exit 0 ;;
-        \?) echo "Unknown option: -$OPTARG" >&2; usage; exit 1 ;;
-        :)  echo "Option -$OPTARG requires an argument" >&2; exit 1 ;;
-    esac
-done
 
-# ---------------------------------------------------------------------------
-# Normalizálás: a warning sorokat összevonhatóvá tesszük
-#  - path prefix levágása
-#  - 0x... → 0xADDR
-#  - _nvXXXXXXrm → _nvSYM
-# ---------------------------------------------------------------------------
-normalize_warning() {
-    sed -E \
-        -e 's/^.*warning:/warning:/' \
-        -e 's/0x[0-9a-fA-F]+/0xADDR/g' \
-        -e 's/_nv[0-9A-Za-z_]+/_nvSYM/g' \
-        -e 's/[[:space:]]+$//' \
-        -e '/^$/d'
-}
+def _log(msg: str, quiet: bool) -> None:
+    if not quiet:
+        print(f"[harvest] {msg}", file=sys.stderr)
 
-grep_errors() {
-    grep -nE '(: error:|Error [0-9]+|\*\*\* \[|undefined reference to|ld: cannot)' "$1" || true
-}
 
-# ---------------------------------------------------------------------------
-# Egy kernel build könyvtár feldolgozása
-#   $1 = driver label    (pl. "340xx")
-#   $2 = variant         ("normal" | "rt")
-#   $3 = build könyvtár  (pl. ".../linux61-nvidia-340xx")
-# ---------------------------------------------------------------------------
-harvest_build() {
-    local driver="$1" variant="$2" build_dir="$3"
-    local build_name; build_name="$(basename "$build_dir")"
+def _warn(msg: str) -> None:
+    print(f"[harvest][warn] {msg}", file=sys.stderr)
 
-    # ---- make.log keresése (kizárólag a build_dir-en belül) -------------
-    local log_file=""
-    if [[ -d "$build_dir/src" ]]; then
-        log_file="$(find "$build_dir/src" -type f -name 'make.log' -print -quit 2>/dev/null || true)"
-    fi
 
-    # ---- kernel / driver verzió kinyerése a log útvonalából -------------
-    # .../src/nvidia/<drv>/<kver>/x86_64/log/make.log
-    local kernel_ver="" driver_ver=""
-    if [[ -n "$log_file" ]]; then
-        kernel_ver="$(basename "$(dirname "$(dirname "$(dirname "$log_file")")")")"
-        driver_ver="$(basename "$(dirname "$(dirname "$(dirname "$(dirname "$log_file")")")")")"
-    fi
+def build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(
+        prog="harvest-nvidia-logs",
+        description="Collect and noise-filter nvidia driver make.logs "
+                    "across multiple kernel builds.",
+    )
+    p.add_argument(
+        "-d", "--diag-root",
+        type=Path,
+        default=Path(os.environ.get("DIAG_ROOT", str(DEFAULT_DIAG_ROOT))),
+        help="Base diag directory (default: $HOME/diag, env DIAG_ROOT)",
+    )
+    p.add_argument(
+        "-o", "--harvest-dir",
+        type=Path,
+        default=None,
+        help="Output directory (default: <diag-root>/harvest)",
+    )
+    p.add_argument(
+        "-n", "--header-lines",
+        type=int,
+        default=DEFAULT_HEADER_LINES,
+        help=f"Lines from top of make.log to save (default: {DEFAULT_HEADER_LINES})",
+    )
+    p.add_argument(
+        "-q", "--quiet",
+        action="store_true",
+        help="Suppress progress output on stderr",
+    )
+    p.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
+    )
+    return p
 
-    # ---- output könyvtár -----------------------------------------------
-    # Ha van kernel_ver, azt használjuk, különben a build_dir nevét
-    # (Not-built eset).
-    local leaf="${kernel_ver:-$build_name}"
-    local out_dir="$HARVEST_DIR/$driver/$variant/$leaf"
-    mkdir -p "$out_dir"
 
-    # ---- Not-built eset -------------------------------------------------
-    if [[ -z "$log_file" || ! -f "$log_file" ]]; then
-        warn "not built: $driver/$variant/$build_name"
-        : > "$out_dir/Not-built"
-        {
-            printf 'build:      %s\n'   "$build_name"
-            printf 'driver:     %s\n'   "$driver"
-            printf 'variant:    %s\n'   "$variant"
-            printf 'kernel:     %s\n'   "${kernel_ver:-unknown}"
-            printf 'status:     NOT BUILT (no make.log found)\n'
-            printf 'build dir:  %s\n'   "$build_dir"
-        } > "$out_dir/summary.txt"
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+
+    diag_root = args.diag_root.expanduser().resolve()
+    harvest_root = (
+        args.harvest_dir or (diag_root / DEFAULT_HARVEST_SUBDIR)
+    ).expanduser().resolve()
+
+    if not diag_root.is_dir():
+        _warn(f"diag root does not exist: {diag_root}")
+        return 1
+
+    harvest_root.mkdir(parents=True, exist_ok=True)
+    _log(f"DIAG_ROOT={diag_root}", args.quiet)
+    _log(f"HARVEST_DIR={harvest_root}", args.quiet)
+
+    builds = find_builds(diag_root)
+    if not builds:
+        _warn(f"no nvidia-* branch directory found under {diag_root}")
         return 0
-    fi
 
-    # ---- statisztika ----------------------------------------------------
-    local log_lines log_bytes
-    log_lines="$(wc -l < "$log_file" | tr -d ' ')"
-    log_bytes="$(stat -c '%s' "$log_file" 2>/dev/null || echo 0)"
+    results: list[BuildResult] = []
+    for branch, variant, build_dir in builds:
+        try:
+            r = process_build(
+                branch, variant, build_dir,
+                harvest_root, args.header_lines, args.quiet,
+            )
+            results.append(r)
+        except Exception as e:
+            _warn(f"failed to process {build_dir}: {e}")
 
-    log "$driver/$variant/$build_name  kernel=$kernel_ver  (${log_lines} lines / ${log_bytes} B)"
+    generate_index(results, diag_root, harvest_root)
+    _log(f"Index: {harvest_root / 'INDEX.md'}", args.quiet)
+    return 0
 
-    # ---- 00-header ------------------------------------------------------
-    head -n "$HEADER_LINES" "$log_file" > "$out_dir/00-header.txt"
 
-    # ---- 01-errors ------------------------------------------------------
-    grep_errors "$log_file" > "$out_dir/01-errors.txt"
-
-    # ---- 02/03: warning-ok szétválasztása -------------------------------
-    local warn_all; warn_all="$(mktemp)"
-    grep -E 'warning:' "$log_file" > "$warn_all" || true
-
-    local noise_re=""
-    if (( ${#NOISE_PATTERNS[@]} > 0 )); then
-        noise_re="$(printf '%s\n' "${NOISE_PATTERNS[@]}" | paste -sd'|' -)"
-    fi
-
-    local clean_tmp; clean_tmp="$(mktemp)"
-
-    if [[ -n "$noise_re" ]]; then
-        grep -E "$noise_re" "$warn_all" \
-            | normalize_warning | sort | uniq -c | sort -rn \
-            > "$out_dir/03-noise.txt" || true
-        grep -vE "$noise_re" "$warn_all" > "$clean_tmp" || true
-    else
-        : > "$out_dir/03-noise.txt"
-        cp "$warn_all" "$clean_tmp"
-    fi
-
-    normalize_warning < "$clean_tmp" \
-        | sort | uniq -c | sort -rn > "$out_dir/02-warnings.txt"
-
-    # ---- számok ---------------------------------------------------------
-    local raw_warn noise_warn clean_warn err_count
-    raw_warn="$(wc -l < "$warn_all" | tr -d ' ')"
-    noise_warn="$(awk '{s+=$1} END{print s+0}' "$out_dir/03-noise.txt")"
-    clean_warn="$(awk '{s+=$1} END{print s+0}' "$out_dir/02-warnings.txt")"
-    err_count="$(wc -l < "$out_dir/01-errors.txt" | tr -d ' ')"
-
-    rm -f "$warn_all" "$clean_tmp"
-
-    # ---- summary --------------------------------------------------------
-    {
-        printf 'build:           %s\n'  "$build_name"
-        printf 'driver:          %s\n'  "$driver"
-        printf 'variant:         %s\n'  "$variant"
-        printf 'kernel:          %s\n'  "$kernel_ver"
-        printf 'nvidia version:  %s\n'  "${driver_ver:-unknown}"
-        printf 'log path:        %s\n'  "$log_file"
-        printf 'log size:        %s bytes\n' "$log_bytes"
-        printf 'log lines:       %s\n'  "$log_lines"
-        printf '\n'
-        printf 'errors:          %s\n'  "$err_count"
-        printf 'warnings raw:    %s\n'  "$raw_warn"
-        printf 'warnings clean:  %s  (unique groups: %s)\n' \
-               "$clean_warn" "$(wc -l < "$out_dir/02-warnings.txt" | tr -d ' ')"
-        printf 'warnings noise:  %s  (unique groups: %s)\n' \
-               "$noise_warn" "$(wc -l < "$out_dir/03-noise.txt" | tr -d ' ')"
-        printf '\n=== Top clean warning groups ===\n'
-        head -n 25 "$out_dir/02-warnings.txt" 2>/dev/null || true
-        printf '\n=== Error excerpt (first 20) ===\n'
-        head -n 20 "$out_dir/01-errors.txt" 2>/dev/null || true
-    } > "$out_dir/summary.txt"
-}
-
-# ---------------------------------------------------------------------------
-# Main: branch-ök automatikus felderítése a DIAG_ROOT alatt
-# ---------------------------------------------------------------------------
-mkdir -p "$HARVEST_DIR"
-log "DIAG_ROOT=$DIAG_ROOT"
-log "HARVEST_DIR=$HARVEST_DIR"
-
-shopt -s nullglob
-found_any=0
-
-for driver_dir in "$DIAG_ROOT"/nvidia-*; do
-    [[ -d "$driver_dir" ]] || continue
-    found_any=1
-    driver_full="$(basename "$driver_dir")"     # pl. nvidia-340xx
-    driver="${driver_full#nvidia-}"             # pl. 340xx
-    log "branch: $driver_full  →  label '$driver'"
-
-    for variant_pair in "normal:normal-kernels" "rt:rt-kernels"; do
-        variant="${variant_pair%%:*}"
-        subdir="${variant_pair#*:}"
-        varroot="$driver_dir/$subdir"
-
-        if [[ ! -d "$varroot" ]]; then
-            warn "no '$subdir' under $driver_full — skipping"
-            continue
-        fi
-
-        for build_dir in "$varroot"/*/; do
-            [[ -d "$build_dir" ]] || continue
-            bname="$(basename "$build_dir")"
-            [[ "$bname" == linux* ]] || continue
-            harvest_build "$driver" "$variant" "$build_dir"
-        done
-    done
-done
-
-if (( found_any == 0 )); then
-    warn "no nvidia-* branch directory found under $DIAG_ROOT"
-fi
-
-shopt -u nullglob
-
-# ---------------------------------------------------------------------------
-# INDEX.md generálás — egy fájl, embernek és LLM-nek is olvasható
-# ---------------------------------------------------------------------------
-generate_index() {
-    local idx="$HARVEST_DIR/INDEX.md"
-    local rows; rows="$(mktemp)"
-    local branch_list="" total=0 failed=0 warn_only=0 clean_only=0 notbuilt=0
-
-    # --- 1. adatgyűjtés build-enként -------------------------------------
-    while IFS= read -r sumfile; do
-        local bdir kernel variant branch
-        bdir="$(dirname "$sumfile")"
-        kernel="$(basename "$bdir")"
-        variant="$(basename "$(dirname "$bdir")")"
-        branch="$(basename "$(dirname "$(dirname "$bdir")")")"
-
-        local drv log_path
-        drv="$(awk -F': *' '/^nvidia version:/{print $2; exit}' "$sumfile")"
-        log_path="$(awk -F': *' '/^log path:/{print $2; exit}' "$sumfile")"
-
-        local status err_cnt=0 clean_cnt=0 clean_uniq=0 noise_cnt=0
-        if [[ -f "$bdir/Not-built" ]]; then
-            status="not-built"
-            notbuilt=$((notbuilt+1))
-        else
-            err_cnt=$(wc -l    < "$bdir/01-errors.txt"   | tr -d ' ')
-            clean_cnt=$(awk    '{s+=$1} END{print s+0}'  "$bdir/02-warnings.txt")
-            clean_uniq=$(wc -l < "$bdir/02-warnings.txt" | tr -d ' ')
-            noise_cnt=$(awk    '{s+=$1} END{print s+0}'  "$bdir/03-noise.txt")
-            if   (( err_cnt   > 0 )); then status="failed";   failed=$((failed+1))
-            elif (( clean_cnt > 0 )); then status="warnings"; warn_only=$((warn_only+1))
-            else                           status="clean";    clean_only=$((clean_only+1))
-            fi
-        fi
-        total=$((total+1))
-
-        printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
-            "$branch" "$variant" "$kernel" "${drv:--}" "$status" \
-            "$err_cnt" "$clean_uniq" "$clean_cnt" "$noise_cnt" "$bdir" \
-            >> "$rows"
-    done < <(find "$HARVEST_DIR" -name summary.txt -type f | sort)
-
-    branch_list="$(cut -f1 "$rows" | sort -u | paste -sd, -)"
-
-    # --- 2. markdown írás -------------------------------------------------
-    {
-        printf '# Harvest Index — %s\n\n' "$(date '+%Y-%m-%d %H:%M:%S %z')"
-
-        # ---------------- Overview --------------------------------------
-        printf '## Overview\n\n'
-        printf -- '- **Diag root:** `%s`\n' "$DIAG_ROOT"
-        printf -- '- **Harvest:**   `%s`\n' "$HARVEST_DIR"
-        printf -- '- **Branches:**  %s\n' "$branch_list"
-        printf -- '- **Builds:** %d — ❗%d failed, ⚠%d warn, ✅%d clean, 🚫%d not-built\n\n' \
-               "$total" "$failed" "$warn_only" "$clean_only" "$notbuilt"
-
-        # ---------------- Legend ----------------------------------------
-        printf '## Legend\n\n'
-        printf '| Symbol | Status | Meaning |\n'
-        printf '|:------:|--------|---------|\n'
-        printf '| ❗ | failed    | make.log exists, real errors found — **blocker** |\n'
-        printf '| ⚠  | warnings  | built, no errors, non-noise warnings to review |\n'
-        printf '| ✅ | clean     | built, no errors, only known noise |\n'
-        printf '| 🚫 | not-built | no make.log at all |\n\n'
-        printf 'Per-build detail files (deep dive, one dir per kernel):\n'
-        printf '`00-header.txt`, `01-errors.txt`, `02-warnings.txt` (clean), '\
-'`03-noise.txt`, `summary.txt`.\n\n'
-
-        # ---------------- Status table ----------------------------------
-        printf '## Status table\n\n'
-        printf '| # | Branch | Variant | Kernel | Driver | Status | Err | Clean warn (unique/total) | Noise |\n'
-        printf '|---|--------|---------|--------|--------|:------:|----:|--------------------------:|------:|\n'
-        local i=0
-        while IFS=$'\t' read -r branch variant kernel drv status err_cnt clean_uniq clean_cnt noise_cnt bdir; do
-            i=$((i+1))
-            local mark
-            case "$status" in
-                failed)    mark="❗" ;;
-                warnings)  mark="⚠"  ;;
-                not-built) mark="🚫" ;;
-                *)         mark="✅" ;;
-            esac
-            printf '| %d | %s | %s | %s | %s | %s %s | %s | %s / %s | %s |\n' \
-                "$i" "$branch" "$variant" "$kernel" "$drv" "$mark" "$status" \
-                "$err_cnt" "$clean_uniq" "$clean_cnt" "$noise_cnt"
-        done < "$rows"
-        printf '\n'
-
-        # ---------------- Failures --------------------------------------
-        if (( failed > 0 )); then
-            printf '## ❗ Failures — fix these first\n\n'
-            printf 'Full error list in the per-build `01-errors.txt`. Excerpt below.\n\n'
-            while IFS=$'\t' read -r branch variant kernel drv status err_cnt clean_uniq clean_cnt noise_cnt bdir; do
-                [[ "$status" == "failed" ]] || continue
-                printf '### %s / %s / %s — %s  (%s errors)\n\n' \
-                       "$branch" "$variant" "$kernel" "$drv" "$err_cnt"
-                printf 'Path: `%s`\n\n' "${bdir#"$HARVEST_DIR"/}"
-                printf '```\n'
-                head -n 15 "$bdir/01-errors.txt" 2>/dev/null || true
-                printf '```\n\n'
-            done < "$rows"
-        fi
-
-        # ---------------- Clean warnings --------------------------------
-        if (( warn_only > 0 )) || (( failed > 0 )); then
-            printf '## ⚠ Warnings worth reviewing (clean, non-noise)\n\n'
-            printf 'Not blockers — but these are what a maintainer would patch.\n'
-            printf 'Top 15 unique groups per build; full list in `02-warnings.txt`.\n\n'
-            while IFS=$'\t' read -r branch variant kernel drv status err_cnt clean_uniq clean_cnt noise_cnt bdir; do
-                [[ "$status" == "warnings" || "$status" == "failed" ]] || continue
-                (( clean_uniq > 0 )) || continue
-                printf '### %s / %s / %s — %s  (%s unique / %s total)\n\n' \
-                       "$branch" "$variant" "$kernel" "$drv" "$clean_uniq" "$clean_cnt"
-                printf '```\n'
-                head -n 15 "$bdir/02-warnings.txt" 2>/dev/null || true
-                printf '```\n\n'
-            done < "$rows"
-        fi
-
-        # ---------------- Cross-build signatures ------------------------
-        printf '## 🔁 Cross-build warning signatures\n\n'
-        printf 'Same warning seen across multiple kernel builds. '\
-'Fixing the top signature fixes the most builds at once.\n\n'
-        printf '| Builds | Total hits | Signature |\n'
-        printf '|-------:|-----------:|-----------|\n'
-        {
-            local n=0
-            while IFS= read -r f; do
-                n=$((n+1))
-                awk -v f="$n" '
-                    {
-                        c = $1
-                        line = $0
-                        sub(/^[[:space:]]*[0-9]+[[:space:]]+/, "", line)
-                        if (length(line) > 0) print f "\t" c "\t" line
-                    }
-                ' "$f"
-            done < <(find "$HARVEST_DIR" -name '02-warnings.txt' -type f | sort)
-        } | awk -F'\t' '
-            {
-                sum[$3] += $2
-                key = $1 SUBSEP $3
-                if (!(key in seen)) { seen[key]=1; builds[$3]++ }
-            }
-            END { for (s in sum) printf "%d\t%d\t%s\n", builds[s], sum[s], s }
-        ' | sort -k2,2rn | head -n 30 | while IFS=$'\t' read -r builds hits sig; do
-            printf '| %s | %s | `%s` |\n' "$builds" "$hits" "$sig"
-        done
-        printf '\n'
-
-        # ---------------- Not-built -------------------------------------
-        if (( notbuilt > 0 )); then
-            printf '## 🚫 Not built (no make.log)\n\n'
-            while IFS=$'\t' read -r branch variant kernel drv status err_cnt clean_uniq clean_cnt noise_cnt bdir; do
-                [[ "$status" == "not-built" ]] || continue
-                printf -- '- `%s / %s / %s`\n' "$branch" "$variant" "$kernel"
-            done < "$rows"
-            printf '\n'
-        fi
-
-        printf '---\n'
-        printf '_End of index. Per-build detail files live in the harvest tree._\n'
-    } > "$idx"
-
-    rm -f "$rows"
-    log "Index: $idx"
-}
-
-# ---------------------------------------------------------------------------
-# Futás végén:
-# ---------------------------------------------------------------------------
-generate_index
+if __name__ == "__main__":
+    sys.exit(main())
