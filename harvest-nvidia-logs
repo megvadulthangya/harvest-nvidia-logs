@@ -1,0 +1,411 @@
+#!/usr/bin/env bash
+#
+# harvest-make-logs.sh
+# Collect & noise-filter make.log files from nvidia driver kernel builds.
+#
+# Feltételezett struktúra a DIAG_ROOT alatt:
+#   nvidia-<label>/{normal-kernels,rt-kernels}/linux*-nvidia-<label>/...
+#   (a jövőben bármennyi nvidia-* branch lehet; automatikusan felderítjük)
+#
+# Telepítés: /usr/local/bin/harvest-make-logs
+#
+set -euo pipefail
+
+# ---------------------------------------------------------------------------
+# Config
+# ---------------------------------------------------------------------------
+DIAG_ROOT="${DIAG_ROOT:-$HOME/diag}"
+HARVEST_DIR="${HARVEST_DIR:-$DIAG_ROOT/harvest}"
+HEADER_LINES="${HEADER_LINES:-10}"
+
+# Zaj-minták. Ezek a 03-noise.txt-be mennek (összesítve), és kikerülnek a
+# 02-warnings.txt-ből.
+NOISE_PATTERNS=(
+    'warning: objtool:.*data relocation to !ENDBR'
+    'warning: objtool:.*return with modified stack frame'
+    'warning: objtool:.*unreachable instruction'
+    'warning: objtool:.*sibling call from callable instruction'
+    'warning: objtool:.*call to __fentry__'
+)
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+log()  { printf '[harvest] %s\n' "$*" >&2; }
+warn() { printf '[harvest][warn] %s\n' "$*" >&2; }
+
+usage() {
+    cat <<EOF
+Usage: $(basename "$0") [-d DIAG_ROOT] [-o HARVEST_DIR] [-h]
+
+  -d DIAG_ROOT     Base diag directory (default: \$HOME/diag, env DIAG_ROOT)
+  -o HARVEST_DIR   Output directory   (default: \$DIAG_ROOT/harvest)
+  -h               Show this help
+
+A DIAG_ROOT alatt az összes 'nvidia-*' mappát felderíti, azokon belül
+a 'normal-kernels' és 'rt-kernels' alkönyvtárakat dolgozza fel.
+EOF
+}
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
+while getopts ':d:o:h' opt; do
+    case "$opt" in
+        d) DIAG_ROOT="$OPTARG" ;;
+        o) HARVEST_DIR="$OPTARG" ;;
+        h) usage; exit 0 ;;
+        \?) echo "Unknown option: -$OPTARG" >&2; usage; exit 1 ;;
+        :)  echo "Option -$OPTARG requires an argument" >&2; exit 1 ;;
+    esac
+done
+
+# ---------------------------------------------------------------------------
+# Normalizálás: a warning sorokat összevonhatóvá tesszük
+#  - path prefix levágása
+#  - 0x... → 0xADDR
+#  - _nvXXXXXXrm → _nvSYM
+# ---------------------------------------------------------------------------
+normalize_warning() {
+    sed -E \
+        -e 's/^.*warning:/warning:/' \
+        -e 's/0x[0-9a-fA-F]+/0xADDR/g' \
+        -e 's/_nv[0-9A-Za-z_]+/_nvSYM/g' \
+        -e 's/[[:space:]]+$//' \
+        -e '/^$/d'
+}
+
+grep_errors() {
+    grep -nE '(: error:|Error [0-9]+|\*\*\* \[|undefined reference to|ld: cannot)' "$1" || true
+}
+
+# ---------------------------------------------------------------------------
+# Egy kernel build könyvtár feldolgozása
+#   $1 = driver label    (pl. "340xx")
+#   $2 = variant         ("normal" | "rt")
+#   $3 = build könyvtár  (pl. ".../linux61-nvidia-340xx")
+# ---------------------------------------------------------------------------
+harvest_build() {
+    local driver="$1" variant="$2" build_dir="$3"
+    local build_name; build_name="$(basename "$build_dir")"
+
+    # ---- make.log keresése (kizárólag a build_dir-en belül) -------------
+    local log_file=""
+    if [[ -d "$build_dir/src" ]]; then
+        log_file="$(find "$build_dir/src" -type f -name 'make.log' -print -quit 2>/dev/null || true)"
+    fi
+
+    # ---- kernel / driver verzió kinyerése a log útvonalából -------------
+    # .../src/nvidia/<drv>/<kver>/x86_64/log/make.log
+    local kernel_ver="" driver_ver=""
+    if [[ -n "$log_file" ]]; then
+        kernel_ver="$(basename "$(dirname "$(dirname "$(dirname "$log_file")")")")"
+        driver_ver="$(basename "$(dirname "$(dirname "$(dirname "$(dirname "$log_file")")")")")"
+    fi
+
+    # ---- output könyvtár -----------------------------------------------
+    # Ha van kernel_ver, azt használjuk, különben a build_dir nevét
+    # (Not-built eset).
+    local leaf="${kernel_ver:-$build_name}"
+    local out_dir="$HARVEST_DIR/$driver/$variant/$leaf"
+    mkdir -p "$out_dir"
+
+    # ---- Not-built eset -------------------------------------------------
+    if [[ -z "$log_file" || ! -f "$log_file" ]]; then
+        warn "not built: $driver/$variant/$build_name"
+        : > "$out_dir/Not-built"
+        {
+            printf 'build:      %s\n'   "$build_name"
+            printf 'driver:     %s\n'   "$driver"
+            printf 'variant:    %s\n'   "$variant"
+            printf 'kernel:     %s\n'   "${kernel_ver:-unknown}"
+            printf 'status:     NOT BUILT (no make.log found)\n'
+            printf 'build dir:  %s\n'   "$build_dir"
+        } > "$out_dir/summary.txt"
+        return 0
+    fi
+
+    # ---- statisztika ----------------------------------------------------
+    local log_lines log_bytes
+    log_lines="$(wc -l < "$log_file" | tr -d ' ')"
+    log_bytes="$(stat -c '%s' "$log_file" 2>/dev/null || echo 0)"
+
+    log "$driver/$variant/$build_name  kernel=$kernel_ver  (${log_lines} lines / ${log_bytes} B)"
+
+    # ---- 00-header ------------------------------------------------------
+    head -n "$HEADER_LINES" "$log_file" > "$out_dir/00-header.txt"
+
+    # ---- 01-errors ------------------------------------------------------
+    grep_errors "$log_file" > "$out_dir/01-errors.txt"
+
+    # ---- 02/03: warning-ok szétválasztása -------------------------------
+    local warn_all; warn_all="$(mktemp)"
+    grep -E 'warning:' "$log_file" > "$warn_all" || true
+
+    local noise_re=""
+    if (( ${#NOISE_PATTERNS[@]} > 0 )); then
+        noise_re="$(printf '%s\n' "${NOISE_PATTERNS[@]}" | paste -sd'|' -)"
+    fi
+
+    local clean_tmp; clean_tmp="$(mktemp)"
+
+    if [[ -n "$noise_re" ]]; then
+        grep -E "$noise_re" "$warn_all" \
+            | normalize_warning | sort | uniq -c | sort -rn \
+            > "$out_dir/03-noise.txt" || true
+        grep -vE "$noise_re" "$warn_all" > "$clean_tmp" || true
+    else
+        : > "$out_dir/03-noise.txt"
+        cp "$warn_all" "$clean_tmp"
+    fi
+
+    normalize_warning < "$clean_tmp" \
+        | sort | uniq -c | sort -rn > "$out_dir/02-warnings.txt"
+
+    # ---- számok ---------------------------------------------------------
+    local raw_warn noise_warn clean_warn err_count
+    raw_warn="$(wc -l < "$warn_all" | tr -d ' ')"
+    noise_warn="$(awk '{s+=$1} END{print s+0}' "$out_dir/03-noise.txt")"
+    clean_warn="$(awk '{s+=$1} END{print s+0}' "$out_dir/02-warnings.txt")"
+    err_count="$(wc -l < "$out_dir/01-errors.txt" | tr -d ' ')"
+
+    rm -f "$warn_all" "$clean_tmp"
+
+    # ---- summary --------------------------------------------------------
+    {
+        printf 'build:           %s\n'  "$build_name"
+        printf 'driver:          %s\n'  "$driver"
+        printf 'variant:         %s\n'  "$variant"
+        printf 'kernel:          %s\n'  "$kernel_ver"
+        printf 'nvidia version:  %s\n'  "${driver_ver:-unknown}"
+        printf 'log path:        %s\n'  "$log_file"
+        printf 'log size:        %s bytes\n' "$log_bytes"
+        printf 'log lines:       %s\n'  "$log_lines"
+        printf '\n'
+        printf 'errors:          %s\n'  "$err_count"
+        printf 'warnings raw:    %s\n'  "$raw_warn"
+        printf 'warnings clean:  %s  (unique groups: %s)\n' \
+               "$clean_warn" "$(wc -l < "$out_dir/02-warnings.txt" | tr -d ' ')"
+        printf 'warnings noise:  %s  (unique groups: %s)\n' \
+               "$noise_warn" "$(wc -l < "$out_dir/03-noise.txt" | tr -d ' ')"
+        printf '\n=== Top clean warning groups ===\n'
+        head -n 25 "$out_dir/02-warnings.txt" 2>/dev/null || true
+        printf '\n=== Error excerpt (first 20) ===\n'
+        head -n 20 "$out_dir/01-errors.txt" 2>/dev/null || true
+    } > "$out_dir/summary.txt"
+}
+
+# ---------------------------------------------------------------------------
+# Main: branch-ök automatikus felderítése a DIAG_ROOT alatt
+# ---------------------------------------------------------------------------
+mkdir -p "$HARVEST_DIR"
+log "DIAG_ROOT=$DIAG_ROOT"
+log "HARVEST_DIR=$HARVEST_DIR"
+
+shopt -s nullglob
+found_any=0
+
+for driver_dir in "$DIAG_ROOT"/nvidia-*; do
+    [[ -d "$driver_dir" ]] || continue
+    found_any=1
+    driver_full="$(basename "$driver_dir")"     # pl. nvidia-340xx
+    driver="${driver_full#nvidia-}"             # pl. 340xx
+    log "branch: $driver_full  →  label '$driver'"
+
+    for variant_pair in "normal:normal-kernels" "rt:rt-kernels"; do
+        variant="${variant_pair%%:*}"
+        subdir="${variant_pair#*:}"
+        varroot="$driver_dir/$subdir"
+
+        if [[ ! -d "$varroot" ]]; then
+            warn "no '$subdir' under $driver_full — skipping"
+            continue
+        fi
+
+        for build_dir in "$varroot"/*/; do
+            [[ -d "$build_dir" ]] || continue
+            bname="$(basename "$build_dir")"
+            [[ "$bname" == linux* ]] || continue
+            harvest_build "$driver" "$variant" "$build_dir"
+        done
+    done
+done
+
+if (( found_any == 0 )); then
+    warn "no nvidia-* branch directory found under $DIAG_ROOT"
+fi
+
+shopt -u nullglob
+
+# ---------------------------------------------------------------------------
+# INDEX.md generálás — egy fájl, embernek és LLM-nek is olvasható
+# ---------------------------------------------------------------------------
+generate_index() {
+    local idx="$HARVEST_DIR/INDEX.md"
+    local rows; rows="$(mktemp)"
+    local branch_list="" total=0 failed=0 warn_only=0 clean_only=0 notbuilt=0
+
+    # --- 1. adatgyűjtés build-enként -------------------------------------
+    while IFS= read -r sumfile; do
+        local bdir kernel variant branch
+        bdir="$(dirname "$sumfile")"
+        kernel="$(basename "$bdir")"
+        variant="$(basename "$(dirname "$bdir")")"
+        branch="$(basename "$(dirname "$(dirname "$bdir")")")"
+
+        local drv log_path
+        drv="$(awk -F': *' '/^nvidia version:/{print $2; exit}' "$sumfile")"
+        log_path="$(awk -F': *' '/^log path:/{print $2; exit}' "$sumfile")"
+
+        local status err_cnt=0 clean_cnt=0 clean_uniq=0 noise_cnt=0
+        if [[ -f "$bdir/Not-built" ]]; then
+            status="not-built"
+            notbuilt=$((notbuilt+1))
+        else
+            err_cnt=$(wc -l    < "$bdir/01-errors.txt"   | tr -d ' ')
+            clean_cnt=$(awk    '{s+=$1} END{print s+0}'  "$bdir/02-warnings.txt")
+            clean_uniq=$(wc -l < "$bdir/02-warnings.txt" | tr -d ' ')
+            noise_cnt=$(awk    '{s+=$1} END{print s+0}'  "$bdir/03-noise.txt")
+            if   (( err_cnt   > 0 )); then status="failed";   failed=$((failed+1))
+            elif (( clean_cnt > 0 )); then status="warnings"; warn_only=$((warn_only+1))
+            else                           status="clean";    clean_only=$((clean_only+1))
+            fi
+        fi
+        total=$((total+1))
+
+        printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+            "$branch" "$variant" "$kernel" "${drv:--}" "$status" \
+            "$err_cnt" "$clean_uniq" "$clean_cnt" "$noise_cnt" "$bdir" \
+            >> "$rows"
+    done < <(find "$HARVEST_DIR" -name summary.txt -type f | sort)
+
+    branch_list="$(cut -f1 "$rows" | sort -u | paste -sd, -)"
+
+    # --- 2. markdown írás -------------------------------------------------
+    {
+        printf '# Harvest Index — %s\n\n' "$(date '+%Y-%m-%d %H:%M:%S %z')"
+
+        # ---------------- Overview --------------------------------------
+        printf '## Overview\n\n'
+        printf -- '- **Diag root:** `%s`\n' "$DIAG_ROOT"
+        printf -- '- **Harvest:**   `%s`\n' "$HARVEST_DIR"
+        printf -- '- **Branches:**  %s\n' "$branch_list"
+        printf -- '- **Builds:** %d — ❗%d failed, ⚠%d warn, ✅%d clean, 🚫%d not-built\n\n' \
+               "$total" "$failed" "$warn_only" "$clean_only" "$notbuilt"
+
+        # ---------------- Legend ----------------------------------------
+        printf '## Legend\n\n'
+        printf '| Symbol | Status | Meaning |\n'
+        printf '|:------:|--------|---------|\n'
+        printf '| ❗ | failed    | make.log exists, real errors found — **blocker** |\n'
+        printf '| ⚠  | warnings  | built, no errors, non-noise warnings to review |\n'
+        printf '| ✅ | clean     | built, no errors, only known noise |\n'
+        printf '| 🚫 | not-built | no make.log at all |\n\n'
+        printf 'Per-build detail files (deep dive, one dir per kernel):\n'
+        printf '`00-header.txt`, `01-errors.txt`, `02-warnings.txt` (clean), '\
+'`03-noise.txt`, `summary.txt`.\n\n'
+
+        # ---------------- Status table ----------------------------------
+        printf '## Status table\n\n'
+        printf '| # | Branch | Variant | Kernel | Driver | Status | Err | Clean warn (unique/total) | Noise |\n'
+        printf '|---|--------|---------|--------|--------|:------:|----:|--------------------------:|------:|\n'
+        local i=0
+        while IFS=$'\t' read -r branch variant kernel drv status err_cnt clean_uniq clean_cnt noise_cnt bdir; do
+            i=$((i+1))
+            local mark
+            case "$status" in
+                failed)    mark="❗" ;;
+                warnings)  mark="⚠"  ;;
+                not-built) mark="🚫" ;;
+                *)         mark="✅" ;;
+            esac
+            printf '| %d | %s | %s | %s | %s | %s %s | %s | %s / %s | %s |\n' \
+                "$i" "$branch" "$variant" "$kernel" "$drv" "$mark" "$status" \
+                "$err_cnt" "$clean_uniq" "$clean_cnt" "$noise_cnt"
+        done < "$rows"
+        printf '\n'
+
+        # ---------------- Failures --------------------------------------
+        if (( failed > 0 )); then
+            printf '## ❗ Failures — fix these first\n\n'
+            printf 'Full error list in the per-build `01-errors.txt`. Excerpt below.\n\n'
+            while IFS=$'\t' read -r branch variant kernel drv status err_cnt clean_uniq clean_cnt noise_cnt bdir; do
+                [[ "$status" == "failed" ]] || continue
+                printf '### %s / %s / %s — %s  (%s errors)\n\n' \
+                       "$branch" "$variant" "$kernel" "$drv" "$err_cnt"
+                printf 'Path: `%s`\n\n' "${bdir#"$HARVEST_DIR"/}"
+                printf '```\n'
+                head -n 15 "$bdir/01-errors.txt" 2>/dev/null || true
+                printf '```\n\n'
+            done < "$rows"
+        fi
+
+        # ---------------- Clean warnings --------------------------------
+        if (( warn_only > 0 )) || (( failed > 0 )); then
+            printf '## ⚠ Warnings worth reviewing (clean, non-noise)\n\n'
+            printf 'Not blockers — but these are what a maintainer would patch.\n'
+            printf 'Top 15 unique groups per build; full list in `02-warnings.txt`.\n\n'
+            while IFS=$'\t' read -r branch variant kernel drv status err_cnt clean_uniq clean_cnt noise_cnt bdir; do
+                [[ "$status" == "warnings" || "$status" == "failed" ]] || continue
+                (( clean_uniq > 0 )) || continue
+                printf '### %s / %s / %s — %s  (%s unique / %s total)\n\n' \
+                       "$branch" "$variant" "$kernel" "$drv" "$clean_uniq" "$clean_cnt"
+                printf '```\n'
+                head -n 15 "$bdir/02-warnings.txt" 2>/dev/null || true
+                printf '```\n\n'
+            done < "$rows"
+        fi
+
+        # ---------------- Cross-build signatures ------------------------
+        printf '## 🔁 Cross-build warning signatures\n\n'
+        printf 'Same warning seen across multiple kernel builds. '\
+'Fixing the top signature fixes the most builds at once.\n\n'
+        printf '| Builds | Total hits | Signature |\n'
+        printf '|-------:|-----------:|-----------|\n'
+        {
+            local n=0
+            while IFS= read -r f; do
+                n=$((n+1))
+                awk -v f="$n" '
+                    {
+                        c = $1
+                        line = $0
+                        sub(/^[[:space:]]*[0-9]+[[:space:]]+/, "", line)
+                        if (length(line) > 0) print f "\t" c "\t" line
+                    }
+                ' "$f"
+            done < <(find "$HARVEST_DIR" -name '02-warnings.txt' -type f | sort)
+        } | awk -F'\t' '
+            {
+                sum[$3] += $2
+                key = $1 SUBSEP $3
+                if (!(key in seen)) { seen[key]=1; builds[$3]++ }
+            }
+            END { for (s in sum) printf "%d\t%d\t%s\n", builds[s], sum[s], s }
+        ' | sort -k2,2rn | head -n 30 | while IFS=$'\t' read -r builds hits sig; do
+            printf '| %s | %s | `%s` |\n' "$builds" "$hits" "$sig"
+        done
+        printf '\n'
+
+        # ---------------- Not-built -------------------------------------
+        if (( notbuilt > 0 )); then
+            printf '## 🚫 Not built (no make.log)\n\n'
+            while IFS=$'\t' read -r branch variant kernel drv status err_cnt clean_uniq clean_cnt noise_cnt bdir; do
+                [[ "$status" == "not-built" ]] || continue
+                printf -- '- `%s / %s / %s`\n' "$branch" "$variant" "$kernel"
+            done < "$rows"
+            printf '\n'
+        fi
+
+        printf '---\n'
+        printf '_End of index. Per-build detail files live in the harvest tree._\n'
+    } > "$idx"
+
+    rm -f "$rows"
+    log "Index: $idx"
+}
+
+# ---------------------------------------------------------------------------
+# Futás végén:
+# ---------------------------------------------------------------------------
+generate_index
