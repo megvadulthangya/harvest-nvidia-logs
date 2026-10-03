@@ -26,7 +26,7 @@ from datetime import datetime
 from pathlib import Path
 
 
-__version__ = "0.1.1"
+__version__ = "0.2.0"
 
 
 # ---------------------------------------------------------------------------
@@ -38,8 +38,7 @@ DEFAULT_DIAG_ROOT = Path.home() / "diag"
 DEFAULT_HARVEST_SUBDIR = "harvest"
 
 # Warning signatures considered "known noise" from the kernel build system
-# (mostly objtool on legacy NVIDIA binary blobs). Applied AFTER normalization,
-# so patterns match the normalized form (paths stripped, symbols collapsed).
+# (mostly objtool on legacy NVIDIA binary blobs). Applied AFTER normalization.
 NOISE_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"warning: objtool:.*data relocation to !ENDBR"),
     re.compile(r"warning: objtool:.*relocation to !ENDBR"),
@@ -54,27 +53,44 @@ NOISE_PATTERNS: list[re.Pattern[str]] = [
 ]
 
 # --- Normalization regexes -------------------------------------------------
-# Greedy match: drop everything up to the LAST "warning:" so embedded
-# "warning:" fragments from concatenated log lines don't survive.
 RE_BEFORE_WARNING = re.compile(r"^.*(?=warning:)")
-
-# Only treat quoted strings that look like absolute paths as paths,
-# otherwise 'naked' / 'warn_unused_result' would be replaced too.
 RE_QUOTED_PATH = re.compile(r"'/[^']*'")
-
-# Single-pass address normalizer: "symbol+0xHEX" -> "<func>+0xADDR",
-# bare "0xHEX" -> "0xADDR". Done in one sub() so the replacement text
-# "0xADDR" is never re-scanned (which previously produced "0xADDRR").
 RE_ADDR = re.compile(
     r"(?P<sym>[.A-Za-z_][\w.]*\+0x[0-9a-fA-F]+)"
     r"|(?P<hex>0x[0-9a-fA-F]+)"
 )
 
-# An "error" line worth capturing. Deliberately conservative: matches
-# compiler errors, linker errors, make aborts.
+# An "error" line worth capturing (build blockers).
 ERROR_RE = re.compile(
-    r"(: error:|Error [0-9]+|\*\*\* \[|undefined reference to|ld: cannot)"
+    r"(: error:|: fatal error:|Error [0-9]+|\*\*\* \["
+    r"|undefined reference to|ld: cannot|No rule to make target)"
 )
+
+# Suspicious non-warning / non-error lines. These don't match ERROR_RE and
+# don't contain "warning:", but they frequently indicate real problems
+# (missing files, permissions, OOM, crashes, missing dependencies).
+SUSPICIOUS_RE = re.compile(
+    r"cannot find"
+    r"|No such file or directory"
+    r"|[Pp]ermission denied"
+    r"|\bAborted\b"
+    r"|\bKilled\b"
+    r"|\bsegmentation fault\b"
+    r"|\bcore dumped\b"
+    r"|out of memory"
+    r"|\bOOM\b"
+    r"|\btimed? out\b"
+    r"|[Mm]odule not found"
+    r"|[Ss]ymbol not found"
+    r"|missing .*\.h\b"
+    r"|\bnot found\b"
+)
+
+# Success markers that should appear near the end of a healthy kbuild log.
+SUCCESS_MARKERS = ("LD [M]", "MODPOST", "Building modules", "BTF [M]")
+
+# Minimum number of ".ko(.zst)" artifacts a healthy build should produce.
+EXPECTED_MODULES = ("nvidia", "nvidia-uvm", "nvidia-modeset", "nvidia-drm")
 
 
 # ---------------------------------------------------------------------------
@@ -99,9 +115,15 @@ class BuildResult:
     noise_uniq: int = 0
     clean_total: int = 0
     clean_uniq: int = 0
+    suspicious_total: int = 0
+    suspicious_uniq: int = 0
     clean_signatures: Counter[str] = field(default_factory=Counter)
     noise_signatures: Counter[str] = field(default_factory=Counter)
+    suspicious_signatures: Counter[str] = field(default_factory=Counter)
     error_excerpt: list[str] = field(default_factory=list)
+    suspicious_excerpt: list[str] = field(default_factory=list)
+    integrity_issues: list[str] = field(default_factory=list)
+    modules_found: list[str] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -113,23 +135,22 @@ def _addr_sub(m: re.Match) -> str:
 
 
 def normalize_warning(line: str) -> str:
-    """Collapse a raw warning line into a stable, groupable signature."""
     line = line.rstrip("\r\n")
-
-    # 1. Drop everything before the LAST "warning:" (path prefix, embedded
-    #    fragments from concatenated lines).
     m = RE_BEFORE_WARNING.match(line)
     if m:
         line = line[m.end():]
-
-    # 2. Replace only absolute quoted paths with '<path>'. This keeps
-    #    'naked' and other quoted keywords intact so noise patterns can
-    #    still match them.
     line = RE_QUOTED_PATH.sub("'<path>'", line)
-
-    # 3. One-pass address normalization.
     line = RE_ADDR.sub(_addr_sub, line)
+    return line.strip()
 
+
+def normalize_generic(line: str) -> str:
+    """Normalize a suspicious line (no 'warning:' prefix expected)."""
+    line = line.rstrip("\r\n")
+    line = RE_QUOTED_PATH.sub("'<path>'", line)
+    line = RE_ADDR.sub(_addr_sub, line)
+    # Collapse long whitespace
+    line = re.sub(r"[ \t]+", " ", line)
     return line.strip()
 
 
@@ -142,13 +163,11 @@ def is_noise(signature: str) -> bool:
 # ---------------------------------------------------------------------------
 
 def find_builds(diag_root: Path) -> list[tuple[str, str, Path]]:
-    """Return (branch_label, variant, build_dir) for every build found."""
     results: list[tuple[str, str, Path]] = []
     for branch_dir in sorted(diag_root.glob("nvidia-*")):
         if not branch_dir.is_dir():
             continue
         branch = branch_dir.name[len("nvidia-"):]
-
         for variant, sub in (("normal", "normal-kernels"),
                               ("rt",     "rt-kernels")):
             var_root = branch_dir / sub
@@ -171,14 +190,64 @@ def find_make_log(build_dir: Path) -> Path | None:
 
 
 def extract_versions(log_path: Path) -> tuple[str | None, str | None]:
-    """Return (kernel_ver, driver_ver) from a path like
-    .../src/nvidia/<driver>/<kernel>/x86_64/log/make.log
-    """
     kernel = log_path.parent.parent.parent.name
     driver = log_path.parent.parent.parent.parent.name
     if kernel in ("src", "nvidia", "build", ""):
         return None, None
     return kernel, driver
+
+
+# ---------------------------------------------------------------------------
+# Integrity checks
+# ---------------------------------------------------------------------------
+
+def _find_module_artifacts(build_dir: Path) -> list[str]:
+    """Return basenames (without .ko / .ko.zst) of built kernel modules."""
+    found: set[str] = set()
+    for mod_dir in build_dir.rglob("module"):
+        for ko in mod_dir.glob("*.ko.zst"):
+            found.add(ko.name[: -len(".ko.zst")])
+        for ko in mod_dir.glob("*.ko"):
+            found.add(ko.name[: -len(".ko")])
+    return sorted(found)
+
+
+def check_integrity(
+    log_path: Path, build_dir: Path, err_count: int,
+) -> tuple[list[str], list[str]]:
+    """Return (integrity_issues, modules_found)."""
+    issues: list[str] = []
+
+    modules = _find_module_artifacts(build_dir)
+
+    if err_count > 0:
+        # Build failed — expect no modules, don't flag missing artifacts.
+        return issues, modules
+
+    # Healthy build should produce at least the expected modules.
+    missing = [m for m in EXPECTED_MODULES if m not in modules]
+    if not modules:
+        issues.append("no built module artifacts found (expected .ko/.ko.zst)")
+    elif missing:
+        issues.append(
+            f"missing module artifacts: {', '.join(missing)} "
+            f"(expected {len(EXPECTED_MODULES)}, found {len(modules)})"
+        )
+
+    # Check log tail for expected success marker.
+    try:
+        with log_path.open("r", encoding="utf-8", errors="replace") as f:
+            tail = f.readlines()[-200:]
+        tail_text = "".join(tail)
+        if not any(marker in tail_text for marker in SUCCESS_MARKERS):
+            issues.append(
+                "log tail has no kbuild success marker "
+                f"({', '.join(SUCCESS_MARKERS)}) — possible truncation"
+            )
+    except OSError as e:
+        issues.append(f"could not read log tail: {e}")
+
+    return issues, modules
 
 
 # ---------------------------------------------------------------------------
@@ -207,11 +276,26 @@ def _write_summary(r: BuildResult) -> None:
     out.append(f"errors:          {r.err_count}")
     out.append(f"warnings clean:  {r.clean_total}  (unique: {r.clean_uniq})")
     out.append(f"warnings noise:  {r.noise_total}  (unique: {r.noise_uniq})")
+    out.append(f"suspicious:      {r.suspicious_total}  (unique: {r.suspicious_uniq})")
+    out.append(f"modules built:   {len(r.modules_found)}  "
+               f"[{', '.join(r.modules_found) if r.modules_found else '-'}]")
+
+    if r.integrity_issues:
+        out.append("")
+        out.append("=== Integrity issues ===")
+        for issue in r.integrity_issues:
+            out.append(f"  ! {issue}")
 
     if r.clean_signatures:
         out.append("")
         out.append("=== Top clean warning groups ===")
         for sig, count in r.clean_signatures.most_common(25):
+            out.append(f"{count:>8}  {sig}")
+
+    if r.suspicious_signatures:
+        out.append("")
+        out.append("=== Suspicious groups ===")
+        for sig, count in r.suspicious_signatures.most_common(25):
             out.append(f"{count:>8}  {sig}")
 
     if r.error_excerpt:
@@ -259,13 +343,15 @@ def process_build(
         _log(f"not-built: {branch}/{variant}/{build_name}", quiet)
         return result
 
-    # --- stats -----------------------------------------------------------
+    # --- scan log --------------------------------------------------------
     result.log_size = log_path.stat().st_size
 
     header_lines_list: list[str] = []
     error_lines: list[tuple[int, str]] = []
     clean_counter: Counter[str] = Counter()
     noise_counter: Counter[str] = Counter()
+    suspicious_counter: Counter[str] = Counter()
+    suspicious_lines: list[tuple[int, str]] = []
     line_no = 0
 
     with log_path.open("r", encoding="utf-8", errors="replace") as f:
@@ -278,6 +364,7 @@ def process_build(
 
             if ERROR_RE.search(line):
                 error_lines.append((line_no, line))
+                continue
 
             if "warning:" in line:
                 sig = normalize_warning(line)
@@ -286,16 +373,33 @@ def process_build(
                         noise_counter[sig] += 1
                     else:
                         clean_counter[sig] += 1
+                continue
+
+            if SUSPICIOUS_RE.search(line):
+                sig = normalize_generic(line)
+                if sig:
+                    suspicious_counter[sig] += 1
+                    if len(suspicious_lines) < 40:
+                        suspicious_lines.append((line_no, line))
 
     result.log_lines = line_no
     result.err_count = len(error_lines)
     result.error_excerpt = [f"{i}: {ln}" for i, ln in error_lines[:20]]
     result.clean_signatures = clean_counter
     result.noise_signatures = noise_counter
+    result.suspicious_signatures = suspicious_counter
     result.clean_total = sum(clean_counter.values())
     result.clean_uniq = len(clean_counter)
     result.noise_total = sum(noise_counter.values())
     result.noise_uniq = len(noise_counter)
+    result.suspicious_total = sum(suspicious_counter.values())
+    result.suspicious_uniq = len(suspicious_counter)
+    result.suspicious_excerpt = [f"{i}: {ln}" for i, ln in suspicious_lines]
+
+    # --- integrity check -------------------------------------------------
+    result.integrity_issues, result.modules_found = check_integrity(
+        log_path, build_dir, result.err_count,
+    )
 
     # --- write per-build files ------------------------------------------
     (out_dir / "00-header.txt").write_text(
@@ -306,19 +410,25 @@ def process_build(
     )
     _write_counter(out_dir / "02-warnings.txt", clean_counter)
     _write_counter(out_dir / "03-noise.txt", noise_counter)
+    _write_counter(out_dir / "04-suspicious.txt", suspicious_counter)
 
     # --- status ----------------------------------------------------------
     if result.err_count > 0:
         result.status = "failed"
+    elif result.suspicious_total > 0 or result.integrity_issues:
+        result.status = "suspicious"
     elif result.clean_total > 0:
         result.status = "warnings"
     else:
         result.status = "clean"
 
     _write_summary(result)
+    extra = ""
+    if result.integrity_issues:
+        extra = f"  integrity={len(result.integrity_issues)}"
     _log(
         f"{branch}/{variant}/{build_name}  kernel={kernel_ver or '?'}  "
-        f"status={result.status}  "
+        f"status={result.status}{extra}  "
         f"({result.log_lines} lines / {result.log_size} B)",
         quiet,
     )
@@ -333,15 +443,24 @@ def _branch_list(branches: set[str]) -> str:
     return ", ".join(sorted(branches))
 
 
+STATUS_SYMBOL = {
+    "failed": "❗",
+    "suspicious": "🔍",
+    "warnings": "⚠",
+    "clean": "✅",
+    "not-built": "🚫",
+}
+
+
 def generate_index(
     results: list[BuildResult],
     diag_root: Path,
     harvest_root: Path,
 ) -> None:
     idx_path = harvest_root / "INDEX.md"
-
     by_status = Counter(r.status for r in results)
 
+    # Aggregate clean-warning signatures across builds.
     sig_map: dict[str, list[tuple[BuildResult, int]]] = defaultdict(list)
     for r in results:
         for sig, count in r.clean_signatures.items():
@@ -349,7 +468,6 @@ def generate_index(
 
     multi: list[tuple[str, int, int, set[str]]] = []
     single: list[tuple[str, BuildResult, int]] = []
-
     for sig, occurrences in sig_map.items():
         builds = len(occurrences)
         hits = sum(c for _, c in occurrences)
@@ -358,9 +476,25 @@ def generate_index(
             multi.append((sig, builds, hits, combos))
         else:
             single.append((sig, occurrences[0][0], occurrences[0][1]))
-
     multi.sort(key=lambda x: (-x[1], -x[2], x[0]))
     single.sort(key=lambda x: (-x[2], x[0]))
+
+    # Aggregate suspicious signatures across builds.
+    sus_map: dict[str, list[tuple[BuildResult, int]]] = defaultdict(list)
+    for r in results:
+        for sig, count in r.suspicious_signatures.items():
+            sus_map[sig].append((r, count))
+
+    sus_multi: list[tuple[str, int, int, set[str]]] = []
+    for sig, occurrences in sus_map.items():
+        builds = len(occurrences)
+        hits = sum(c for _, c in occurrences)
+        combos = {f"{r.branch}/{r.variant}" for r, _ in occurrences}
+        sus_multi.append((sig, builds, hits, combos))
+    sus_multi.sort(key=lambda x: (-x[1], -x[2], x[0]))
+
+    # Collect all builds with integrity issues.
+    integrity_hits = [r for r in results if r.integrity_issues]
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S %z")
     out: list[str] = []
@@ -378,14 +512,19 @@ def generate_index(
     A(
         f"- **Builds:** {len(results)} — "
         f"❗{by_status['failed']} failed, "
+        f"🔍{by_status['suspicious']} suspicious, "
         f"⚠{by_status['warnings']} warn, "
         f"✅{by_status['clean']} clean, "
         f"🚫{by_status['not-built']} not-built"
     )
     A(
-        f"- **Signatures:** {len(sig_map)} total — "
+        f"- **Warning signatures:** {len(sig_map)} total — "
         f"{len(multi)} across multiple builds, "
         f"{len(single)} unique to one build"
+    )
+    A(
+        f"- **Suspicious signatures:** {len(sus_map)} total; "
+        f"**integrity issues:** {len(integrity_hits)} builds affected"
     )
     A("")
 
@@ -394,36 +533,58 @@ def generate_index(
     A("")
     A("| Symbol | Status | Meaning |")
     A("|:------:|--------|---------|")
-    A("| ❗ | failed    | make.log exists, real errors found — **blocker** |")
-    A("| ⚠  | warnings  | built, no errors, non-noise warnings to review |")
-    A("| ✅ | clean     | built, no errors, only known noise |")
-    A("| 🚫 | not-built | no make.log at all |")
+    A("| ❗ | failed     | make.log exists, real errors found — **blocker** |")
+    A("| 🔍 | suspicious | no errors, but suspicious lines or integrity issues |")
+    A("| ⚠  | warnings   | built, no errors, non-noise warnings to review |")
+    A("| ✅ | clean      | built, no errors, only known noise |")
+    A("| 🚫 | not-built  | no make.log at all |")
     A("")
     A("Per-build detail lives in the harvest tree, one directory per kernel: "
       "`00-header.txt`, `01-errors.txt`, `02-warnings.txt`, `03-noise.txt`, "
-      "`summary.txt`.")
+      "`04-suspicious.txt`, `summary.txt`.")
     A("")
 
     # --- Status table ----------------------------------------------------
     A("## Status table")
     A("")
-    A("| # | Branch | Variant | Kernel | Driver | Status | Err | Clean (uniq/total) | Noise |")
-    A("|---|--------|---------|--------|--------|:------:|----:|-------------------:|------:|")
+    A("| # | Branch | Variant | Kernel | Driver | Status | Err | Clean (uniq/total) | Susp | Noise | Integ |")
+    A("|---|--------|---------|--------|--------|:------:|----:|-------------------:|-----:|------:|:-----:|")
     sorted_results = sorted(
         results,
         key=lambda r: (r.branch, r.variant, r.kernel_ver or r.build_name),
     )
     for i, r in enumerate(sorted_results, 1):
-        sym = {"failed": "❗", "warnings": "⚠", "clean": "✅",
-               "not-built": "🚫"}.get(r.status, "?")
+        sym = STATUS_SYMBOL.get(r.status, "?")
         kernel = r.kernel_ver or r.build_name
         driver = r.driver_ver or "-"
+        integ = "!" if r.integrity_issues else ""
         A(
             f"| {i} | {r.branch} | {r.variant} | {kernel} | {driver} | "
             f"{sym} {r.status} | {r.err_count} | "
-            f"{r.clean_uniq} / {r.clean_total} | {r.noise_total} |"
+            f"{r.clean_uniq} / {r.clean_total} | "
+            f"{r.suspicious_total} | {r.noise_total} | {integ} |"
         )
     A("")
+
+    # --- Integrity issues ------------------------------------------------
+    if integrity_hits:
+        A("## 🧱 Integrity issues")
+        A("")
+        A("Structural problems detected in the build tree or log — "
+          "these may indicate a **silent build failure** (log claims OK, "
+          "but artifacts are missing or the log is truncated).")
+        A("")
+        for r in integrity_hits:
+            ident = f"{r.branch} / {r.variant} / {r.kernel_ver or r.build_name}"
+            A(f"### {ident}")
+            A("")
+            A(f"Path: `{r.out_dir.relative_to(harvest_root)}`  ·  "
+              f"modules found: {len(r.modules_found)} "
+              f"[{', '.join(r.modules_found) if r.modules_found else '—'}]")
+            A("")
+            for issue in r.integrity_issues:
+                A(f"- {issue}")
+            A("")
 
     # --- Failures --------------------------------------------------------
     failed = [r for r in results if r.status == "failed"]
@@ -444,8 +605,43 @@ def generate_index(
             A("```")
             A("")
 
+    # --- Suspicious signatures ------------------------------------------
+    if sus_multi:
+        A("## 🔍 Suspicious signatures")
+        A("")
+        A("Lines that are **not** errors and **not** warnings, but contain "
+          "keywords that often indicate real problems (missing files, "
+          "permissions, OOM, crashes, missing deps).")
+        A("")
+        A("| # | Builds | Hits | Signature | Branches |")
+        A("|---|-------:|-----:|-----------|----------|")
+        for i, (sig, builds, hits, combos) in enumerate(sus_multi, 1):
+            A(f"| {i} | {builds} | {hits} | `{sig}` | {', '.join(sorted(combos))} |")
+        A("")
+        # Show a short excerpt from the worst build for each signature.
+        A("<details><summary>Context excerpts (first few hits per signature)</summary>")
+        A("")
+        for sig, builds, hits, combos in sus_multi[:10]:
+            A(f"**`{sig}`**")
+            A("")
+            A("```")
+            shown = 0
+            for r in results:
+                if sig in r.suspicious_signatures:
+                    for ln in r.suspicious_excerpt:
+                        A(f"[{r.branch}/{r.variant}/{r.kernel_ver or r.build_name}] {ln}")
+                        shown += 1
+                        if shown >= 5:
+                            break
+                if shown >= 5:
+                    break
+            A("```")
+            A("")
+        A("</details>")
+        A("")
+
     # --- Cross-build signatures -----------------------------------------
-    A("## 🔁 Cross-build signatures")
+    A("## 🔁 Cross-build warning signatures")
     A("")
     A("Warnings appearing in **more than one build**. "
       "Fixing the top signature fixes the most builds at once.")
@@ -456,14 +652,13 @@ def generate_index(
         for i, (sig, builds, hits, combos) in enumerate(multi, 1):
             A(f"| {i} | {builds} | {hits} | `{sig}` | {', '.join(sorted(combos))} |")
     else:
-        A("_No cross-build signatures — every warning is unique to a single build._")
+        A("_No cross-build signatures._")
     A("")
 
     # --- Unique to one build --------------------------------------------
     A("## 🧩 Unique to one build")
     A("")
-    A("Warnings in exactly **one** build. Usually kernel- or config-specific, "
-      "not driver bugs.")
+    A("Warnings in exactly **one** build. Usually kernel- or config-specific.")
     A("")
     if single:
         A("| Build | Hits | Signature |")
@@ -510,31 +705,24 @@ def build_parser() -> argparse.ArgumentParser:
                     "across multiple kernel builds.",
     )
     p.add_argument(
-        "-d", "--diag-root",
-        type=Path,
+        "-d", "--diag-root", type=Path,
         default=Path(os.environ.get("DIAG_ROOT", str(DEFAULT_DIAG_ROOT))),
         help="Base diag directory (default: $HOME/diag, env DIAG_ROOT)",
     )
     p.add_argument(
-        "-o", "--harvest-dir",
-        type=Path,
-        default=None,
+        "-o", "--harvest-dir", type=Path, default=None,
         help="Output directory (default: <diag-root>/harvest)",
     )
     p.add_argument(
-        "-n", "--header-lines",
-        type=int,
-        default=DEFAULT_HEADER_LINES,
+        "-n", "--header-lines", type=int, default=DEFAULT_HEADER_LINES,
         help=f"Lines from top of make.log to save (default: {DEFAULT_HEADER_LINES})",
     )
     p.add_argument(
-        "-q", "--quiet",
-        action="store_true",
+        "-q", "--quiet", action="store_true",
         help="Suppress progress output on stderr",
     )
     p.add_argument(
-        "--version",
-        action="version",
+        "--version", action="version",
         version=f"%(prog)s {__version__}",
     )
     return p
