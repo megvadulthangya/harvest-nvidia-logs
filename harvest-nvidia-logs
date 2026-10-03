@@ -26,7 +26,7 @@ from datetime import datetime
 from pathlib import Path
 
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 
 # ---------------------------------------------------------------------------
@@ -37,7 +37,7 @@ DEFAULT_HEADER_LINES = 10
 DEFAULT_DIAG_ROOT = Path.home() / "diag"
 DEFAULT_HARVEST_SUBDIR = "harvest"
 
-# Warning signatures considered "known noise" from the kernel build system
+# Warnings considered "known noise" from the kernel build system
 # (mostly objtool on legacy NVIDIA binary blobs). Applied AFTER normalization.
 NOISE_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"warning: objtool:.*data relocation to !ENDBR"),
@@ -60,15 +60,13 @@ RE_ADDR = re.compile(
     r"|(?P<hex>0x[0-9a-fA-F]+)"
 )
 
-# An "error" line worth capturing (build blockers).
+# Build blocker patterns.
 ERROR_RE = re.compile(
     r"(: error:|: fatal error:|Error [0-9]+|\*\*\* \["
     r"|undefined reference to|ld: cannot|No rule to make target)"
 )
 
-# Suspicious non-warning / non-error lines. These don't match ERROR_RE and
-# don't contain "warning:", but they frequently indicate real problems
-# (missing files, permissions, OOM, crashes, missing dependencies).
+# Suspicious non-error / non-warning lines.
 SUSPICIOUS_RE = re.compile(
     r"cannot find"
     r"|No such file or directory"
@@ -86,11 +84,13 @@ SUSPICIOUS_RE = re.compile(
     r"|\bnot found\b"
 )
 
-# Success markers that should appear near the end of a healthy kbuild log.
-SUCCESS_MARKERS = ("LD [M]", "MODPOST", "Building modules", "BTF [M]")
+# Log-side markers.
+LD_M_RE = re.compile(r"LD \[M\]\s+(\S+)")
+MODPOST_MARKERS = ("MODPOST", "Building modules", "BTF [M]")
+NOTHING_TO_DO_MARKERS = ("Nothing to be done", "is up to date")
 
-# Minimum number of ".ko(.zst)" artifacts a healthy build should produce.
-EXPECTED_MODULES = ("nvidia", "nvidia-uvm", "nvidia-modeset", "nvidia-drm")
+# Only attempt the truncation heuristic for large logs.
+TRUNCATION_LOG_THRESHOLD = 1_000_000  # bytes
 
 
 # ---------------------------------------------------------------------------
@@ -123,7 +123,11 @@ class BuildResult:
     error_excerpt: list[str] = field(default_factory=list)
     suspicious_excerpt: list[str] = field(default_factory=list)
     integrity_issues: list[str] = field(default_factory=list)
-    modules_found: list[str] = field(default_factory=list)
+    integrity_notes: list[str] = field(default_factory=list)
+    modules_on_disk: list[str] = field(default_factory=list)
+    log_ld_modules: set[str] = field(default_factory=set)
+    log_has_modpost: bool = False
+    log_nothing_to_do: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -145,11 +149,9 @@ def normalize_warning(line: str) -> str:
 
 
 def normalize_generic(line: str) -> str:
-    """Normalize a suspicious line (no 'warning:' prefix expected)."""
     line = line.rstrip("\r\n")
     line = RE_QUOTED_PATH.sub("'<path>'", line)
     line = RE_ADDR.sub(_addr_sub, line)
-    # Collapse long whitespace
     line = re.sub(r"[ \t]+", " ", line)
     return line.strip()
 
@@ -198,56 +200,82 @@ def extract_versions(log_path: Path) -> tuple[str | None, str | None]:
 
 
 # ---------------------------------------------------------------------------
-# Integrity checks
+# Module artifact discovery
 # ---------------------------------------------------------------------------
 
 def _find_module_artifacts(build_dir: Path) -> list[str]:
-    """Return basenames (without .ko / .ko.zst) of built kernel modules."""
+    """Return basenames (without .ko / .ko.zst) of kernel modules found in
+    either `.../module/` (in-tree build) or `.../extramodules/` (pkg tree)."""
     found: set[str] = set()
+
     for mod_dir in build_dir.rglob("module"):
+        if not mod_dir.is_dir():
+            continue
         for ko in mod_dir.glob("*.ko.zst"):
             found.add(ko.name[: -len(".ko.zst")])
         for ko in mod_dir.glob("*.ko"):
             found.add(ko.name[: -len(".ko")])
+
+    for extramod in build_dir.rglob("extramodules"):
+        if not extramod.is_dir():
+            continue
+        for ko in extramod.glob("*.ko.zst"):
+            found.add(ko.name[: -len(".ko.zst")])
+        for ko in extramod.glob("*.ko"):
+            found.add(ko.name[: -len(".ko")])
+
     return sorted(found)
 
 
+def _strip_module_suffix(target: str) -> str:
+    base = target.rsplit("/", 1)[-1]
+    for suffix in (".ko.zst", ".ko", ".o"):
+        if base.endswith(suffix):
+            return base[: -len(suffix)]
+    return base
+
+
+# ---------------------------------------------------------------------------
+# Integrity checks (log-aware)
+# ---------------------------------------------------------------------------
+
 def check_integrity(
-    log_path: Path, build_dir: Path, err_count: int,
-) -> tuple[list[str], list[str]]:
-    """Return (integrity_issues, modules_found)."""
+    result: BuildResult, build_dir: Path,
+) -> tuple[list[str], list[str], list[str]]:
+    """Return (issues, notes, modules_on_disk).
+
+    Only flags "missing module artifact" when the log actually claims to
+    have linked a module. Build trees that only contain logs (no `module/`
+    or `pkg/` subdir) are NOT treated as problematic.
+    """
     issues: list[str] = []
+    notes: list[str] = []
 
     modules = _find_module_artifacts(build_dir)
 
-    if err_count > 0:
-        # Build failed — expect no modules, don't flag missing artifacts.
-        return issues, modules
+    # Real issue: log claims LD [M] for a module, but no artifact on disk.
+    if result.log_ld_modules:
+        missing = sorted(m for m in result.log_ld_modules if m not in modules)
+        if missing:
+            issues.append(
+                "log claims to link modules "
+                f"{missing} but no matching .ko/.ko.zst found on disk"
+            )
 
-    # Healthy build should produce at least the expected modules.
-    missing = [m for m in EXPECTED_MODULES if m not in modules]
-    if not modules:
-        issues.append("no built module artifacts found (expected .ko/.ko.zst)")
-    elif missing:
-        issues.append(
-            f"missing module artifacts: {', '.join(missing)} "
-            f"(expected {len(EXPECTED_MODULES)}, found {len(modules)})"
+    # Informational: log says the build was already up to date.
+    if result.log_nothing_to_do:
+        notes.append("log reports 'Nothing to be done' — build was cached")
+
+    # Informational: large log missing its usual MODPOST marker.
+    if (result.log_size > TRUNCATION_LOG_THRESHOLD
+            and not result.log_has_modpost
+            and not result.log_nothing_to_do):
+        notes.append(
+            "large log has no MODPOST / 'Building modules' marker — "
+            "possibly truncated DKMS log"
         )
 
-    # Check log tail for expected success marker.
-    try:
-        with log_path.open("r", encoding="utf-8", errors="replace") as f:
-            tail = f.readlines()[-200:]
-        tail_text = "".join(tail)
-        if not any(marker in tail_text for marker in SUCCESS_MARKERS):
-            issues.append(
-                "log tail has no kbuild success marker "
-                f"({', '.join(SUCCESS_MARKERS)}) — possible truncation"
-            )
-    except OSError as e:
-        issues.append(f"could not read log tail: {e}")
-
-    return issues, modules
+    return issues, notes, modules
 
 
 # ---------------------------------------------------------------------------
@@ -277,14 +305,24 @@ def _write_summary(r: BuildResult) -> None:
     out.append(f"warnings clean:  {r.clean_total}  (unique: {r.clean_uniq})")
     out.append(f"warnings noise:  {r.noise_total}  (unique: {r.noise_uniq})")
     out.append(f"suspicious:      {r.suspicious_total}  (unique: {r.suspicious_uniq})")
-    out.append(f"modules built:   {len(r.modules_found)}  "
-               f"[{', '.join(r.modules_found) if r.modules_found else '-'}]")
+    out.append(f"modules on disk: {len(r.modules_on_disk)}  "
+               f"[{', '.join(r.modules_on_disk) if r.modules_on_disk else '—'}]")
+    if r.log_ld_modules:
+        out.append(f"log LD [M]:      {sorted(r.log_ld_modules)}")
+    out.append(f"log MODPOST:     {'yes' if r.log_has_modpost else 'no'}")
+    out.append(f"log cached:      {'yes' if r.log_nothing_to_do else 'no'}")
 
     if r.integrity_issues:
         out.append("")
         out.append("=== Integrity issues ===")
         for issue in r.integrity_issues:
             out.append(f"  ! {issue}")
+
+    if r.integrity_notes:
+        out.append("")
+        out.append("=== Integrity notes ===")
+        for note in r.integrity_notes:
+            out.append(f"  · {note}")
 
     if r.clean_signatures:
         out.append("")
@@ -335,7 +373,7 @@ def process_build(
         log_path=log_path,
     )
 
-    # --- not-built case --------------------------------------------------
+    # --- not-built -------------------------------------------------------
     if log_path is None:
         result.status = "not-built"
         (out_dir / "Not-built").write_text("")
@@ -362,6 +400,21 @@ def process_build(
             if line_no <= header_lines:
                 header_lines_list.append(line)
 
+            # Log-side markers (cheap substring checks)
+            if "LD [M]" in line:
+                m = LD_M_RE.search(line)
+                if m:
+                    result.log_ld_modules.add(_strip_module_suffix(m.group(1)))
+            if not result.log_has_modpost and any(
+                marker in line for marker in MODPOST_MARKERS
+            ):
+                result.log_has_modpost = True
+            if not result.log_nothing_to_do and any(
+                marker in line for marker in NOTHING_TO_DO_MARKERS
+            ):
+                result.log_nothing_to_do = True
+
+            # Classify line
             if ERROR_RE.search(line):
                 error_lines.append((line_no, line))
                 continue
@@ -396,9 +449,9 @@ def process_build(
     result.suspicious_uniq = len(suspicious_counter)
     result.suspicious_excerpt = [f"{i}: {ln}" for i, ln in suspicious_lines]
 
-    # --- integrity check -------------------------------------------------
-    result.integrity_issues, result.modules_found = check_integrity(
-        log_path, build_dir, result.err_count,
+    # --- integrity -------------------------------------------------------
+    result.integrity_issues, result.integrity_notes, result.modules_on_disk = (
+        check_integrity(result, build_dir)
     )
 
     # --- write per-build files ------------------------------------------
@@ -415,7 +468,7 @@ def process_build(
     # --- status ----------------------------------------------------------
     if result.err_count > 0:
         result.status = "failed"
-    elif result.suspicious_total > 0 or result.integrity_issues:
+    elif result.integrity_issues or result.suspicious_total > 0:
         result.status = "suspicious"
     elif result.clean_total > 0:
         result.status = "warnings"
@@ -423,6 +476,7 @@ def process_build(
         result.status = "clean"
 
     _write_summary(result)
+
     extra = ""
     if result.integrity_issues:
         extra = f"  integrity={len(result.integrity_issues)}"
@@ -436,7 +490,7 @@ def process_build(
 
 
 # ---------------------------------------------------------------------------
-# INDEX.md generation
+# INDEX.md
 # ---------------------------------------------------------------------------
 
 def _branch_list(branches: set[str]) -> str:
@@ -460,7 +514,7 @@ def generate_index(
     idx_path = harvest_root / "INDEX.md"
     by_status = Counter(r.status for r in results)
 
-    # Aggregate clean-warning signatures across builds.
+    # Warning signature aggregation
     sig_map: dict[str, list[tuple[BuildResult, int]]] = defaultdict(list)
     for r in results:
         for sig, count in r.clean_signatures.items():
@@ -479,7 +533,7 @@ def generate_index(
     multi.sort(key=lambda x: (-x[1], -x[2], x[0]))
     single.sort(key=lambda x: (-x[2], x[0]))
 
-    # Aggregate suspicious signatures across builds.
+    # Suspicious signature aggregation
     sus_map: dict[str, list[tuple[BuildResult, int]]] = defaultdict(list)
     for r in results:
         for sig, count in r.suspicious_signatures.items():
@@ -493,8 +547,8 @@ def generate_index(
         sus_multi.append((sig, builds, hits, combos))
     sus_multi.sort(key=lambda x: (-x[1], -x[2], x[0]))
 
-    # Collect all builds with integrity issues.
     integrity_hits = [r for r in results if r.integrity_issues]
+    note_hits = [r for r in results if r.integrity_notes]
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S %z")
     out: list[str] = []
@@ -523,8 +577,9 @@ def generate_index(
         f"{len(single)} unique to one build"
     )
     A(
-        f"- **Suspicious signatures:** {len(sus_map)} total; "
-        f"**integrity issues:** {len(integrity_hits)} builds affected"
+        f"- **Suspicious signatures:** {len(sus_map)}  ·  "
+        f"**integrity issues:** {len(integrity_hits)} builds  ·  "
+        f"**integrity notes:** {len(note_hits)} builds"
     )
     A("")
 
@@ -533,7 +588,7 @@ def generate_index(
     A("")
     A("| Symbol | Status | Meaning |")
     A("|:------:|--------|---------|")
-    A("| ❗ | failed     | make.log exists, real errors found — **blocker** |")
+    A("| ❗ | failed     | make.log contains real errors — **blocker** |")
     A("| 🔍 | suspicious | no errors, but suspicious lines or integrity issues |")
     A("| ⚠  | warnings   | built, no errors, non-noise warnings to review |")
     A("| ✅ | clean      | built, no errors, only known noise |")
@@ -557,7 +612,7 @@ def generate_index(
         sym = STATUS_SYMBOL.get(r.status, "?")
         kernel = r.kernel_ver or r.build_name
         driver = r.driver_ver or "-"
-        integ = "!" if r.integrity_issues else ""
+        integ = "!" if r.integrity_issues else ("·" if r.integrity_notes else "")
         A(
             f"| {i} | {r.branch} | {r.variant} | {kernel} | {driver} | "
             f"{sym} {r.status} | {r.err_count} | "
@@ -566,25 +621,39 @@ def generate_index(
         )
     A("")
 
-    # --- Integrity issues ------------------------------------------------
+    # --- Integrity issues -----------------------------------------------
     if integrity_hits:
         A("## 🧱 Integrity issues")
         A("")
-        A("Structural problems detected in the build tree or log — "
-          "these may indicate a **silent build failure** (log claims OK, "
-          "but artifacts are missing or the log is truncated).")
+        A("Structural problems detected between the **log** and the **build "
+          "tree** — these likely indicate a silent failure.")
         A("")
         for r in integrity_hits:
             ident = f"{r.branch} / {r.variant} / {r.kernel_ver or r.build_name}"
             A(f"### {ident}")
             A("")
             A(f"Path: `{r.out_dir.relative_to(harvest_root)}`  ·  "
-              f"modules found: {len(r.modules_found)} "
-              f"[{', '.join(r.modules_found) if r.modules_found else '—'}]")
+              f"modules on disk: {len(r.modules_on_disk)} "
+              f"[{', '.join(r.modules_on_disk) if r.modules_on_disk else '—'}]  ·  "
+              f"log LD [M]: {sorted(r.log_ld_modules) or '—'}")
             A("")
             for issue in r.integrity_issues:
                 A(f"- {issue}")
             A("")
+
+    # --- Integrity notes -------------------------------------------------
+    if note_hits:
+        A("## 📝 Integrity notes")
+        A("")
+        A("Non-critical observations. Not flagged as suspicious, but worth "
+          "knowing when reading a build's `summary.txt`.")
+        A("")
+        for r in note_hits:
+            ident = f"{r.branch} / {r.variant} / {r.kernel_ver or r.build_name}"
+            A(f"- **{ident}**")
+            for note in r.integrity_notes:
+                A(f"  - {note}")
+        A("")
 
     # --- Failures --------------------------------------------------------
     failed = [r for r in results if r.status == "failed"]
@@ -618,7 +687,6 @@ def generate_index(
         for i, (sig, builds, hits, combos) in enumerate(sus_multi, 1):
             A(f"| {i} | {builds} | {hits} | `{sig}` | {', '.join(sorted(combos))} |")
         A("")
-        # Show a short excerpt from the worst build for each signature.
         A("<details><summary>Context excerpts (first few hits per signature)</summary>")
         A("")
         for sig, builds, hits, combos in sus_multi[:10]:
@@ -640,7 +708,7 @@ def generate_index(
         A("</details>")
         A("")
 
-    # --- Cross-build signatures -----------------------------------------
+    # --- Cross-build warning signatures ---------------------------------
     A("## 🔁 Cross-build warning signatures")
     A("")
     A("Warnings appearing in **more than one build**. "
