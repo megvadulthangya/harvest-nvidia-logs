@@ -7,29 +7,6 @@ Collect and noise-filter `make.log` files produced by DKMS when building
 the legacy NVIDIA 340xx / 390xx (and future) driver branches against
 multiple Manjaro kernels.
 
-Scans a diag tree like::
-
-    ~/diag/
-      nvidia-340xx/
-        normal-kernels/linux61-nvidia-340xx/src/nvidia/340.108/6.1.187-2-MANJARO/x86_64/log/make.log
-        rt-kernels/...
-      nvidia-390xx/
-        normal-kernels/...
-        rt-kernels/...
-
-and produces::
-
-    ~/diag/harvest/
-      INDEX.md                        <- LLM- and human-friendly summary
-      340xx/normal/6.1.187-2-MANJARO/
-        00-header.txt
-        01-errors.txt
-        02-warnings.txt              <- clean, dedup'd, counted
-        03-noise.txt                 <- known noise, dedup'd, counted
-        summary.txt
-      ...
-      (builds without make.log get a 'Not-built' marker)
-
 Install::
 
     sudo install -m 755 harvest-nvidia-logs /usr/local/bin/harvest-nvidia-logs
@@ -49,7 +26,7 @@ from datetime import datetime
 from pathlib import Path
 
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 
 # ---------------------------------------------------------------------------
@@ -61,9 +38,8 @@ DEFAULT_DIAG_ROOT = Path.home() / "diag"
 DEFAULT_HARVEST_SUBDIR = "harvest"
 
 # Warning signatures considered "known noise" from the kernel build system
-# (mostly objtool on legacy driver blobs). Applied AFTER normalization, so
-# patterns are matched against the normalized form (paths stripped,
-# symbols collapsed).
+# (mostly objtool on legacy NVIDIA binary blobs). Applied AFTER normalization,
+# so patterns match the normalized form (paths stripped, symbols collapsed).
 NOISE_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"warning: objtool:.*data relocation to !ENDBR"),
     re.compile(r"warning: objtool:.*relocation to !ENDBR"),
@@ -74,16 +50,28 @@ NOISE_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"warning: objtool:.*unreachable instruction"),
     re.compile(r"warning: objtool:.*sibling call from callable instruction"),
     re.compile(r"warning: objtool:.*call to __fentry__"),
+    re.compile(r"warning: objtool:.*stack state mismatch"),
 ]
 
-# Regex helpers for normalization
-RE_BEFORE_WARNING = re.compile(r"^.*?(?=warning:)")
-RE_QUOTED_PATH    = re.compile(r"'[^']*'")
-RE_SYMBOL_PLUS_HEX = re.compile(r"[.A-Za-z_][\w.]*\+0x[0-9a-fA-F]+")
-RE_HEX            = re.compile(r"0x[0-9a-fA-F]+")
+# --- Normalization regexes -------------------------------------------------
+# Greedy match: drop everything up to the LAST "warning:" so embedded
+# "warning:" fragments from concatenated log lines don't survive.
+RE_BEFORE_WARNING = re.compile(r"^.*(?=warning:)")
 
-# Regex: an "error" line worth capturing. Deliberately conservative:
-# matches compiler errors, linker errors, make aborts.
+# Only treat quoted strings that look like absolute paths as paths,
+# otherwise 'naked' / 'warn_unused_result' would be replaced too.
+RE_QUOTED_PATH = re.compile(r"'/[^']*'")
+
+# Single-pass address normalizer: "symbol+0xHEX" -> "<func>+0xADDR",
+# bare "0xHEX" -> "0xADDR". Done in one sub() so the replacement text
+# "0xADDR" is never re-scanned (which previously produced "0xADDRR").
+RE_ADDR = re.compile(
+    r"(?P<sym>[.A-Za-z_][\w.]*\+0x[0-9a-fA-F]+)"
+    r"|(?P<hex>0x[0-9a-fA-F]+)"
+)
+
+# An "error" line worth capturing. Deliberately conservative: matches
+# compiler errors, linker errors, make aborts.
 ERROR_RE = re.compile(
     r"(: error:|Error [0-9]+|\*\*\* \[|undefined reference to|ld: cannot)"
 )
@@ -95,9 +83,9 @@ ERROR_RE = re.compile(
 
 @dataclass
 class BuildResult:
-    branch: str            # e.g. "340xx"
-    variant: str           # "normal" | "rt"
-    build_name: str        # e.g. "linux61-nvidia-340xx"
+    branch: str
+    variant: str
+    build_name: str
     build_dir: Path
     out_dir: Path
     kernel_ver: str | None
@@ -105,7 +93,7 @@ class BuildResult:
     log_path: Path | None
     log_size: int = 0
     log_lines: int = 0
-    status: str = "unknown"       # failed | warnings | clean | not-built
+    status: str = "unknown"
     err_count: int = 0
     noise_total: int = 0
     noise_uniq: int = 0
@@ -120,23 +108,27 @@ class BuildResult:
 # Normalization
 # ---------------------------------------------------------------------------
 
+def _addr_sub(m: re.Match) -> str:
+    return "<func>+0xADDR" if m.group("sym") else "0xADDR"
+
+
 def normalize_warning(line: str) -> str:
     """Collapse a raw warning line into a stable, groupable signature."""
     line = line.rstrip("\r\n")
 
-    # 1. Drop everything before "warning:" (path prefix etc.)
+    # 1. Drop everything before the LAST "warning:" (path prefix, embedded
+    #    fragments from concatenated lines).
     m = RE_BEFORE_WARNING.match(line)
     if m:
         line = line[m.end():]
 
-    # 2. Replace quoted paths with '<path>'
+    # 2. Replace only absolute quoted paths with '<path>'. This keeps
+    #    'naked' and other quoted keywords intact so noise patterns can
+    #    still match them.
     line = RE_QUOTED_PATH.sub("'<path>'", line)
 
-    # 3. Replace "symbol+0xHEX" with "<func>+0xADDR"
-    line = RE_SYMBOL_PLUS_HEX.sub("<func>+0xADDR", line)
-
-    # 4. Any remaining hex literal -> 0xADDR
-    line = RE_HEX.sub("0xADDR", line)
+    # 3. One-pass address normalization.
+    line = RE_ADDR.sub(_addr_sub, line)
 
     return line.strip()
 
@@ -150,12 +142,7 @@ def is_noise(signature: str) -> bool:
 # ---------------------------------------------------------------------------
 
 def find_builds(diag_root: Path) -> list[tuple[str, str, Path]]:
-    """Return (branch_label, variant, build_dir) for every build found.
-
-    branch_label is the part after 'nvidia-', e.g. '340xx'.
-    Auto-discovers any 'nvidia-*' directory, so new branches
-    (470xx, 580xx, ...) are picked up without code changes.
-    """
+    """Return (branch_label, variant, build_dir) for every build found."""
     results: list[tuple[str, str, Path]] = []
     for branch_dir in sorted(diag_root.glob("nvidia-*")):
         if not branch_dir.is_dir():
@@ -187,7 +174,6 @@ def extract_versions(log_path: Path) -> tuple[str | None, str | None]:
     """Return (kernel_ver, driver_ver) from a path like
     .../src/nvidia/<driver>/<kernel>/x86_64/log/make.log
     """
-    # make.log -> log -> x86_64 -> <kernel> -> <driver>
     kernel = log_path.parent.parent.parent.name
     driver = log_path.parent.parent.parent.parent.name
     if kernel in ("src", "nvidia", "build", ""):
@@ -356,14 +342,13 @@ def generate_index(
 
     by_status = Counter(r.status for r in results)
 
-    # Aggregate clean-warning signatures across builds
     sig_map: dict[str, list[tuple[BuildResult, int]]] = defaultdict(list)
     for r in results:
         for sig, count in r.clean_signatures.items():
             sig_map[sig].append((r, count))
 
-    multi: list[tuple[str, int, int, set[str]]] = []     # sig, builds, hits, combos
-    single: list[tuple[str, BuildResult, int]] = []      # sig, result, hits
+    multi: list[tuple[str, int, int, set[str]]] = []
+    single: list[tuple[str, BuildResult, int]] = []
 
     for sig, occurrences in sig_map.items():
         builds = len(occurrences)
