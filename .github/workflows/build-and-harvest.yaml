@@ -93,7 +93,6 @@ jobs:
             if [ -d "$utils_dir" ]; then
               echo "==> utils: $utils_dir"
               cd "$utils_dir"
-              # -si installs the built packages via sudo (passwordless for builder)
               makepkg -si --noconfirm --skippgpcheck \
                 || echo "    [warn] utils build failed for $drv"
             else
@@ -111,22 +110,21 @@ jobs:
                 name=$(basename "$kdir")
                 echo "==> kernel module: $name"
                 cd "$kdir"
-                # -s (no install): we only care about the make.log
                 makepkg -s --noconfirm --skippgpcheck \
                   || echo "    [warn] build failed: $name"
               done
             done
 
+            # ---- 3. cleanup THIS driver BEFORE next iteration ------------
+            # Must run here, not after the loop. Otherwise the next driver's
+            # utils install will conflict with this driver's installed utils
+            # (both provide nvidia-libgl).
+            echo "==> cleanup after nvidia-${drv}"
+            sudo bash /workspace/clean-nvidia-container.sh "$drv" || true
+
             echo "::endgroup::"
           done
           BUILD_SCRIPT
-
-      - name: Cleanup per driver (as root)
-        run: |
-          set -uo pipefail
-          for drv in 340xx 390xx; do
-            bash "${WORKSPACE}/clean-nvidia-container.sh" "$drv" || true
-          done
 
       - name: Harvest
         run: |
