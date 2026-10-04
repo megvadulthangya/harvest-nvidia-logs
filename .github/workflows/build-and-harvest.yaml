@@ -38,38 +38,51 @@ jobs:
           pacman-mirrors --api -B testing -R || true
           pacman -Syy --noconfirm
 
-      - name: Fetch previous results branch (for --diff / changelog)
-        continue-on-error: true
+      - name: Create builder user
         run: |
-          mkdir -p /build/harvest
-          git clone --depth 1 --branch results \
-            "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
-            /tmp/prev 2>/dev/null || true
+          set -euxo pipefail
 
-          if [ -d /tmp/prev/history ]; then
-            cp -r /tmp/prev/history /build/harvest/ 2>/dev/null || true
+          if ! id builder >/dev/null 2>&1; then
+            useradd -m -G wheel -s /bin/bash builder
           fi
+          echo 'builder ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/builder
+          chmod 440 /etc/sudoers.d/builder
 
-          if [ -f /tmp/prev/driver-changelog.md ]; then
-            cp /tmp/prev/driver-changelog.md /build/harvest/ 2>/dev/null || true
+          # Make sure builder owns the workspace so it can read the scripts
+          chown -R builder:builder "${WORKSPACE}"
+
+          # Prepare build directories
+          mkdir -p /build/harvest /build/diag /build/utils
+          chown -R builder:builder /build
+
+          # Fetch previous results branch (for --diff / changelog)
+          if git clone --depth 1 --branch results \
+              "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+              /tmp/prev 2>/dev/null; then
+            [ -d /tmp/prev/history ] && cp -r /tmp/prev/history /build/harvest/ || true
+            [ -f /tmp/prev/driver-changelog.md ] && \
+              cp /tmp/prev/driver-changelog.md /build/harvest/ || true
+            chown -R builder:builder /build/harvest
           fi
 
       - name: Clone driver repos
         run: |
           set -euxo pipefail
+          sudo -u builder -H bash -c '
+            set -euxo pipefail
+            cd /build/diag
+            git clone --depth 1 https://github.com/megvadulthangya/nvidia-340xx.git
+            git clone --depth 1 https://github.com/megvadulthangya/nvidia-390xx.git
 
-          mkdir -p /build/diag /build/utils
+            cd /build/utils
+            git clone -b develop --depth 1 https://github.com/megvadulthangya/nvidia-340xx-utils.git
+            git clone -b develop --depth 1 https://github.com/megvadulthangya/nvidia-390xx-utils.git
+          '
 
-          cd /build/diag
-          git clone --depth 1 https://github.com/megvadulthangya/nvidia-340xx.git
-          git clone --depth 1 https://github.com/megvadulthangya/nvidia-390xx.git
-
-          cd /build/utils
-          git clone -b develop --depth 1 https://github.com/megvadulthangya/nvidia-340xx-utils.git
-          git clone -b develop --depth 1 https://github.com/megvadulthangya/nvidia-390xx-utils.git
-
-      - name: Build all drivers sequentially
+      - name: Build all drivers sequentially (as builder)
         run: |
+          set -uo pipefail
+          sudo -u builder -H bash <<'BUILD_SCRIPT'
           set -uo pipefail
 
           for drv in 340xx 390xx; do
@@ -80,6 +93,7 @@ jobs:
             if [ -d "$utils_dir" ]; then
               echo "==> utils: $utils_dir"
               cd "$utils_dir"
+              # -si installs the built packages via sudo (passwordless for builder)
               makepkg -si --noconfirm --skippgpcheck \
                 || echo "    [warn] utils build failed for $drv"
             else
@@ -97,15 +111,21 @@ jobs:
                 name=$(basename "$kdir")
                 echo "==> kernel module: $name"
                 cd "$kdir"
+                # -s (no install): we only care about the make.log
                 makepkg -s --noconfirm --skippgpcheck \
                   || echo "    [warn] build failed: $name"
               done
             done
 
-            # ---- 3. cleanup ----------------------------------------------
-            bash "${WORKSPACE}/clean-nvidia-container.sh" "$drv" || true
-
             echo "::endgroup::"
+          done
+          BUILD_SCRIPT
+
+      - name: Cleanup per driver (as root)
+        run: |
+          set -uo pipefail
+          for drv in 340xx 390xx; do
+            bash "${WORKSPACE}/clean-nvidia-container.sh" "$drv" || true
           done
 
       - name: Harvest
@@ -113,22 +133,24 @@ jobs:
           set -euxo pipefail
           cd "${WORKSPACE}"
 
-          ./harvest-nvidia-logs \
-            -d /build/diag \
-            -o /build/harvest \
-            --diff \
-            --changelog /build/harvest/driver-changelog.md \
-            --history-keep 30 \
-            -q
+          # harvest can run as root or builder; run as builder for consistency
+          sudo -u builder -H bash -c "
+            cd '${WORKSPACE}'
+            ./harvest-nvidia-logs \
+              -d /build/diag \
+              -o /build/harvest \
+              --diff \
+              --changelog /build/harvest/driver-changelog.md \
+              --history-keep 30 \
+              -q
+          "
 
       - name: Add README.md mirrors
         run: |
           set -euxo pipefail
 
-          # Top-level README
           [ -f /build/harvest/INDEX.md ] && cp /build/harvest/INDEX.md /build/harvest/README.md
 
-          # Each history snapshot gets a README.md too
           for d in /build/harvest/history/*/; do
             [ -f "$d/INDEX.md" ] && cp "$d/INDEX.md" "$d/README.md"
           done
