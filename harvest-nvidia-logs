@@ -17,6 +17,7 @@ No external dependencies — Python 3.10+ stdlib only.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import sys
@@ -26,7 +27,7 @@ from datetime import datetime
 from pathlib import Path
 
 
-__version__ = "0.2.1"
+__version__ = "0.3.0"
 
 
 # ---------------------------------------------------------------------------
@@ -36,9 +37,8 @@ __version__ = "0.2.1"
 DEFAULT_HEADER_LINES = 10
 DEFAULT_DIAG_ROOT = Path.home() / "diag"
 DEFAULT_HARVEST_SUBDIR = "harvest"
+DEFAULT_HISTORY_KEEP = 20
 
-# Warnings considered "known noise" from the kernel build system
-# (mostly objtool on legacy NVIDIA binary blobs). Applied AFTER normalization.
 NOISE_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"warning: objtool:.*data relocation to !ENDBR"),
     re.compile(r"warning: objtool:.*relocation to !ENDBR"),
@@ -52,7 +52,6 @@ NOISE_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"warning: objtool:.*stack state mismatch"),
 ]
 
-# --- Normalization regexes -------------------------------------------------
 RE_BEFORE_WARNING = re.compile(r"^.*(?=warning:)")
 RE_QUOTED_PATH = re.compile(r"'/[^']*'")
 RE_ADDR = re.compile(
@@ -60,13 +59,11 @@ RE_ADDR = re.compile(
     r"|(?P<hex>0x[0-9a-fA-F]+)"
 )
 
-# Build blocker patterns.
 ERROR_RE = re.compile(
     r"(: error:|: fatal error:|Error [0-9]+|\*\*\* \["
     r"|undefined reference to|ld: cannot|No rule to make target)"
 )
 
-# Suspicious non-error / non-warning lines.
 SUSPICIOUS_RE = re.compile(
     r"cannot find"
     r"|No such file or directory"
@@ -84,13 +81,11 @@ SUSPICIOUS_RE = re.compile(
     r"|\bnot found\b"
 )
 
-# Log-side markers.
 LD_M_RE = re.compile(r"LD \[M\]\s+(\S+)")
 MODPOST_MARKERS = ("MODPOST", "Building modules", "BTF [M]")
 NOTHING_TO_DO_MARKERS = ("Nothing to be done", "is up to date")
 
-# Only attempt the truncation heuristic for large logs.
-TRUNCATION_LOG_THRESHOLD = 1_000_000  # bytes
+TRUNCATION_LOG_THRESHOLD = 1_000_000
 
 
 # ---------------------------------------------------------------------------
@@ -204,10 +199,7 @@ def extract_versions(log_path: Path) -> tuple[str | None, str | None]:
 # ---------------------------------------------------------------------------
 
 def _find_module_artifacts(build_dir: Path) -> list[str]:
-    """Return basenames (without .ko / .ko.zst) of kernel modules found in
-    either `.../module/` (in-tree build) or `.../extramodules/` (pkg tree)."""
     found: set[str] = set()
-
     for mod_dir in build_dir.rglob("module"):
         if not mod_dir.is_dir():
             continue
@@ -215,7 +207,6 @@ def _find_module_artifacts(build_dir: Path) -> list[str]:
             found.add(ko.name[: -len(".ko.zst")])
         for ko in mod_dir.glob("*.ko"):
             found.add(ko.name[: -len(".ko")])
-
     for extramod in build_dir.rglob("extramodules"):
         if not extramod.is_dir():
             continue
@@ -223,7 +214,6 @@ def _find_module_artifacts(build_dir: Path) -> list[str]:
             found.add(ko.name[: -len(".ko.zst")])
         for ko in extramod.glob("*.ko"):
             found.add(ko.name[: -len(".ko")])
-
     return sorted(found)
 
 
@@ -234,10 +224,8 @@ def _strip_module_suffix(target: str) -> str:
             return base[: -len(suffix)]
     return base
 
+
 def _has_artifact_dirs(build_dir: Path) -> bool:
-    """True if the build tree contains any artifact directory
-    (`module/`, `extramodules/`, or `pkg/`). If not, it's a log-only
-    tree and missing .ko files are expected, not a problem."""
     if (build_dir / "pkg").is_dir():
         return True
     for name in ("module", "extramodules"):
@@ -246,6 +234,7 @@ def _has_artifact_dirs(build_dir: Path) -> bool:
                 return True
     return False
 
+
 # ---------------------------------------------------------------------------
 # Integrity checks (log-aware)
 # ---------------------------------------------------------------------------
@@ -253,19 +242,11 @@ def _has_artifact_dirs(build_dir: Path) -> bool:
 def check_integrity(
     result: BuildResult, build_dir: Path,
 ) -> tuple[list[str], list[str], list[str]]:
-    """Return (issues, notes, modules_on_disk).
-
-    Only flags "missing module artifact" when the log actually claims to
-    have linked a module. Build trees that only contain logs (no `module/`
-    or `pkg/` subdir) are NOT treated as problematic.
-    """
     issues: list[str] = []
     notes: list[str] = []
 
     modules = _find_module_artifacts(build_dir)
 
-        # Real issue: log claims LD [M] AND the tree actually contains
-    # artifact dirs (so we know the build was expected to leave .ko files).
     if result.log_ld_modules:
         if _has_artifact_dirs(build_dir):
             missing = sorted(m for m in result.log_ld_modules if m not in modules)
@@ -280,11 +261,9 @@ def check_integrity(
                 "artifact check skipped"
             )
 
-    # Informational: log says the build was already up to date.
     if result.log_nothing_to_do:
         notes.append("log reports 'Nothing to be done' — build was cached")
 
-    # Informational: large log missing its usual MODPOST marker.
     if (result.log_size > TRUNCATION_LOG_THRESHOLD
             and not result.log_has_modpost
             and not result.log_nothing_to_do):
@@ -391,7 +370,6 @@ def process_build(
         log_path=log_path,
     )
 
-    # --- not-built -------------------------------------------------------
     if log_path is None:
         result.status = "not-built"
         (out_dir / "Not-built").write_text("")
@@ -399,7 +377,6 @@ def process_build(
         _log(f"not-built: {branch}/{variant}/{build_name}", quiet)
         return result
 
-    # --- scan log --------------------------------------------------------
     result.log_size = log_path.stat().st_size
 
     header_lines_list: list[str] = []
@@ -418,7 +395,6 @@ def process_build(
             if line_no <= header_lines:
                 header_lines_list.append(line)
 
-            # Log-side markers (cheap substring checks)
             if "LD [M]" in line:
                 m = LD_M_RE.search(line)
                 if m:
@@ -432,7 +408,6 @@ def process_build(
             ):
                 result.log_nothing_to_do = True
 
-            # Classify line
             if ERROR_RE.search(line):
                 error_lines.append((line_no, line))
                 continue
@@ -467,12 +442,10 @@ def process_build(
     result.suspicious_uniq = len(suspicious_counter)
     result.suspicious_excerpt = [f"{i}: {ln}" for i, ln in suspicious_lines]
 
-    # --- integrity -------------------------------------------------------
     result.integrity_issues, result.integrity_notes, result.modules_on_disk = (
         check_integrity(result, build_dir)
     )
 
-    # --- write per-build files ------------------------------------------
     (out_dir / "00-header.txt").write_text(
         "\n".join(header_lines_list) + ("\n" if header_lines_list else "")
     )
@@ -483,7 +456,6 @@ def process_build(
     _write_counter(out_dir / "03-noise.txt", noise_counter)
     _write_counter(out_dir / "04-suspicious.txt", suspicious_counter)
 
-    # --- status ----------------------------------------------------------
     if result.err_count > 0:
         result.status = "failed"
     elif result.integrity_issues or result.suspicious_total > 0:
@@ -508,12 +480,8 @@ def process_build(
 
 
 # ---------------------------------------------------------------------------
-# INDEX.md
+# Shared INDEX helpers
 # ---------------------------------------------------------------------------
-
-def _branch_list(branches: set[str]) -> str:
-    return ", ".join(sorted(branches))
-
 
 STATUS_SYMBOL = {
     "failed": "❗",
@@ -524,15 +492,173 @@ STATUS_SYMBOL = {
 }
 
 
+def _branch_list(branches: set[str]) -> str:
+    return ", ".join(sorted(branches))
+
+
+def _build_key(r: BuildResult) -> str:
+    return f"{r.branch}/{r.variant}/{r.kernel_ver or r.build_name}"
+
+
+# ---------------------------------------------------------------------------
+# History snapshot & diff
+# ---------------------------------------------------------------------------
+
+def _snapshot_state(results: list[BuildResult], timestamp: str) -> dict:
+    builds: dict[str, dict] = {}
+    sigs: dict[str, dict] = {}
+    for r in results:
+        key = _build_key(r)
+        builds[key] = {
+            "status": r.status,
+            "err_count": r.err_count,
+            "clean_uniq": r.clean_uniq,
+            "clean_total": r.clean_total,
+            "noise_total": r.noise_total,
+            "suspicious_total": r.suspicious_total,
+        }
+        for sig, count in r.clean_signatures.items():
+            entry = sigs.setdefault(sig, {"hits": 0, "builds": []})
+            entry["hits"] += count
+            entry["builds"].append(key)
+    return {
+        "timestamp": timestamp,
+        "builds": builds,
+        "clean_signatures": sigs,
+    }
+
+
+def _latest_snapshot(history_root: Path) -> tuple[str, dict] | None:
+    if not history_root.is_dir():
+        return None
+    dirs = sorted(
+        (d for d in history_root.iterdir() if d.is_dir()),
+        reverse=True,
+    )
+    for d in dirs:
+        state_file = d / "state.json"
+        if state_file.is_file():
+            try:
+                data = json.loads(state_file.read_text())
+                return d.name, data
+            except (OSError, json.JSONDecodeError):
+                continue
+    return None
+
+
+def _compute_diff(prev: dict, curr: dict) -> dict:
+    prev_sigs: dict = prev.get("clean_signatures", {})
+    curr_sigs: dict = curr.get("clean_signatures", {})
+
+    new_sigs = sorted(set(curr_sigs) - set(prev_sigs))
+    resolved_sigs = sorted(set(prev_sigs) - set(curr_sigs))
+
+    changed_hits: list[tuple[str, int, int]] = []
+    for sig in sorted(set(prev_sigs) & set(curr_sigs)):
+        ph = prev_sigs[sig]["hits"]
+        ch = curr_sigs[sig]["hits"]
+        if ph != ch:
+            changed_hits.append((sig, ph, ch))
+    changed_hits.sort(key=lambda x: -abs(x[2] - x[1]))
+
+    prev_builds: dict = prev.get("builds", {})
+    curr_builds: dict = curr.get("builds", {})
+    added_builds = sorted(set(curr_builds) - set(prev_builds))
+    removed_builds = sorted(set(prev_builds) - set(curr_builds))
+    status_changes: list[tuple[str, str, str]] = []
+    for k in sorted(set(prev_builds) & set(curr_builds)):
+        ps = prev_builds[k]["status"]
+        cs = curr_builds[k]["status"]
+        if ps != cs:
+            status_changes.append((k, ps, cs))
+
+    return {
+        "prev_timestamp": prev.get("timestamp", "?"),
+        "new_sigs": new_sigs,
+        "resolved_sigs": resolved_sigs,
+        "changed_hits": changed_hits,
+        "added_builds": added_builds,
+        "removed_builds": removed_builds,
+        "status_changes": status_changes,
+    }
+
+
+def render_diff_section(diff: dict) -> list[str]:
+    out: list[str] = []
+    A = out.append
+
+    A(f"## 📊 Changes since {diff['prev_timestamp']}")
+    A("")
+
+    A(f"### ✅ Resolved signatures ({len(diff['resolved_sigs'])})")
+    A("")
+    if diff["resolved_sigs"]:
+        for sig in diff["resolved_sigs"]:
+            A(f"- `{sig}`")
+    else:
+        A("_None._")
+    A("")
+
+    A(f"### 🆕 New signatures ({len(diff['new_sigs'])})")
+    A("")
+    if diff["new_sigs"]:
+        for sig in diff["new_sigs"]:
+            A(f"- `{sig}`")
+    else:
+        A("_None._")
+    A("")
+
+    A(f"### 🔀 Status changes ({len(diff['status_changes'])})")
+    A("")
+    if diff["status_changes"]:
+        for build, ps, cs in diff["status_changes"]:
+            A(
+                f"- `{build}`: {STATUS_SYMBOL.get(ps, ps)} {ps} → "
+                f"{STATUS_SYMBOL.get(cs, cs)} {cs}"
+            )
+    else:
+        A("_None._")
+    A("")
+
+    if diff["changed_hits"]:
+        A(f"### 📉 Changed hit counts ({len(diff['changed_hits'])})")
+        A("")
+        for sig, ph, ch in diff["changed_hits"][:20]:
+            delta = ch - ph
+            sign = "+" if delta > 0 else ""
+            A(f"- `{sig}` — {ph} → {ch} ({sign}{delta})")
+        A("")
+
+    if diff["added_builds"]:
+        A(f"### ➕ New builds ({len(diff['added_builds'])})")
+        A("")
+        for b in diff["added_builds"]:
+            A(f"- `{b}`")
+        A("")
+
+    if diff["removed_builds"]:
+        A(f"### ➖ Removed builds ({len(diff['removed_builds'])})")
+        A("")
+        for b in diff["removed_builds"]:
+            A(f"- `{b}`")
+        A("")
+
+    return out
+
+
+# ---------------------------------------------------------------------------
+# INDEX.md
+# ---------------------------------------------------------------------------
+
 def generate_index(
     results: list[BuildResult],
     diag_root: Path,
     harvest_root: Path,
+    diff_lines: list[str] | None = None,
 ) -> None:
     idx_path = harvest_root / "INDEX.md"
     by_status = Counter(r.status for r in results)
 
-    # Warning signature aggregation
     sig_map: dict[str, list[tuple[BuildResult, int]]] = defaultdict(list)
     for r in results:
         for sig, count in r.clean_signatures.items():
@@ -551,7 +677,6 @@ def generate_index(
     multi.sort(key=lambda x: (-x[1], -x[2], x[0]))
     single.sort(key=lambda x: (-x[2], x[0]))
 
-    # Suspicious signature aggregation
     sus_map: dict[str, list[tuple[BuildResult, int]]] = defaultdict(list)
     for r in results:
         for sig, count in r.suspicious_signatures.items():
@@ -575,7 +700,10 @@ def generate_index(
     A(f"# Harvest Index — {now}")
     A("")
 
-    # --- Overview --------------------------------------------------------
+    if diff_lines:
+        out.extend(diff_lines)
+        A("")
+
     A("## Overview")
     A("")
     A(f"- **Diag root:** `{diag_root}`")
@@ -601,7 +729,6 @@ def generate_index(
     )
     A("")
 
-    # --- Legend ----------------------------------------------------------
     A("## Legend")
     A("")
     A("| Symbol | Status | Meaning |")
@@ -617,7 +744,6 @@ def generate_index(
       "`04-suspicious.txt`, `summary.txt`.")
     A("")
 
-    # --- Status table ----------------------------------------------------
     A("## Status table")
     A("")
     A("| # | Branch | Variant | Kernel | Driver | Status | Err | Clean (uniq/total) | Susp | Noise | Integ |")
@@ -639,7 +765,6 @@ def generate_index(
         )
     A("")
 
-    # --- Integrity issues -----------------------------------------------
     if integrity_hits:
         A("## 🧱 Integrity issues")
         A("")
@@ -659,7 +784,6 @@ def generate_index(
                 A(f"- {issue}")
             A("")
 
-    # --- Integrity notes -------------------------------------------------
     if note_hits:
         A("## 📝 Integrity notes")
         A("")
@@ -673,7 +797,6 @@ def generate_index(
                 A(f"  - {note}")
         A("")
 
-    # --- Failures --------------------------------------------------------
     failed = [r for r in results if r.status == "failed"]
     if failed:
         A("## ❗ Failures — fix these first")
@@ -692,7 +815,6 @@ def generate_index(
             A("```")
             A("")
 
-    # --- Suspicious signatures ------------------------------------------
     if sus_multi:
         A("## 🔍 Suspicious signatures")
         A("")
@@ -726,7 +848,6 @@ def generate_index(
         A("</details>")
         A("")
 
-    # --- Cross-build warning signatures ---------------------------------
     A("## 🔁 Cross-build warning signatures")
     A("")
     A("Warnings appearing in **more than one build**. "
@@ -741,7 +862,6 @@ def generate_index(
         A("_No cross-build signatures._")
     A("")
 
-    # --- Unique to one build --------------------------------------------
     A("## 🧩 Unique to one build")
     A("")
     A("Warnings in exactly **one** build. Usually kernel- or config-specific.")
@@ -756,7 +876,6 @@ def generate_index(
         A("_No unique-to-one-build warnings._")
     A("")
 
-    # --- Not built -------------------------------------------------------
     not_built = [r for r in results if r.status == "not-built"]
     if not_built:
         A("## 🚫 Not built (no make.log)")
@@ -769,6 +888,44 @@ def generate_index(
     A("_End of index. Per-build detail files live in the harvest tree._")
 
     idx_path.write_text("\n".join(out) + "\n")
+
+
+# ---------------------------------------------------------------------------
+# History persistence
+# ---------------------------------------------------------------------------
+
+def _save_snapshot(
+    history_root: Path,
+    run_ts: str,
+    state: dict,
+    index_text: str,
+) -> Path:
+    snap_dir = history_root / run_ts
+    snap_dir.mkdir(parents=True, exist_ok=True)
+    (snap_dir / "state.json").write_text(
+        json.dumps(state, indent=2, sort_keys=True)
+    )
+    (snap_dir / "INDEX.md").write_text(index_text)
+    return snap_dir
+
+
+def _prune_snapshots(history_root: Path, keep: int) -> int:
+    if keep <= 0:
+        return 0
+    snaps = sorted(
+        (d for d in history_root.iterdir() if d.is_dir()),
+        reverse=True,
+    )
+    removed = 0
+    for old in snaps[keep:]:
+        try:
+            for f in old.iterdir():
+                f.unlink()
+            old.rmdir()
+            removed += 1
+        except OSError:
+            pass
+    return removed
 
 
 # ---------------------------------------------------------------------------
@@ -806,6 +963,16 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "-q", "--quiet", action="store_true",
         help="Suppress progress output on stderr",
+    )
+    p.add_argument(
+        "--diff", action="store_true",
+        help="Prepend a 'Changes since last run' section to INDEX.md "
+             "by comparing against the most recent history snapshot.",
+    )
+    p.add_argument(
+        "--history-keep", type=int, default=DEFAULT_HISTORY_KEEP,
+        help=f"Keep only the N most recent snapshots in history/ "
+             f"(default: {DEFAULT_HISTORY_KEEP}, 0 = keep all).",
     )
     p.add_argument(
         "--version", action="version",
@@ -846,7 +1013,41 @@ def main(argv: list[str] | None = None) -> int:
         except Exception as e:
             _warn(f"failed to process {build_dir}: {e}")
 
-    generate_index(results, diag_root, harvest_root)
+    # --- history + diff --------------------------------------------------
+    history_root = harvest_root / "history"
+    history_root.mkdir(parents=True, exist_ok=True)
+
+    run_ts = datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
+    curr_state = _snapshot_state(results, run_ts)
+
+    diff_lines: list[str] | None = None
+    if args.diff:
+        prev = _latest_snapshot(history_root)
+        if prev is None:
+            _log("no previous snapshot found — skipping diff", args.quiet)
+        else:
+            _, prev_state = prev
+            diff = _compute_diff(prev_state, curr_state)
+            diff_lines = render_diff_section(diff)
+            _log(
+                f"diff vs {diff['prev_timestamp']}: "
+                f"{len(diff['resolved_sigs'])} resolved, "
+                f"{len(diff['new_sigs'])} new, "
+                f"{len(diff['status_changes'])} status changes",
+                args.quiet,
+            )
+
+    generate_index(results, diag_root, harvest_root, diff_lines)
+
+    # --- write snapshot --------------------------------------------------
+    index_text = (harvest_root / "INDEX.md").read_text()
+    _save_snapshot(history_root, run_ts, curr_state, index_text)
+
+    if args.history_keep > 0:
+        pruned = _prune_snapshots(history_root, args.history_keep)
+        if pruned:
+            _log(f"pruned {pruned} old snapshot(s)", args.quiet)
+
     _log(f"Index: {harvest_root / 'INDEX.md'}", args.quiet)
     return 0
 
