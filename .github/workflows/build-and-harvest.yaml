@@ -80,47 +80,44 @@ jobs:
           '
 
       - name: Build all drivers sequentially (as builder)
+        env:
+          WS: ${{ github.workspace }}
         run: |
           set -uo pipefail
-          sudo -u builder -H bash <<'BUILD_SCRIPT'
+          sudo -u builder -H bash <<BUILD_SCRIPT
           set -uo pipefail
+          WS="${WS}"
 
           for drv in 340xx 390xx; do
-            echo "::group::Building nvidia-${drv}"
+            echo "::group::Building nvidia-\${drv}"
 
-            # ---- 1. utils (provides nvidia-dkms + patched sources) --------
-            utils_dir="/build/utils/nvidia-${drv}-utils"
-            if [ -d "$utils_dir" ]; then
-              echo "==> utils: $utils_dir"
-              cd "$utils_dir"
-              makepkg -si --noconfirm --skippgpcheck \
-                || echo "    [warn] utils build failed for $drv"
+            utils_dir="/build/utils/nvidia-\${drv}-utils"
+            if [ -d "\$utils_dir" ]; then
+              echo "==> utils: \$utils_dir"
+              cd "\$utils_dir"
+              makepkg -si --noconfirm --skippgpcheck \\
+                || echo "    [warn] utils build failed for \$drv"
             else
-              echo "    [warn] no utils repo for $drv"
+              echo "    [warn] no utils repo for \$drv"
             fi
 
-            # ---- 2. all kernel module PKGBUILDs ---------------------------
-            repo_dir="/build/diag/nvidia-${drv}"
+            repo_dir="/build/diag/nvidia-\${drv}"
             for variant in normal rt; do
-              kdir_root="${repo_dir}/${variant}-kernels"
-              [ -d "$kdir_root" ] || continue
+              kdir_root="\${repo_dir}/\${variant}-kernels"
+              [ -d "\$kdir_root" ] || continue
 
-              for kdir in "$kdir_root"/*/; do
-                [ -d "$kdir" ] || continue
-                name=$(basename "$kdir")
-                echo "==> kernel module: $name"
-                cd "$kdir"
-                makepkg -s --noconfirm --skippgpcheck \
-                  || echo "    [warn] build failed: $name"
+              for kdir in "\$kdir_root"/*/; do
+                [ -d "\$kdir" ] || continue
+                name=\$(basename "\$kdir")
+                echo "==> kernel module: \$name"
+                cd "\$kdir"
+                makepkg -s --noconfirm --skippgpcheck \\
+                  || echo "    [warn] build failed: \$name"
               done
             done
 
-            # ---- 3. cleanup THIS driver BEFORE next iteration ------------
-            # Must run here, not after the loop. Otherwise the next driver's
-            # utils install will conflict with this driver's installed utils
-            # (both provide nvidia-libgl).
-            echo "==> cleanup after nvidia-${drv}"
-            sudo bash /workspace/clean-nvidia-container.sh "$drv" || true
+            echo "==> cleanup after nvidia-\${drv}"
+            sudo bash "\${WS}/clean-nvidia-container.sh" "\$drv" || true
 
             echo "::endgroup::"
           done
