@@ -154,13 +154,25 @@ jobs:
         run: |
           set -euxo pipefail
 
-          cd /build/harvest
+          # Clone an existing working repo to inherit valid git metadata.
+          # git init + git config on /build/harvest proved unreliable in
+          # this container (git 2.53, mixed builder/root ownership).
+          rm -rf /tmp/publish
+          git clone --depth 1 \
+            "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            /tmp/publish
 
-          git init -b results
+          cd /tmp/publish
+
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git config user.name  "github-actions[bot]"
-          git remote add origin \
-            "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+
+          # Fresh orphan branch — nuke everything, then copy harvest in.
+          git checkout --orphan results
+          git rm -rf . >/dev/null 2>&1 || true
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+
+          cp -r /build/harvest/. .
 
           git add -A
           if git diff --cached --quiet; then

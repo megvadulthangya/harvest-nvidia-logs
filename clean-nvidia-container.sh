@@ -32,7 +32,8 @@ if [ -n "$pkgs" ]; then
   info "uninstalling packages:"
   echo "$pkgs" | sed 's/^/    /'
   # shellcheck disable=SC2086
-  pacman -Rns --noconfirm $pkgs 2>&1 | sed 's/^/    /' || true
+# clean-nvidia-container.sh-ban
+pacman -Rdd --noconfirm $pkgs 2>&1 | sed 's/^/    /' || true
 fi
 
 # --- 2. DKMS modules --------------------------------------------------------
