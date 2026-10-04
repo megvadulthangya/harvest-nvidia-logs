@@ -1,0 +1,154 @@
+name: Build NVIDIA modules and harvest logs
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * 0'   # weekly, Sunday 03:00 UTC
+
+concurrency:
+  group: build-and-harvest
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: manjarolinux/build:latest
+    permissions:
+      contents: write
+
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GITHUB_REPOSITORY: ${{ github.repository }}
+      WORKSPACE: ${{ github.workspace }}
+
+    steps:
+      - name: Checkout harvest-nvidia-logs
+        uses: actions/checkout@v4
+
+      - name: Prepare pacman (multilib + testing branch)
+        run: |
+          set -euxo pipefail
+
+          if ! grep -q '^\[multilib\]' /etc/pacman.conf; then
+            sed -i 's/^#\(\[multilib\]\)/\1/' /etc/pacman.conf
+            sed -i 's/^#\(Include = \/etc\/pacman\.d\/mirrorlist\)/\1/' /etc/pacman.conf
+          fi
+
+          pacman-mirrors --api -B testing -R || true
+          pacman -Syy --noconfirm
+
+      - name: Fetch previous results branch (for --diff / changelog)
+        continue-on-error: true
+        run: |
+          mkdir -p /build/harvest
+          git clone --depth 1 --branch results \
+            "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            /tmp/prev 2>/dev/null || true
+
+          if [ -d /tmp/prev/history ]; then
+            cp -r /tmp/prev/history /build/harvest/ 2>/dev/null || true
+          fi
+
+          if [ -f /tmp/prev/driver-changelog.md ]; then
+            cp /tmp/prev/driver-changelog.md /build/harvest/ 2>/dev/null || true
+          fi
+
+      - name: Clone driver repos
+        run: |
+          set -euxo pipefail
+
+          mkdir -p /build/diag /build/utils
+
+          cd /build/diag
+          git clone --depth 1 https://github.com/megvadulthangya/nvidia-340xx.git
+          git clone --depth 1 https://github.com/megvadulthangya/nvidia-390xx.git
+
+          cd /build/utils
+          git clone -b develop --depth 1 https://github.com/megvadulthangya/nvidia-340xx-utils.git
+          git clone -b develop --depth 1 https://github.com/megvadulthangya/nvidia-390xx-utils.git
+
+      - name: Build all drivers sequentially
+        run: |
+          set -uo pipefail
+
+          for drv in 340xx 390xx; do
+            echo "::group::Building nvidia-${drv}"
+
+            # ---- 1. utils (provides nvidia-dkms + patched sources) --------
+            utils_dir="/build/utils/nvidia-${drv}-utils"
+            if [ -d "$utils_dir" ]; then
+              echo "==> utils: $utils_dir"
+              cd "$utils_dir"
+              makepkg -si --noconfirm --skippgpcheck \
+                || echo "    [warn] utils build failed for $drv"
+            else
+              echo "    [warn] no utils repo for $drv"
+            fi
+
+            # ---- 2. all kernel module PKGBUILDs ---------------------------
+            repo_dir="/build/diag/nvidia-${drv}"
+            for variant in normal rt; do
+              kdir_root="${repo_dir}/${variant}-kernels"
+              [ -d "$kdir_root" ] || continue
+
+              for kdir in "$kdir_root"/*/; do
+                [ -d "$kdir" ] || continue
+                name=$(basename "$kdir")
+                echo "==> kernel module: $name"
+                cd "$kdir"
+                makepkg -s --noconfirm --skippgpcheck \
+                  || echo "    [warn] build failed: $name"
+              done
+            done
+
+            # ---- 3. cleanup ----------------------------------------------
+            bash "${WORKSPACE}/clean-nvidia-container.sh" "$drv" || true
+
+            echo "::endgroup::"
+          done
+
+      - name: Harvest
+        run: |
+          set -euxo pipefail
+          cd "${WORKSPACE}"
+
+          ./harvest-nvidia-logs \
+            -d /build/diag \
+            -o /build/harvest \
+            --diff \
+            --changelog /build/harvest/driver-changelog.md \
+            --history-keep 30 \
+            -q
+
+      - name: Add README.md mirrors
+        run: |
+          set -euxo pipefail
+
+          # Top-level README
+          [ -f /build/harvest/INDEX.md ] && cp /build/harvest/INDEX.md /build/harvest/README.md
+
+          # Each history snapshot gets a README.md too
+          for d in /build/harvest/history/*/; do
+            [ -f "$d/INDEX.md" ] && cp "$d/INDEX.md" "$d/README.md"
+          done
+
+      - name: Publish to results branch
+        run: |
+          set -euxo pipefail
+
+          cd /build/harvest
+
+          git init -b results
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name  "github-actions[bot]"
+          git remote add origin \
+            "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+
+          git add -A
+          if git diff --cached --quiet; then
+            echo "nothing to commit"
+          else
+            git commit -m "harvest: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            git push -f origin results
+          fi
