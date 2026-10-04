@@ -2,16 +2,13 @@
 #
 # clean-nvidia-container.sh
 #
-# Container-friendly nvidia cleanup for the GH Actions workflow.
-# Assumes:
-#   - running as root (no sudo)
-#   - no mkinitcpio (not needed in build container)
-#   - no user-home build dirs (utils repos are handled separately)
+# Container-friendly nvidia cleanup.
+# Removes ONLY the nvidia packages and their kernel module artifacts.
+# Never touches unrelated packages (dkms, gcc, libdrm, libglvnd, ...).
 #
 # Usage:
 #   clean-nvidia-container.sh [driver]
-#
-#   driver: optional. "340xx", "390xx", etc. If omitted, cleans everything.
+#     driver: optional. "340xx", "390xx", etc. If omitted, cleans all.
 #
 set -uo pipefail
 
@@ -19,21 +16,24 @@ DRIVER="${1:-}"
 
 info() { echo "[clean] $*"; }
 
-# Build the pacman grep pattern based on the driver argument.
+# Build the pacman grep pattern.
 if [ -n "$DRIVER" ]; then
-  pattern="^(nvidia-${DRIVER}.*|opencl-nvidia-${DRIVER}.*|mhwd-nvidia-${DRIVER}.*|lib32-(nvidia|opencl-nvidia)-${DRIVER}.*)\$"
+  pattern="^(nvidia-${DRIVER}.*|opencl-nvidia-${DRIVER}.*|mhwd-nvidia-${DRIVER}.*|lib32-(nvidia|opencl-nvidia)-${DRIVER}.*|linux.*-nvidia-${DRIVER}.*)\$"
 else
-  pattern="^(nvidia-(340xx|390xx|470xx|580xx).*|opencl-nvidia-(340xx|390xx|470xx|580xx).*|mhwd-nvidia-(340xx|390xx|470xx|580xx).*|lib32-(nvidia|opencl-nvidia)-(340xx|390xx|470xx|580xx).*)\$"
+  pattern="^(nvidia-(340xx|390xx|470xx|580xx).*|opencl-nvidia-(340xx|390xx|470xx|580xx).*|mhwd-nvidia-(340xx|390xx|470xx|580xx).*|lib32-(nvidia|opencl-nvidia)-(340xx|390xx|470xx|580xx).*|linux.*-nvidia-(340xx|390xx|470xx|580xx).*)\$"
 fi
 
-# --- 1. pacman packages -----------------------------------------------------
+# --- 1. pacman packages — ONLY the nvidia ones, no dependency cascade ------
 pkgs=$(pacman -Qq 2>/dev/null | grep -E "$pattern" | sort -u || true)
 if [ -n "$pkgs" ]; then
-  info "uninstalling packages:"
+  info "uninstalling nvidia packages (no dependency cascade):"
   echo "$pkgs" | sed 's/^/    /'
+  # -Rdd: remove exactly these packages, ignore dependency checks.
+  # The package's own .INSTALL hooks still run (dkms cleanup, etc.).
   # shellcheck disable=SC2086
-# clean-nvidia-container.sh-ban
-pacman -Rdd --noconfirm $pkgs 2>&1 | sed 's/^/    /' || true
+  pacman -Rdd --noconfirm $pkgs 2>&1 | sed 's/^/    /' || true
+else
+  info "no matching nvidia packages installed"
 fi
 
 # --- 2. DKMS modules --------------------------------------------------------
@@ -48,7 +48,7 @@ if command -v dkms >/dev/null 2>&1; then
       done
 fi
 
-# --- 3. Filesystem leftovers ------------------------------------------------
+# --- 3. Filesystem leftovers (nvidia only) ---------------------------------
 for p in \
   /usr/src/nvidia-* \
   /var/lib/dkms/nvidia* \
