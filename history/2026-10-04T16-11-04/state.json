@@ -1,0 +1,166 @@
+{
+  "builds": {
+    "340xx/normal/linux61-nvidia-340xx": {
+      "clean_total": 0,
+      "clean_uniq": 0,
+      "err_count": 0,
+      "noise_total": 0,
+      "status": "not-built",
+      "suspicious_total": 0
+    },
+    "340xx/normal/linux612-nvidia-340xx": {
+      "clean_total": 0,
+      "clean_uniq": 0,
+      "err_count": 0,
+      "noise_total": 0,
+      "status": "not-built",
+      "suspicious_total": 0
+    },
+    "340xx/normal/linux618-nvidia-340xx": {
+      "clean_total": 0,
+      "clean_uniq": 0,
+      "err_count": 0,
+      "noise_total": 0,
+      "status": "not-built",
+      "suspicious_total": 0
+    },
+    "340xx/normal/linux66-nvidia-340xx": {
+      "clean_total": 0,
+      "clean_uniq": 0,
+      "err_count": 0,
+      "noise_total": 0,
+      "status": "not-built",
+      "suspicious_total": 0
+    },
+    "340xx/normal/linux71-nvidia-340xx": {
+      "clean_total": 0,
+      "clean_uniq": 0,
+      "err_count": 0,
+      "noise_total": 0,
+      "status": "not-built",
+      "suspicious_total": 0
+    },
+    "340xx/normal/linux72-nvidia-340xx": {
+      "clean_total": 0,
+      "clean_uniq": 0,
+      "err_count": 0,
+      "noise_total": 0,
+      "status": "not-built",
+      "suspicious_total": 0
+    },
+    "340xx/normal/linux73-nvidia-340xx": {
+      "clean_total": 0,
+      "clean_uniq": 0,
+      "err_count": 0,
+      "noise_total": 0,
+      "status": "not-built",
+      "suspicious_total": 0
+    },
+    "340xx/rt/linux61-rt-nvidia-340xx": {
+      "clean_total": 0,
+      "clean_uniq": 0,
+      "err_count": 0,
+      "noise_total": 0,
+      "status": "not-built",
+      "suspicious_total": 0
+    },
+    "340xx/rt/linux612-rt-nvidia-340xx": {
+      "clean_total": 0,
+      "clean_uniq": 0,
+      "err_count": 0,
+      "noise_total": 0,
+      "status": "not-built",
+      "suspicious_total": 0
+    },
+    "340xx/rt/linux66-rt-nvidia-340xx": {
+      "clean_total": 0,
+      "clean_uniq": 0,
+      "err_count": 0,
+      "noise_total": 0,
+      "status": "not-built",
+      "suspicious_total": 0
+    },
+    "390xx/normal/linux61-nvidia-390xx": {
+      "clean_total": 0,
+      "clean_uniq": 0,
+      "err_count": 0,
+      "noise_total": 0,
+      "status": "not-built",
+      "suspicious_total": 0
+    },
+    "390xx/normal/linux612-nvidia-390xx": {
+      "clean_total": 0,
+      "clean_uniq": 0,
+      "err_count": 0,
+      "noise_total": 0,
+      "status": "not-built",
+      "suspicious_total": 0
+    },
+    "390xx/normal/linux618-nvidia-390xx": {
+      "clean_total": 0,
+      "clean_uniq": 0,
+      "err_count": 0,
+      "noise_total": 0,
+      "status": "not-built",
+      "suspicious_total": 0
+    },
+    "390xx/normal/linux66-nvidia-390xx": {
+      "clean_total": 0,
+      "clean_uniq": 0,
+      "err_count": 0,
+      "noise_total": 0,
+      "status": "not-built",
+      "suspicious_total": 0
+    },
+    "390xx/normal/linux71-nvidia-390xx": {
+      "clean_total": 0,
+      "clean_uniq": 0,
+      "err_count": 0,
+      "noise_total": 0,
+      "status": "not-built",
+      "suspicious_total": 0
+    },
+    "390xx/normal/linux72-nvidia-390xx": {
+      "clean_total": 0,
+      "clean_uniq": 0,
+      "err_count": 0,
+      "noise_total": 0,
+      "status": "not-built",
+      "suspicious_total": 0
+    },
+    "390xx/normal/linux73-nvidia-390xx": {
+      "clean_total": 0,
+      "clean_uniq": 0,
+      "err_count": 0,
+      "noise_total": 0,
+      "status": "not-built",
+      "suspicious_total": 0
+    },
+    "390xx/rt/linux61-rt-nvidia-390xx": {
+      "clean_total": 0,
+      "clean_uniq": 0,
+      "err_count": 0,
+      "noise_total": 0,
+      "status": "not-built",
+      "suspicious_total": 0
+    },
+    "390xx/rt/linux612-rt-nvidia-390xx": {
+      "clean_total": 0,
+      "clean_uniq": 0,
+      "err_count": 0,
+      "noise_total": 0,
+      "status": "not-built",
+      "suspicious_total": 0
+    },
+    "390xx/rt/linux66-rt-nvidia-390xx": {
+      "clean_total": 0,
+      "clean_uniq": 0,
+      "err_count": 0,
+      "noise_total": 0,
+      "status": "not-built",
+      "suspicious_total": 0
+    }
+  },
+  "clean_signatures": {},
+  "timestamp": "2026-10-04T16-11-04"
+}

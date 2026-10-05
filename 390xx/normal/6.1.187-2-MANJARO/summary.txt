@@ -1,0 +1,22 @@
+build:           linux61-nvidia-390xx
+driver:          390xx
+variant:         normal
+kernel:          6.1.187-2-MANJARO
+nvidia version:  390.157
+status:          warnings
+log path:        /build/diag/nvidia-390xx/normal-kernels/linux61-nvidia-390xx/src/nvidia/390.157/6.1.187-2-MANJARO/x86_64/log/make.log
+log size:        27868339 bytes
+log lines:       165633
+build dir:       /build/diag/nvidia-390xx/normal-kernels/linux61-nvidia-390xx
+
+errors:          0
+warnings clean:  1  (unique: 1)
+warnings noise:  164941  (unique: 10)
+suspicious:      0  (unique: 0)
+modules on disk: 4  [nvidia, nvidia-drm, nvidia-modeset, nvidia-uvm]
+log LD [M]:      ['nvidia', 'nvidia-drm', 'nvidia-modeset', 'nvidia-uvm']
+log MODPOST:     yes
+log cached:      no
+
+=== Top clean warning groups ===
+       1  warning: objtool: _nv002ld -m elf_x86_64 -z noexecstack --no-warn-rwx-segments -r -o /build/diag/nvidia-390xx/normal-kernels/linux61-nvidia-390xx/src/nvidia/390.157/build/nvidia-modeset/nv-modeset-interface.o /build/diag/nvidia-390xx/normal-kernels/linux61-nvidia-390xx/src/nvidia/390.157/build/nvidia-modeset/nvidia-modeset-linux.o

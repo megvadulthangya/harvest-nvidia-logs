@@ -1,0 +1,239 @@
+{
+  "builds": {
+    "340xx/normal/6.1.187-2-MANJARO": {
+      "clean_total": 2,
+      "clean_uniq": 2,
+      "err_count": 0,
+      "noise_total": 1,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "340xx/normal/6.12.109-1-MANJARO": {
+      "clean_total": 6,
+      "clean_uniq": 3,
+      "err_count": 0,
+      "noise_total": 1,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "340xx/normal/6.18.50-1-MANJARO": {
+      "clean_total": 3,
+      "clean_uniq": 3,
+      "err_count": 0,
+      "noise_total": 0,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "340xx/normal/6.6.156-2-MANJARO": {
+      "clean_total": 6,
+      "clean_uniq": 3,
+      "err_count": 0,
+      "noise_total": 1,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "340xx/normal/7.1.13-2-MANJARO": {
+      "clean_total": 3,
+      "clean_uniq": 3,
+      "err_count": 0,
+      "noise_total": 0,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "340xx/normal/7.2.4-1-MANJARO": {
+      "clean_total": 3,
+      "clean_uniq": 3,
+      "err_count": 0,
+      "noise_total": 0,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "340xx/normal/7.3.0-rc2-1-MANJARO": {
+      "clean_total": 3,
+      "clean_uniq": 3,
+      "err_count": 0,
+      "noise_total": 0,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "340xx/rt/6.1.182-1-rt67-MANJARO": {
+      "clean_total": 2,
+      "clean_uniq": 2,
+      "err_count": 0,
+      "noise_total": 1,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "340xx/rt/6.12.100-1-rt20-MANJARO": {
+      "clean_total": 6,
+      "clean_uniq": 3,
+      "err_count": 0,
+      "noise_total": 1,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "340xx/rt/6.6.151-1-rt78-MANJARO": {
+      "clean_total": 6,
+      "clean_uniq": 3,
+      "err_count": 0,
+      "noise_total": 1,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "390xx/normal/6.1.187-2-MANJARO": {
+      "clean_total": 0,
+      "clean_uniq": 0,
+      "err_count": 0,
+      "noise_total": 164942,
+      "status": "clean",
+      "suspicious_total": 0
+    },
+    "390xx/normal/6.12.109-1-MANJARO": {
+      "clean_total": 5,
+      "clean_uniq": 1,
+      "err_count": 0,
+      "noise_total": 94474,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "390xx/normal/6.18.50-1-MANJARO": {
+      "clean_total": 1,
+      "clean_uniq": 1,
+      "err_count": 0,
+      "noise_total": 94474,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "390xx/normal/6.6.156-2-MANJARO": {
+      "clean_total": 6,
+      "clean_uniq": 2,
+      "err_count": 0,
+      "noise_total": 94473,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "390xx/normal/7.1.13-2-MANJARO": {
+      "clean_total": 1,
+      "clean_uniq": 1,
+      "err_count": 0,
+      "noise_total": 94474,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "390xx/normal/7.2.4-1-MANJARO": {
+      "clean_total": 1,
+      "clean_uniq": 1,
+      "err_count": 0,
+      "noise_total": 94474,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "390xx/normal/7.3.0-rc2-1-MANJARO": {
+      "clean_total": 1,
+      "clean_uniq": 1,
+      "err_count": 0,
+      "noise_total": 94474,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "390xx/rt/6.1.182-1-rt67-MANJARO": {
+      "clean_total": 0,
+      "clean_uniq": 0,
+      "err_count": 0,
+      "noise_total": 164942,
+      "status": "clean",
+      "suspicious_total": 0
+    },
+    "390xx/rt/6.12.100-1-rt20-MANJARO": {
+      "clean_total": 5,
+      "clean_uniq": 1,
+      "err_count": 0,
+      "noise_total": 94474,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "390xx/rt/6.6.151-1-rt78-MANJARO": {
+      "clean_total": 5,
+      "clean_uniq": 1,
+      "err_count": 0,
+      "noise_total": 94474,
+      "status": "warnings",
+      "suspicious_total": 0
+    }
+  },
+  "clean_signatures": {
+    "warning: Please avoid flushing system-wide workqueues. [-Wattribute-warning]": {
+      "builds": [
+        "340xx/normal/6.12.109-1-MANJARO",
+        "340xx/normal/6.6.156-2-MANJARO",
+        "340xx/rt/6.12.100-1-rt20-MANJARO",
+        "340xx/rt/6.6.151-1-rt78-MANJARO",
+        "390xx/normal/6.12.109-1-MANJARO",
+        "390xx/normal/6.6.156-2-MANJARO",
+        "390xx/rt/6.12.100-1-rt20-MANJARO",
+        "390xx/rt/6.6.151-1-rt78-MANJARO"
+      ],
+      "hits": 36
+    },
+    "warning: ignoring old recipe for target '<path>'": {
+      "builds": [
+        "340xx/normal/6.1.187-2-MANJARO",
+        "340xx/normal/6.12.109-1-MANJARO",
+        "340xx/normal/6.6.156-2-MANJARO",
+        "340xx/rt/6.1.182-1-rt67-MANJARO",
+        "340xx/rt/6.12.100-1-rt20-MANJARO",
+        "340xx/rt/6.6.151-1-rt78-MANJARO"
+      ],
+      "hits": 6
+    },
+    "warning: ignoring old recipe for target 'Module.symvers'": {
+      "builds": [
+        "340xx/normal/6.18.50-1-MANJARO",
+        "340xx/normal/7.1.13-2-MANJARO",
+        "340xx/normal/7.2.4-1-MANJARO",
+        "340xx/normal/7.3.0-rc2-1-MANJARO"
+      ],
+      "hits": 4
+    },
+    "warning: ignoring return value of 'refcount_sub_and_test' declared with attribute 'warn_unused_result' [-Wunused-result]": {
+      "builds": [
+        "340xx/normal/6.18.50-1-MANJARO",
+        "340xx/normal/7.1.13-2-MANJARO",
+        "340xx/normal/7.2.4-1-MANJARO",
+        "340xx/normal/7.3.0-rc2-1-MANJARO",
+        "390xx/normal/6.18.50-1-MANJARO",
+        "390xx/normal/7.1.13-2-MANJARO",
+        "390xx/normal/7.2.4-1-MANJARO",
+        "390xx/normal/7.3.0-rc2-1-MANJARO"
+      ],
+      "hits": 8
+    },
+    "warning: objtool: _nv001  LD [M]  /build/diag/nvidia-390xx/normal-kernels/linux66-nvidia-390xx/src/nvidia/390.157/build/nvidia-drm.o": {
+      "builds": [
+        "390xx/normal/6.6.156-2-MANJARO"
+      ],
+      "hits": 1
+    },
+    "warning: overriding recipe for target '<path>'": {
+      "builds": [
+        "340xx/normal/6.1.187-2-MANJARO",
+        "340xx/normal/6.12.109-1-MANJARO",
+        "340xx/normal/6.6.156-2-MANJARO",
+        "340xx/rt/6.1.182-1-rt67-MANJARO",
+        "340xx/rt/6.12.100-1-rt20-MANJARO",
+        "340xx/rt/6.6.151-1-rt78-MANJARO"
+      ],
+      "hits": 6
+    },
+    "warning: overriding recipe for target 'Module.symvers'": {
+      "builds": [
+        "340xx/normal/6.18.50-1-MANJARO",
+        "340xx/normal/7.1.13-2-MANJARO",
+        "340xx/normal/7.2.4-1-MANJARO",
+        "340xx/normal/7.3.0-rc2-1-MANJARO"
+      ],
+      "hits": 4
+    }
+  },
+  "timestamp": "2026-10-05T10-04-53"
+}

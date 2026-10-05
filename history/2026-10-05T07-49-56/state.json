@@ -1,0 +1,251 @@
+{
+  "builds": {
+    "340xx/normal/6.1.187-2-MANJARO": {
+      "clean_total": 4,
+      "clean_uniq": 3,
+      "err_count": 0,
+      "noise_total": 1,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "340xx/normal/6.12.109-1-MANJARO": {
+      "clean_total": 8,
+      "clean_uniq": 4,
+      "err_count": 0,
+      "noise_total": 1,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "340xx/normal/6.18.50-1-MANJARO": {
+      "clean_total": 5,
+      "clean_uniq": 4,
+      "err_count": 0,
+      "noise_total": 0,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "340xx/normal/6.6.156-2-MANJARO": {
+      "clean_total": 8,
+      "clean_uniq": 4,
+      "err_count": 0,
+      "noise_total": 1,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "340xx/normal/7.1.13-2-MANJARO": {
+      "clean_total": 5,
+      "clean_uniq": 4,
+      "err_count": 0,
+      "noise_total": 0,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "340xx/normal/linux72-nvidia-340xx": {
+      "clean_total": 10,
+      "clean_uniq": 2,
+      "err_count": 48,
+      "noise_total": 0,
+      "status": "failed",
+      "suspicious_total": 26
+    },
+    "340xx/normal/linux73-nvidia-340xx": {
+      "clean_total": 10,
+      "clean_uniq": 2,
+      "err_count": 47,
+      "noise_total": 0,
+      "status": "failed",
+      "suspicious_total": 27
+    },
+    "340xx/rt/6.1.182-1-rt67-MANJARO": {
+      "clean_total": 4,
+      "clean_uniq": 3,
+      "err_count": 0,
+      "noise_total": 1,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "340xx/rt/6.12.100-1-rt20-MANJARO": {
+      "clean_total": 8,
+      "clean_uniq": 4,
+      "err_count": 0,
+      "noise_total": 1,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "340xx/rt/6.6.151-1-rt78-MANJARO": {
+      "clean_total": 8,
+      "clean_uniq": 4,
+      "err_count": 0,
+      "noise_total": 1,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "390xx/normal/linux61-nvidia-390xx": {
+      "clean_total": 1,
+      "clean_uniq": 1,
+      "err_count": 3,
+      "noise_total": 0,
+      "status": "failed",
+      "suspicious_total": 0
+    },
+    "390xx/normal/linux612-nvidia-390xx": {
+      "clean_total": 1,
+      "clean_uniq": 1,
+      "err_count": 4,
+      "noise_total": 0,
+      "status": "failed",
+      "suspicious_total": 0
+    },
+    "390xx/normal/linux618-nvidia-390xx": {
+      "clean_total": 1,
+      "clean_uniq": 1,
+      "err_count": 5,
+      "noise_total": 0,
+      "status": "failed",
+      "suspicious_total": 0
+    },
+    "390xx/normal/linux66-nvidia-390xx": {
+      "clean_total": 1,
+      "clean_uniq": 1,
+      "err_count": 4,
+      "noise_total": 0,
+      "status": "failed",
+      "suspicious_total": 0
+    },
+    "390xx/normal/linux71-nvidia-390xx": {
+      "clean_total": 1,
+      "clean_uniq": 1,
+      "err_count": 5,
+      "noise_total": 0,
+      "status": "failed",
+      "suspicious_total": 0
+    },
+    "390xx/normal/linux72-nvidia-390xx": {
+      "clean_total": 1,
+      "clean_uniq": 1,
+      "err_count": 5,
+      "noise_total": 0,
+      "status": "failed",
+      "suspicious_total": 0
+    },
+    "390xx/normal/linux73-nvidia-390xx": {
+      "clean_total": 1,
+      "clean_uniq": 1,
+      "err_count": 5,
+      "noise_total": 0,
+      "status": "failed",
+      "suspicious_total": 0
+    },
+    "390xx/rt/linux61-rt-nvidia-390xx": {
+      "clean_total": 1,
+      "clean_uniq": 1,
+      "err_count": 3,
+      "noise_total": 0,
+      "status": "failed",
+      "suspicious_total": 0
+    },
+    "390xx/rt/linux612-rt-nvidia-390xx": {
+      "clean_total": 1,
+      "clean_uniq": 1,
+      "err_count": 4,
+      "noise_total": 0,
+      "status": "failed",
+      "suspicious_total": 0
+    },
+    "390xx/rt/linux66-rt-nvidia-390xx": {
+      "clean_total": 1,
+      "clean_uniq": 1,
+      "err_count": 4,
+      "noise_total": 0,
+      "status": "failed",
+      "suspicious_total": 0
+    }
+  },
+  "clean_signatures": {
+    "warning: 'NV_ACPI_WALK_NAMESPACE_ARGUMENT_COUNT' is not defined, evaluates to '0' [-Wundef]": {
+      "builds": [
+        "340xx/normal/linux72-nvidia-340xx",
+        "340xx/normal/linux73-nvidia-340xx"
+      ],
+      "hits": 16
+    },
+    "warning: Please avoid flushing system-wide workqueues. [-Wattribute-warning]": {
+      "builds": [
+        "340xx/normal/6.12.109-1-MANJARO",
+        "340xx/normal/6.6.156-2-MANJARO",
+        "340xx/rt/6.12.100-1-rt20-MANJARO",
+        "340xx/rt/6.6.151-1-rt78-MANJARO"
+      ],
+      "hits": 16
+    },
+    "warning: ignoring old recipe for target '<path>'": {
+      "builds": [
+        "340xx/normal/6.1.187-2-MANJARO",
+        "340xx/normal/6.12.109-1-MANJARO",
+        "340xx/normal/6.6.156-2-MANJARO",
+        "340xx/rt/6.1.182-1-rt67-MANJARO",
+        "340xx/rt/6.12.100-1-rt20-MANJARO",
+        "340xx/rt/6.6.151-1-rt78-MANJARO"
+      ],
+      "hits": 6
+    },
+    "warning: ignoring old recipe for target 'Module.symvers'": {
+      "builds": [
+        "340xx/normal/6.18.50-1-MANJARO",
+        "340xx/normal/7.1.13-2-MANJARO"
+      ],
+      "hits": 2
+    },
+    "warning: ignoring return value of 'refcount_sub_and_test' declared with attribute 'warn_unused_result' [-Wunused-result]": {
+      "builds": [
+        "340xx/normal/6.18.50-1-MANJARO",
+        "340xx/normal/7.1.13-2-MANJARO"
+      ],
+      "hits": 2
+    },
+    "warning: overriding recipe for target '<path>'": {
+      "builds": [
+        "340xx/normal/6.1.187-2-MANJARO",
+        "340xx/normal/6.12.109-1-MANJARO",
+        "340xx/normal/6.6.156-2-MANJARO",
+        "340xx/rt/6.1.182-1-rt67-MANJARO",
+        "340xx/rt/6.12.100-1-rt20-MANJARO",
+        "340xx/rt/6.6.151-1-rt78-MANJARO"
+      ],
+      "hits": 6
+    },
+    "warning: overriding recipe for target 'Module.symvers'": {
+      "builds": [
+        "340xx/normal/6.18.50-1-MANJARO",
+        "340xx/normal/7.1.13-2-MANJARO"
+      ],
+      "hits": 2
+    },
+    "warning: the compiler differs from the one used to build the kernel": {
+      "builds": [
+        "340xx/normal/6.1.187-2-MANJARO",
+        "340xx/normal/6.12.109-1-MANJARO",
+        "340xx/normal/6.18.50-1-MANJARO",
+        "340xx/normal/6.6.156-2-MANJARO",
+        "340xx/normal/7.1.13-2-MANJARO",
+        "340xx/normal/linux72-nvidia-340xx",
+        "340xx/normal/linux73-nvidia-340xx",
+        "340xx/rt/6.1.182-1-rt67-MANJARO",
+        "340xx/rt/6.12.100-1-rt20-MANJARO",
+        "340xx/rt/6.6.151-1-rt78-MANJARO",
+        "390xx/normal/linux61-nvidia-390xx",
+        "390xx/normal/linux612-nvidia-390xx",
+        "390xx/normal/linux618-nvidia-390xx",
+        "390xx/normal/linux66-nvidia-390xx",
+        "390xx/normal/linux71-nvidia-390xx",
+        "390xx/normal/linux72-nvidia-390xx",
+        "390xx/normal/linux73-nvidia-390xx",
+        "390xx/rt/linux61-rt-nvidia-390xx",
+        "390xx/rt/linux612-rt-nvidia-390xx",
+        "390xx/rt/linux66-rt-nvidia-390xx"
+      ],
+      "hits": 30
+    }
+  },
+  "timestamp": "2026-10-05T07-49-56"
+}
