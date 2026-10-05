@@ -12,6 +12,19 @@ Install::
     sudo install -m 755 harvest-nvidia-logs /usr/local/bin/harvest-nvidia-logs
 
 No external dependencies — Python 3.10+ stdlib only.
+
+Changelog
+---------
+0.4.1
+  - Normalize Unicode quotes ('…' / "…") to ASCII in warning signatures,
+    so the same warning emitted by different GCC versions maps to one
+    stable signature (no more phantom "resolved + new" pairs).
+  - Normalize `.tmp_<pid>` in generic lines to `.tmp_NNN`, so dozens of
+    transient permission errors collapse into one suspicious signature.
+  - Stabilize `_build_key`: use the PKGBUILD directory name instead of
+    the kernel version parsed from make.log.  A failed build has no
+    kernel version, so the same build used to appear as
+    "removed + new" on the failed -> success transition.
 """
 
 from __future__ import annotations
@@ -27,7 +40,7 @@ from datetime import datetime
 from pathlib import Path
 
 
-__version__ = "0.4.0"
+__version__ = "0.4.1"
 
 
 # ---------------------------------------------------------------------------
@@ -58,6 +71,7 @@ RE_ADDR = re.compile(
     r"(?P<sym>[.A-Za-z_][\w.]*\+0x[0-9a-fA-F]+)"
     r"|(?P<hex>0x[0-9a-fA-F]+)"
 )
+RE_TMP_PID = re.compile(r"\.tmp_\d+")
 
 ERROR_RE = re.compile(
     r"(: error:|: fatal error:|Error [0-9]+|\*\*\* \["
@@ -129,12 +143,30 @@ class BuildResult:
 # Normalization
 # ---------------------------------------------------------------------------
 
+def _normalize_quotes(line: str) -> str:
+    """Convert Unicode curly quotes to their ASCII equivalents.
+
+    Different GCC versions emit different quote glyphs in diagnostic
+    messages ('symbol' vs \u2018symbol\u2019).  Without this, the exact
+    same warning would appear as two distinct signatures and the diff
+    would report phantom "resolved + new" pairs.
+    """
+    return (
+        line
+        .replace("\u2018", "'")   # LEFT SINGLE QUOTATION MARK
+        .replace("\u2019", "'")   # RIGHT SINGLE QUOTATION MARK
+        .replace("\u201c", '"')   # LEFT DOUBLE QUOTATION MARK
+        .replace("\u201d", '"')   # RIGHT DOUBLE QUOTATION MARK
+    )
+
+
 def _addr_sub(m: re.Match) -> str:
     return "<func>+0xADDR" if m.group("sym") else "0xADDR"
 
 
 def normalize_warning(line: str) -> str:
     line = line.rstrip("\r\n")
+    line = _normalize_quotes(line)
     m = RE_BEFORE_WARNING.match(line)
     if m:
         line = line[m.end():]
@@ -145,6 +177,9 @@ def normalize_warning(line: str) -> str:
 
 def normalize_generic(line: str) -> str:
     line = line.rstrip("\r\n")
+    line = _normalize_quotes(line)
+    # Collapse ".tmp_80615", ".tmp_139332", ... to a single signature
+    line = RE_TMP_PID.sub(".tmp_NNN", line)
     line = RE_QUOTED_PATH.sub("'<path>'", line)
     line = RE_ADDR.sub(_addr_sub, line)
     line = re.sub(r"[ \t]+", " ", line)
@@ -497,7 +532,15 @@ def _branch_list(branches: set[str]) -> str:
 
 
 def _build_key(r: BuildResult) -> str:
-    return f"{r.branch}/{r.variant}/{r.kernel_ver or r.build_name}"
+    """Stable identity for a build across runs.
+
+    Uses the PKGBUILD directory name, not the kernel version parsed from
+    make.log.  The kernel version is only present when the build produced
+    a log; if a build transitions from failed -> success, the parsed
+    version suddenly appears and the diff would show the same build as
+    "removed + new" instead of a status change.
+    """
+    return f"{r.branch}/{r.variant}/{r.build_name}"
 
 
 # ---------------------------------------------------------------------------
@@ -658,9 +701,6 @@ CHANGELOG_SUBHEADER = (
 
 
 def append_changelog(path: Path, diff_lines: list[str], timestamp: str) -> None:
-    """Prepend a new entry to the changelog file (newest first)."""
-    # Strip the leading "## 📊 Changes since …" header + blank line from
-    # the diff section — we generate our own date heading.
     body = diff_lines
     if body and body[0].startswith("## 📊"):
         body = body[1:]
@@ -672,7 +712,6 @@ def append_changelog(path: Path, diff_lines: list[str], timestamp: str) -> None:
     if path.is_file():
         existing = path.read_text()
         if existing.startswith(CHANGELOG_HEADER.strip("\n")):
-            # Strip header + subheader, keep the rest
             marker = CHANGELOG_SUBHEADER
             if marker in existing:
                 rest = existing.split(marker, 1)[1]
