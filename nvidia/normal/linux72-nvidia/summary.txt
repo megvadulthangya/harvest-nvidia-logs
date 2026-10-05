@@ -1,0 +1,16 @@
+build:           linux72-nvidia
+driver:          nvidia
+variant:         normal
+kernel:          unknown
+nvidia version:  unknown
+status:          not-built
+log path:        (none)
+build dir:       /build/official/extra/linux72-extramodules/nvidia
+
+errors:          0
+warnings clean:  0  (unique: 0)
+warnings noise:  0  (unique: 0)
+suspicious:      0  (unique: 0)
+modules on disk: 0  [—]
+log MODPOST:     no
+log cached:      no

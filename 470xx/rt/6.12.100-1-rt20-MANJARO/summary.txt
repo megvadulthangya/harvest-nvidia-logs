@@ -1,0 +1,46 @@
+build:           linux612-rt-nvidia-470xx
+driver:          470xx
+variant:         rt
+kernel:          6.12.100-1-rt20-MANJARO
+nvidia version:  470.256.02
+status:          warnings
+log path:        /build/official/extra/linux612-rt-extramodules/nvidia-470xx/src/nvidia/470.256.02/6.12.100-1-rt20-MANJARO/x86_64/log/make.log
+log size:        11630011 bytes
+log lines:       64308
+build dir:       /build/official/extra/linux612-rt-extramodules/nvidia-470xx
+
+errors:          0
+warnings clean:  60  (unique: 52)
+warnings noise:  63696  (unique: 3)
+suspicious:      0  (unique: 0)
+modules on disk: 5  [nvidia, nvidia-drm, nvidia-modeset, nvidia-peermem, nvidia-uvm]
+log LD [M]:      ['nvidia', 'nvidia-drm', 'nvidia-modeset', 'nvidia-peermem', 'nvidia-uvm']
+log MODPOST:     yes
+log cached:      no
+
+=== Top clean warning groups ===
+       7  warning: 'static' is not at beginning of declaration [-Wold-style-declaration]
+       3  warning: implicit conversion from 'uvm_fault_access_type_t' to 'uvm_fault_type_t' [-Wenum-conversion]
+       1  warning: no previous prototype for 'nvidia_init_module' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'nvidia_exit_module' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'nv_get_num_dpaux_instances' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'nv_firmware_path' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'nv_load_dma_map_scatterlist' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'nv_dma_unmap_sgt' [-Wmissing-prototypes]
+       1  warning: 'IMPORT_SGT_STUBS_NEEDED' redefined
+       1  warning: this statement may fall through [-Wimplicit-fallthrough=]
+       1  warning: no previous prototype for 'exercise_error_forwarding_va' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'os_mem_copy_custom' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'nv_init_ibmnpu_info' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'nv_destroy_ibmnpu_info' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'nv_init_ibmnpu_devices' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'nv_unregister_ibmnpu_devices' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'nv_get_ibmnpu_chip_id' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'nv_ibmnpu_cache_flush_numa_region' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'nv_cap_procfs_init' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'nvlink_core_init' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'nvlink_core_exit' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'nvswitch_init' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'nvswitch_exit' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'on_nvq_assert' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'uvm_tools_init' [-Wmissing-prototypes]

@@ -1,0 +1,23 @@
+build:           linux618-nvidia-580xx
+driver:          580xx
+variant:         normal
+kernel:          6.18.50-1-MANJARO
+nvidia version:  580.178.04
+status:          warnings
+log path:        /build/official/extra/linux618-extramodules/nvidia-580xx/src/nvidia/580.178.04/6.18.50-1-MANJARO/x86_64/log/make.log
+log size:        4552675 bytes
+log lines:       47968
+build dir:       /build/official/extra/linux618-extramodules/nvidia-580xx
+
+errors:          0
+warnings clean:  8  (unique: 2)
+warnings noise:  47475  (unique: 1)
+suspicious:      0  (unique: 0)
+modules on disk: 5  [nvidia, nvidia-drm, nvidia-modeset, nvidia-peermem, nvidia-uvm]
+log LD [M]:      ['nvidia', 'nvidia-drm', 'nvidia-modeset', 'nvidia-peermem', 'nvidia-uvm']
+log MODPOST:     yes
+log cached:      no
+
+=== Top clean warning groups ===
+       7  warning: this use of 'defined' may not be portable [-Wexpansion-to-defined]
+       1  warning: ignoring return value of 'refcount_sub_and_test' declared with attribute 'warn_unused_result' [-Wunused-result]

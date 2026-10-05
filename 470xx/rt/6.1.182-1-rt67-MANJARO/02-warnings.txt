@@ -1,0 +1,6 @@
+       1  warning: 'IMPORT_SGT_STUBS_NEEDED' redefined
+       1  warning: this statement may fall through [-Wimplicit-fallthrough=]
+       1  warning: unused variable 'status' [-Wunused-variable]
+       1  warning: unused variable 'ret' [-Wunused-variable]
+       1  warning: unused variable 'nv_drm_plane_state' [-Wunused-variable]
+       1  warning: unused variable 'primary_plane' [-Wunused-variable]
