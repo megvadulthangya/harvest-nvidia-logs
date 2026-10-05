@@ -1,5 +1,5 @@
 DKMS (dkms-3.4.3) make.log for nvidia/340.108 for kernel 6.6.151-1-rt78-MANJARO (x86_64)
-Mon Oct  5 11:59:25 UTC 2026
+Mon Oct  5 14:01:16 UTC 2026
 
 Building module(s)
 # command: make -j4 KERNELRELEASE=6.6.151-1-rt78-MANJARO module KERNEL_UNAME=6.6.151-1-rt78-MANJARO; make -C uvm module KERNEL_UNAME=6.6.151-1-rt78-MANJARO KBUILD_EXTMOD=/build/diag/nvidia-340xx/rt-kernels/linux66-rt-nvidia-340xx/src/nvidia/340.108/build/uvm
