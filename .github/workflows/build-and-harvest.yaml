@@ -195,24 +195,25 @@ jobs:
         run: |
           set -euxo pipefail
 
-          # Clone an existing working repo to inherit valid git metadata.
-          # git init + git config on /build/harvest proved unreliable in
-          # this container (git 2.53, mixed builder/root ownership).
           rm -rf /tmp/publish
-          git clone --depth 1 \
+          git clone \
             "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
             /tmp/publish
 
           cd /tmp/publish
-
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git config user.name  "github-actions[bot]"
 
-          # Fresh orphan branch — nuke everything, then copy harvest in.
-          git checkout --orphan results
-          git rm -rf . >/dev/null 2>&1 || true
-          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          # Switch to results branch (or create it from main on first run)
+          if git ls-remote --exit-code origin results >/dev/null 2>&1; then
+            git fetch --depth 1 origin results
+            git checkout -B results origin/results
+          else
+            git checkout -B results
+          fi
 
+          # Replace the working tree with the harvest output
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
           cp -r /build/harvest/. .
 
           git add -A
@@ -220,5 +221,5 @@ jobs:
             echo "nothing to commit"
           else
             git commit -m "harvest: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-            git push -f origin results
+            git push origin results
           fi
