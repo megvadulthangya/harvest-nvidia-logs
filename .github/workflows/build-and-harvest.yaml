@@ -37,6 +37,7 @@ jobs:
 
           pacman-mirrors --api -B testing -R || true
           pacman -Syy --noconfirm
+          pacman -Suu --noconfirm
 
       - name: Create builder user
         run: |
