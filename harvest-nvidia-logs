@@ -15,16 +15,25 @@ No external dependencies — Python 3.10+ stdlib only.
 
 Changelog
 ---------
+0.5.0
+  - New `## TL;DR` section at the top of INDEX.md: state, top actionable
+    signatures, informational count, and (with --diff) a one-line "since
+    last run" summary. Makes the file LLM-friendly at a glance.
+  - Cross-build signature table split into `actionable` (driver source)
+    and `informational` (build system / Makefile noise), driven by a new
+    NOT_ACTIONABLE_PATTERNS list.
+  - `Changes since` "New builds" / "Removed builds" lists are now
+    compacted: grouped by `branch/variant` with a comma-separated name
+    list. 40 lines become 4.
+  - Warning lines longer than MAX_WARNING_LINE_LEN (300 chars) are
+    dropped — these are concatenated / wrapped make.log lines (e.g.
+    "warning: objtool: _nv...ld -m elf_x86_64 ..."), not real warnings.
+
 0.4.1
-  - Normalize Unicode quotes ('…' / "…") to ASCII in warning signatures,
-    so the same warning emitted by different GCC versions maps to one
-    stable signature (no more phantom "resolved + new" pairs).
-  - Normalize `.tmp_<pid>` in generic lines to `.tmp_NNN`, so dozens of
-    transient permission errors collapse into one suspicious signature.
+  - Normalize Unicode quotes ('…' / "…") to ASCII in warning signatures.
+  - Normalize `.tmp_<pid>` in generic lines to `.tmp_NNN`.
   - Stabilize `_build_key`: use the PKGBUILD directory name instead of
-    the kernel version parsed from make.log.  A failed build has no
-    kernel version, so the same build used to appear as
-    "removed + new" on the failed -> success transition.
+    the kernel version parsed from make.log.
 """
 
 from __future__ import annotations
@@ -40,7 +49,7 @@ from datetime import datetime
 from pathlib import Path
 
 
-__version__ = "0.4.1"
+__version__ = "0.5.0"
 
 
 # ---------------------------------------------------------------------------
@@ -63,6 +72,17 @@ NOISE_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"warning: objtool:.*sibling call from callable instruction"),
     re.compile(r"warning: objtool:.*call to __fentry__"),
     re.compile(r"warning: objtool:.*stack state mismatch"),
+]
+
+# Cross-build warnings matching one of these are considered informational
+# (build system / Makefile noise) and will not appear under "Action needed"
+# in the TL;DR. They are still listed, but in a separate table.
+NOT_ACTIONABLE_PATTERNS: list[re.Pattern[str]] = [
+    re.compile(r"warning: overriding recipe for target"),
+    re.compile(r"warning: ignoring old recipe for target"),
+    re.compile(
+        r"warning: the compiler differs from the one used to build the kernel"
+    ),
 ]
 
 RE_BEFORE_WARNING = re.compile(r"^.*(?=warning:)")
@@ -100,6 +120,12 @@ MODPOST_MARKERS = ("MODPOST", "Building modules", "BTF [M]")
 NOTHING_TO_DO_MARKERS = ("Nothing to be done", "is up to date")
 
 TRUNCATION_LOG_THRESHOLD = 1_000_000
+
+# A real compiler warning is almost never longer than this. Lines that
+# exceed it are almost certainly concatenated / wrapped make.log output
+# (e.g. "warning: objtool: _nv...ld -m elf_x86_64 ...") and should not
+# pollute the signature tables.
+MAX_WARNING_LINE_LEN = 300
 
 
 # ---------------------------------------------------------------------------
@@ -144,19 +170,13 @@ class BuildResult:
 # ---------------------------------------------------------------------------
 
 def _normalize_quotes(line: str) -> str:
-    """Convert Unicode curly quotes to their ASCII equivalents.
-
-    Different GCC versions emit different quote glyphs in diagnostic
-    messages ('symbol' vs \u2018symbol\u2019).  Without this, the exact
-    same warning would appear as two distinct signatures and the diff
-    would report phantom "resolved + new" pairs.
-    """
+    """Convert Unicode curly quotes to their ASCII equivalents."""
     return (
         line
-        .replace("\u2018", "'")   # LEFT SINGLE QUOTATION MARK
-        .replace("\u2019", "'")   # RIGHT SINGLE QUOTATION MARK
-        .replace("\u201c", '"')   # LEFT DOUBLE QUOTATION MARK
-        .replace("\u201d", '"')   # RIGHT DOUBLE QUOTATION MARK
+        .replace("\u2018", "'")
+        .replace("\u2019", "'")
+        .replace("\u201c", '"')
+        .replace("\u201d", '"')
     )
 
 
@@ -178,7 +198,6 @@ def normalize_warning(line: str) -> str:
 def normalize_generic(line: str) -> str:
     line = line.rstrip("\r\n")
     line = _normalize_quotes(line)
-    # Collapse ".tmp_80615", ".tmp_139332", ... to a single signature
     line = RE_TMP_PID.sub(".tmp_NNN", line)
     line = RE_QUOTED_PATH.sub("'<path>'", line)
     line = RE_ADDR.sub(_addr_sub, line)
@@ -188,6 +207,11 @@ def normalize_generic(line: str) -> str:
 
 def is_noise(signature: str) -> bool:
     return any(p.search(signature) for p in NOISE_PATTERNS)
+
+
+def is_actionable(signature: str) -> bool:
+    """True if the signature is *not* marked as build-system noise."""
+    return not any(p.search(signature) for p in NOT_ACTIONABLE_PATTERNS)
 
 
 # ---------------------------------------------------------------------------
@@ -447,6 +471,10 @@ def process_build(
                 error_lines.append((line_no, line))
                 continue
 
+            # Skip concatenated / wrapped log lines. Real warnings are short.
+            if len(line) > MAX_WARNING_LINE_LEN:
+                continue
+
             if "warning:" in line:
                 sig = normalize_warning(line)
                 if sig:
@@ -532,15 +560,32 @@ def _branch_list(branches: set[str]) -> str:
 
 
 def _build_key(r: BuildResult) -> str:
-    """Stable identity for a build across runs.
-
-    Uses the PKGBUILD directory name, not the kernel version parsed from
-    make.log.  The kernel version is only present when the build produced
-    a log; if a build transitions from failed -> success, the parsed
-    version suddenly appears and the diff would show the same build as
-    "removed + new" instead of a status change.
-    """
+    """Stable identity for a build across runs — PKGBUILD directory name."""
     return f"{r.branch}/{r.variant}/{r.build_name}"
+
+
+def _group_build_keys(keys: list[str]) -> list[str]:
+    """Group 'branch/variant/name' keys by 'branch/variant', returning a
+    compact bullet list. Keeps the changelog readable when 20+ builds
+    change identity at once (e.g. after an _build_key scheme change)."""
+    groups: dict[str, list[str]] = defaultdict(list)
+    for k in keys:
+        parts = k.split("/", 2)
+        if len(parts) == 3:
+            branch, variant, name = parts
+            groups[f"{branch}/{variant}"].append(name)
+        else:
+            groups["_other"].append(k)
+
+    out: list[str] = []
+    for g in sorted(groups):
+        names = sorted(groups[g])
+        if len(names) <= 8:
+            out.append(f"- `{g}`: {', '.join(names)}")
+        else:
+            shown = ", ".join(names[:8])
+            out.append(f"- `{g}` ({len(names)}): {shown}, …")
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -675,15 +720,13 @@ def render_diff_section(diff: dict) -> list[str]:
     if diff["added_builds"]:
         A(f"### ➕ New builds ({len(diff['added_builds'])})")
         A("")
-        for b in diff["added_builds"]:
-            A(f"- `{b}`")
+        out.extend(_group_build_keys(diff["added_builds"]))
         A("")
 
     if diff["removed_builds"]:
         A(f"### ➖ Removed builds ({len(diff['removed_builds'])})")
         A("")
-        for b in diff["removed_builds"]:
-            A(f"- `{b}`")
+        out.extend(_group_build_keys(diff["removed_builds"]))
         A("")
 
     return out
@@ -727,6 +770,72 @@ def append_changelog(path: Path, diff_lines: list[str], timestamp: str) -> None:
 
 
 # ---------------------------------------------------------------------------
+# TL;DR
+# ---------------------------------------------------------------------------
+
+def _render_tldr(
+    by_status: Counter,
+    multi_actionable: list[tuple[str, int, int, set[str]]],
+    multi_informational: list[tuple[str, int, int, set[str]]],
+    integrity_hits: list[BuildResult],
+    diff_data: dict | None,
+) -> list[str]:
+    """Produce a short, LLM-friendly summary placed at the very top."""
+    out: list[str] = []
+    A = out.append
+
+    A("## TL;DR")
+    A("")
+
+    # 1. State line
+    A(
+        f"- **State:** "
+        f"❗{by_status['failed']} failed · "
+        f"🔍{by_status['suspicious']} suspicious · "
+        f"⚠{by_status['warnings']} warnings · "
+        f"✅{by_status['clean']} clean · "
+        f"🚫{by_status['not-built']} not-built"
+    )
+
+    # 2. Integrity issues (highest signal, comes right after state)
+    if integrity_hits:
+        A(
+            f"- **⚠ Integrity issues:** {len(integrity_hits)} build(s) "
+            f"affected — see `## 🧱 Integrity issues` below"
+        )
+
+    # 3. Actionable cross-build signatures (top 3)
+    if multi_actionable:
+        A(f"- **Action needed ({len(multi_actionable)}):**")
+        for sig, builds, hits, combos in multi_actionable[:3]:
+            A(f"    - {builds} builds · {hits} hits · `{sig}`")
+        if len(multi_actionable) > 3:
+            A(f"    - … and {len(multi_actionable) - 3} more "
+              f"(see `## 🔁 Cross-build warning signatures`)")
+    else:
+        A("- **Action needed:** none — no actionable cross-build warnings")
+
+    # 4. Informational (build system)
+    if multi_informational:
+        A(
+            f"- **Informational:** {len(multi_informational)} build-system "
+            f"signature(s) — no driver fix needed"
+        )
+
+    # 5. Since last run
+    if diff_data is not None:
+        A(
+            f"- **Since last run (`{diff_data['prev_timestamp']}`):** "
+            f"✅{len(diff_data['resolved_sigs'])} resolved · "
+            f"🆕{len(diff_data['new_sigs'])} new · "
+            f"🔀{len(diff_data['status_changes'])} status changes"
+        )
+
+    A("")
+    return out
+
+
+# ---------------------------------------------------------------------------
 # INDEX.md
 # ---------------------------------------------------------------------------
 
@@ -735,10 +844,12 @@ def generate_index(
     diag_root: Path,
     harvest_root: Path,
     diff_lines: list[str] | None = None,
+    diff_data: dict | None = None,
 ) -> None:
     idx_path = harvest_root / "INDEX.md"
     by_status = Counter(r.status for r in results)
 
+    # --- signature aggregation ------------------------------------------
     sig_map: dict[str, list[tuple[BuildResult, int]]] = defaultdict(list)
     for r in results:
         for sig, count in r.clean_signatures.items():
@@ -756,6 +867,9 @@ def generate_index(
             single.append((sig, occurrences[0][0], occurrences[0][1]))
     multi.sort(key=lambda x: (-x[1], -x[2], x[0]))
     single.sort(key=lambda x: (-x[2], x[0]))
+
+    multi_actionable = [m for m in multi if is_actionable(m[0])]
+    multi_informational = [m for m in multi if not is_actionable(m[0])]
 
     sus_map: dict[str, list[tuple[BuildResult, int]]] = defaultdict(list)
     for r in results:
@@ -777,13 +891,25 @@ def generate_index(
     out: list[str] = []
     A = out.append
 
+    # --- title ----------------------------------------------------------
     A(f"# Harvest Index — {now}")
     A("")
 
+    # --- TL;DR ----------------------------------------------------------
+    out.extend(_render_tldr(
+        by_status,
+        multi_actionable,
+        multi_informational,
+        integrity_hits,
+        diff_data,
+    ))
+
+    # --- diff (detailed) ------------------------------------------------
     if diff_lines:
         out.extend(diff_lines)
         A("")
 
+    # --- Overview --------------------------------------------------------
     A("## Overview")
     A("")
     A(f"- **Diag root:** `{diag_root}`")
@@ -799,16 +925,18 @@ def generate_index(
     )
     A(
         f"- **Warning signatures:** {len(sig_map)} total — "
-        f"{len(multi)} across multiple builds, "
+        f"{len(multi_actionable)} actionable across multiple builds, "
+        f"{len(multi_informational)} informational, "
         f"{len(single)} unique to one build"
     )
     A(
-        f"- **Suspicious signatures:** {len(sus_map)}  ·  "
+        f"- **Suspicious signatures:** {len(sus_multi)}  ·  "
         f"**integrity issues:** {len(integrity_hits)} builds  ·  "
         f"**integrity notes:** {len(note_hits)} builds"
     )
     A("")
 
+    # --- Legend ----------------------------------------------------------
     A("## Legend")
     A("")
     A("| Symbol | Status | Meaning |")
@@ -824,6 +952,7 @@ def generate_index(
       "`04-suspicious.txt`, `summary.txt`.")
     A("")
 
+    # --- Status table ----------------------------------------------------
     A("## Status table")
     A("")
     A("| # | Branch | Variant | Kernel | Driver | Status | Err | Clean (uniq/total) | Susp | Noise | Integ |")
@@ -845,6 +974,7 @@ def generate_index(
         )
     A("")
 
+    # --- Integrity issues -----------------------------------------------
     if integrity_hits:
         A("## 🧱 Integrity issues")
         A("")
@@ -864,6 +994,7 @@ def generate_index(
                 A(f"- {issue}")
             A("")
 
+    # --- Integrity notes -------------------------------------------------
     if note_hits:
         A("## 📝 Integrity notes")
         A("")
@@ -877,6 +1008,7 @@ def generate_index(
                 A(f"  - {note}")
         A("")
 
+    # --- Failures --------------------------------------------------------
     failed = [r for r in results if r.status == "failed"]
     if failed:
         A("## ❗ Failures — fix these first")
@@ -895,6 +1027,7 @@ def generate_index(
             A("```")
             A("")
 
+    # --- Suspicious signatures ------------------------------------------
     if sus_multi:
         A("## 🔍 Suspicious signatures")
         A("")
@@ -928,20 +1061,36 @@ def generate_index(
         A("</details>")
         A("")
 
+    # --- Cross-build signatures -----------------------------------------
     A("## 🔁 Cross-build warning signatures")
     A("")
     A("Warnings appearing in **more than one build**. "
       "Fixing the top signature fixes the most builds at once.")
     A("")
-    if multi:
+
+    A("### 🎯 Actionable (driver source)")
+    A("")
+    if multi_actionable:
         A("| # | Builds | Hits | Signature | Branches |")
         A("|---|-------:|-----:|-----------|----------|")
-        for i, (sig, builds, hits, combos) in enumerate(multi, 1):
+        for i, (sig, builds, hits, combos) in enumerate(multi_actionable, 1):
             A(f"| {i} | {builds} | {hits} | `{sig}` | {', '.join(sorted(combos))} |")
     else:
-        A("_No cross-build signatures._")
+        A("_None._")
     A("")
 
+    A("### ⚙️ Informational (build system / Makefile)")
+    A("")
+    if multi_informational:
+        A("| # | Builds | Hits | Signature | Branches |")
+        A("|---|-------:|-----:|-----------|----------|")
+        for i, (sig, builds, hits, combos) in enumerate(multi_informational, 1):
+            A(f"| {i} | {builds} | {hits} | `{sig}` | {', '.join(sorted(combos))} |")
+    else:
+        A("_None._")
+    A("")
+
+    # --- Unique to one build --------------------------------------------
     A("## 🧩 Unique to one build")
     A("")
     A("Warnings in exactly **one** build. Usually kernel- or config-specific.")
@@ -956,6 +1105,7 @@ def generate_index(
         A("_No unique-to-one-build warnings._")
     A("")
 
+    # --- Not built -------------------------------------------------------
     not_built = [r for r in results if r.status == "not-built"]
     if not_built:
         A("## 🚫 Not built (no make.log)")
@@ -1105,6 +1255,7 @@ def main(argv: list[str] | None = None) -> int:
     pretty_ts = datetime.now().strftime("%Y-%m-%d %H:%M")
     curr_state = _snapshot_state(results, run_ts)
 
+    diff_data: dict | None = None
     diff_lines: list[str] | None = None
     if args.diff:
         prev = _latest_snapshot(history_root)
@@ -1112,13 +1263,13 @@ def main(argv: list[str] | None = None) -> int:
             _log("no previous snapshot found — skipping diff", args.quiet)
         else:
             _, prev_state = prev
-            diff = _compute_diff(prev_state, curr_state)
-            diff_lines = render_diff_section(diff)
+            diff_data = _compute_diff(prev_state, curr_state)
+            diff_lines = render_diff_section(diff_data)
             _log(
-                f"diff vs {diff['prev_timestamp']}: "
-                f"{len(diff['resolved_sigs'])} resolved, "
-                f"{len(diff['new_sigs'])} new, "
-                f"{len(diff['status_changes'])} status changes",
+                f"diff vs {diff_data['prev_timestamp']}: "
+                f"{len(diff_data['resolved_sigs'])} resolved, "
+                f"{len(diff_data['new_sigs'])} new, "
+                f"{len(diff_data['status_changes'])} status changes",
                 args.quiet,
             )
 
@@ -1126,7 +1277,11 @@ def main(argv: list[str] | None = None) -> int:
                 append_changelog(args.changelog, diff_lines, pretty_ts)
                 _log(f"changelog: {args.changelog}", args.quiet)
 
-    generate_index(results, diag_root, harvest_root, diff_lines)
+    generate_index(
+        results, diag_root, harvest_root,
+        diff_lines=diff_lines,
+        diff_data=diff_data,
+    )
 
     index_text = (harvest_root / "INDEX.md").read_text()
     _save_snapshot(history_root, run_ts, curr_state, index_text)
