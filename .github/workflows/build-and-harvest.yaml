@@ -79,6 +79,46 @@ jobs:
             git clone -b develop --depth 1 https://github.com/megvadulthangya/nvidia-390xx-utils.git
           '
 
+      - name: Pre-install all required kernels and headers
+        run: |
+          set -uo pipefail
+
+          # --- Collect kernel prefixes from repo directory names -----------
+          declare -A KERNELS
+
+          for drv in 340xx 390xx; do
+            for variant in normal rt; do
+              root="/build/diag/nvidia-${drv}/${variant}-kernels"
+              [ -d "$root" ] || continue
+              for kdir in "$root"/linux*/; do
+                [ -d "$kdir" ] || continue
+                name=$(basename "$kdir")     # linux612-rt-nvidia-390xx
+                prefix="${name%%-nvidia-*}"  # linux612-rt
+                KERNELS["$prefix"]=1
+              done
+            done
+          done
+
+          if [ "${#KERNELS[@]}" -eq 0 ]; then
+            echo "no kernel prefixes found — nothing to pre-install"
+            exit 0
+          fi
+
+          echo "=== Kernels to pre-install ==="
+          printf '  %s\n' "${!KERNELS[@]}" | sort
+
+          # --- Install kernels + headers ---------------------------------
+          # 'linuxXX-headers' depends on 'linuxXX', so listing headers alone
+          # would pull the kernel too. We list both explicitly for clarity.
+          for prefix in "${!KERNELS[@]}"; do
+            echo "==> pacman -S --needed ${prefix} ${prefix}-headers"
+            pacman -S --noconfirm --needed "${prefix}" "${prefix}-headers" \
+              || echo "    [warn] not available: ${prefix} or ${prefix}-headers"
+          done
+
+          echo "=== Installed kernels ==="
+          pacman -Qq | grep -E '^linux.*(-headers)?$' | sort || true
+          
       - name: Build all drivers sequentially (as builder)
         env:
           WS: ${{ github.workspace }}
