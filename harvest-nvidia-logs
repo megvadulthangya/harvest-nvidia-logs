@@ -4,36 +4,22 @@ harvest-nvidia-logs
 ===================
 
 Collect and noise-filter `make.log` files produced by DKMS when building
-the legacy NVIDIA 340xx / 390xx (and future) driver branches against
-multiple Manjaro kernels.
-
-Install::
-
-    sudo install -m 755 harvest-nvidia-logs /usr/local/bin/harvest-nvidia-logs
-
-No external dependencies — Python 3.10+ stdlib only.
+NVIDIA driver branches against multiple Manjaro kernels.
 
 Changelog
 ---------
-0.5.0
-  - New `## TL;DR` section at the top of INDEX.md: state, top actionable
-    signatures, informational count, and (with --diff) a one-line "since
-    last run" summary. Makes the file LLM-friendly at a glance.
-  - Cross-build signature table split into `actionable` (driver source)
-    and `informational` (build system / Makefile noise), driven by a new
-    NOT_ACTIONABLE_PATTERNS list.
-  - `Changes since` "New builds" / "Removed builds" lists are now
-    compacted: grouped by `branch/variant` with a comma-separated name
-    list. 40 lines become 4.
-  - Warning lines longer than MAX_WARNING_LINE_LEN (300 chars) are
-    dropped — these are concatenated / wrapped make.log lines (e.g.
-    "warning: objtool: _nv...ld -m elf_x86_64 ..."), not real warnings.
-
-0.4.1
-  - Normalize Unicode quotes ('…' / "…") to ASCII in warning signatures.
-  - Normalize `.tmp_<pid>` in generic lines to `.tmp_NNN`.
-  - Stabilize `_build_key`: use the PKGBUILD directory name instead of
-    the kernel version parsed from make.log.
+0.5.1
+  - find_builds: also detect the Manjaro flat layout
+    (`PKGBUILDs/extra/linux*-extramodules/nvidia*/`) alongside the
+    legacy `nvidia-*/{normal,rt}-kernels/linux*/` layout. Both finders
+    run and results are deduplicated. Auto-detection, no CLI flag.
+  - build_name for the flat layout is `<prefix>-<nvidia-folder>`
+    (e.g. `linux61-nvidia-390xx`), matching the legacy naming so that
+    the diff keys and state.json stay consistent.
+  - Only folders starting with `nvidia` are picked up from
+    `linux*-extramodules/`; other module directories (acpi_call,
+    bbswitch, broadcom-wl, r8168, rtl8723bu, tp_smapi, vhba-module,
+    virtualbox, zfs) are ignored.
 """
 
 from __future__ import annotations
@@ -49,7 +35,7 @@ from datetime import datetime
 from pathlib import Path
 
 
-__version__ = "0.5.0"
+__version__ = "0.5.1"
 
 
 # ---------------------------------------------------------------------------
@@ -74,9 +60,6 @@ NOISE_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"warning: objtool:.*stack state mismatch"),
 ]
 
-# Cross-build warnings matching one of these are considered informational
-# (build system / Makefile noise) and will not appear under "Action needed"
-# in the TL;DR. They are still listed, but in a separate table.
 NOT_ACTIONABLE_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"warning: overriding recipe for target"),
     re.compile(r"warning: ignoring old recipe for target"),
@@ -120,11 +103,6 @@ MODPOST_MARKERS = ("MODPOST", "Building modules", "BTF [M]")
 NOTHING_TO_DO_MARKERS = ("Nothing to be done", "is up to date")
 
 TRUNCATION_LOG_THRESHOLD = 1_000_000
-
-# A real compiler warning is almost never longer than this. Lines that
-# exceed it are almost certainly concatenated / wrapped make.log output
-# (e.g. "warning: objtool: _nv...ld -m elf_x86_64 ...") and should not
-# pollute the signature tables.
 MAX_WARNING_LINE_LEN = 300
 
 
@@ -170,7 +148,6 @@ class BuildResult:
 # ---------------------------------------------------------------------------
 
 def _normalize_quotes(line: str) -> str:
-    """Convert Unicode curly quotes to their ASCII equivalents."""
     return (
         line
         .replace("\u2018", "'")
@@ -210,16 +187,20 @@ def is_noise(signature: str) -> bool:
 
 
 def is_actionable(signature: str) -> bool:
-    """True if the signature is *not* marked as build-system noise."""
     return not any(p.search(signature) for p in NOT_ACTIONABLE_PATTERNS)
 
 
 # ---------------------------------------------------------------------------
-# Discovery
+# Discovery — legacy layout + Manjaro flat layout
 # ---------------------------------------------------------------------------
 
-def find_builds(diag_root: Path) -> list[tuple[str, str, Path]]:
-    results: list[tuple[str, str, Path]] = []
+def _find_builds_legacy(diag_root: Path) -> list[tuple[str, str, str, Path]]:
+    """Legacy layout: <diag>/nvidia-*/{normal,rt}-kernels/linux*/.
+
+    Returns (branch, variant, build_name, build_dir). build_name matches
+    the PKGBUILD directory name.
+    """
+    results: list[tuple[str, str, str, Path]] = []
     for branch_dir in sorted(diag_root.glob("nvidia-*")):
         if not branch_dir.is_dir():
             continue
@@ -231,8 +212,78 @@ def find_builds(diag_root: Path) -> list[tuple[str, str, Path]]:
                 continue
             for build_dir in sorted(var_root.iterdir()):
                 if build_dir.is_dir() and build_dir.name.startswith("linux"):
-                    results.append((branch, variant, build_dir))
+                    results.append((branch, variant, build_dir.name, build_dir))
     return results
+
+
+def _branch_from_nv_folder(folder_name: str) -> str:
+    """Map an nvidia folder name to a branch label.
+
+    nvidia             -> nvidia
+    nvidia-open        -> nvidia-open
+    nvidia-390xx       -> 390xx
+    nvidia-580xx-open  -> 580xx-open
+    """
+    if folder_name == "nvidia":
+        return "nvidia"
+    if folder_name == "nvidia-open":
+        return "nvidia-open"
+    if folder_name.startswith("nvidia-"):
+        return folder_name[len("nvidia-"):]
+    return folder_name
+
+
+def _find_builds_flat(diag_root: Path) -> list[tuple[str, str, str, Path]]:
+    """Manjaro flat layout:
+        <diag>/*/linux*-extramodules/nvidia*/
+
+    Only folders starting with `nvidia` are picked up; other modules
+    (acpi_call, bbswitch, ...) are ignored.
+    """
+    results: list[tuple[str, str, str, Path]] = []
+    seen: set[Path] = set()
+
+    for extramod_dir in sorted(diag_root.rglob("linux*-extramodules")):
+        if not extramod_dir.is_dir():
+            continue
+        if not extramod_dir.name.endswith("-extramodules"):
+            continue
+        # "linux61-extramodules" -> "linux61"
+        # "linux612-rt-extramodules" -> "linux612-rt"
+        prefix = extramod_dir.name[: -len("-extramodules")]
+        variant = "rt" if prefix.endswith("-rt") else "normal"
+
+        for nv_dir in sorted(extramod_dir.iterdir()):
+            if not nv_dir.is_dir():
+                continue
+            if not nv_dir.name.startswith("nvidia"):
+                continue
+            if nv_dir in seen:
+                continue
+            seen.add(nv_dir)
+
+            branch = _branch_from_nv_folder(nv_dir.name)
+            build_name = f"{prefix}-{nv_dir.name}"   # linux61-nvidia-390xx
+            results.append((branch, variant, build_name, nv_dir))
+    return results
+
+
+def find_builds(diag_root: Path) -> list[tuple[str, str, str, Path]]:
+    """Detect builds from both the legacy and the flat layout.
+
+    Returns (branch, variant, build_name, build_dir) tuples.
+    """
+    results = _find_builds_legacy(diag_root) + _find_builds_flat(diag_root)
+
+    # Deduplicate by build_dir (a directory is only processed once)
+    seen: set[Path] = set()
+    unique: list[tuple[str, str, str, Path]] = []
+    for entry in results:
+        if entry[3] in seen:
+            continue
+        seen.add(entry[3])
+        unique.append(entry)
+    return unique
 
 
 def find_make_log(build_dir: Path) -> Path | None:
@@ -403,12 +454,12 @@ def _write_summary(r: BuildResult) -> None:
 def process_build(
     branch: str,
     variant: str,
+    build_name: str,
     build_dir: Path,
     harvest_root: Path,
     header_lines: int,
     quiet: bool = False,
 ) -> BuildResult:
-    build_name = build_dir.name
     log_path = find_make_log(build_dir)
     kernel_ver, driver_ver = (None, None)
     if log_path is not None:
@@ -471,7 +522,6 @@ def process_build(
                 error_lines.append((line_no, line))
                 continue
 
-            # Skip concatenated / wrapped log lines. Real warnings are short.
             if len(line) > MAX_WARNING_LINE_LEN:
                 continue
 
@@ -560,14 +610,10 @@ def _branch_list(branches: set[str]) -> str:
 
 
 def _build_key(r: BuildResult) -> str:
-    """Stable identity for a build across runs — PKGBUILD directory name."""
     return f"{r.branch}/{r.variant}/{r.build_name}"
 
 
 def _group_build_keys(keys: list[str]) -> list[str]:
-    """Group 'branch/variant/name' keys by 'branch/variant', returning a
-    compact bullet list. Keeps the changelog readable when 20+ builds
-    change identity at once (e.g. after an _build_key scheme change)."""
     groups: dict[str, list[str]] = defaultdict(list)
     for k in keys:
         parts = k.split("/", 2)
@@ -780,14 +826,12 @@ def _render_tldr(
     integrity_hits: list[BuildResult],
     diff_data: dict | None,
 ) -> list[str]:
-    """Produce a short, LLM-friendly summary placed at the very top."""
     out: list[str] = []
     A = out.append
 
     A("## TL;DR")
     A("")
 
-    # 1. State line
     A(
         f"- **State:** "
         f"❗{by_status['failed']} failed · "
@@ -797,14 +841,12 @@ def _render_tldr(
         f"🚫{by_status['not-built']} not-built"
     )
 
-    # 2. Integrity issues (highest signal, comes right after state)
     if integrity_hits:
         A(
             f"- **⚠ Integrity issues:** {len(integrity_hits)} build(s) "
             f"affected — see `## 🧱 Integrity issues` below"
         )
 
-    # 3. Actionable cross-build signatures (top 3)
     if multi_actionable:
         A(f"- **Action needed ({len(multi_actionable)}):**")
         for sig, builds, hits, combos in multi_actionable[:3]:
@@ -815,14 +857,12 @@ def _render_tldr(
     else:
         A("- **Action needed:** none — no actionable cross-build warnings")
 
-    # 4. Informational (build system)
     if multi_informational:
         A(
             f"- **Informational:** {len(multi_informational)} build-system "
             f"signature(s) — no driver fix needed"
         )
 
-    # 5. Since last run
     if diff_data is not None:
         A(
             f"- **Since last run (`{diff_data['prev_timestamp']}`):** "
@@ -849,7 +889,6 @@ def generate_index(
     idx_path = harvest_root / "INDEX.md"
     by_status = Counter(r.status for r in results)
 
-    # --- signature aggregation ------------------------------------------
     sig_map: dict[str, list[tuple[BuildResult, int]]] = defaultdict(list)
     for r in results:
         for sig, count in r.clean_signatures.items():
@@ -891,11 +930,9 @@ def generate_index(
     out: list[str] = []
     A = out.append
 
-    # --- title ----------------------------------------------------------
     A(f"# Harvest Index — {now}")
     A("")
 
-    # --- TL;DR ----------------------------------------------------------
     out.extend(_render_tldr(
         by_status,
         multi_actionable,
@@ -904,12 +941,10 @@ def generate_index(
         diff_data,
     ))
 
-    # --- diff (detailed) ------------------------------------------------
     if diff_lines:
         out.extend(diff_lines)
         A("")
 
-    # --- Overview --------------------------------------------------------
     A("## Overview")
     A("")
     A(f"- **Diag root:** `{diag_root}`")
@@ -936,7 +971,6 @@ def generate_index(
     )
     A("")
 
-    # --- Legend ----------------------------------------------------------
     A("## Legend")
     A("")
     A("| Symbol | Status | Meaning |")
@@ -952,7 +986,6 @@ def generate_index(
       "`04-suspicious.txt`, `summary.txt`.")
     A("")
 
-    # --- Status table ----------------------------------------------------
     A("## Status table")
     A("")
     A("| # | Branch | Variant | Kernel | Driver | Status | Err | Clean (uniq/total) | Susp | Noise | Integ |")
@@ -974,7 +1007,6 @@ def generate_index(
         )
     A("")
 
-    # --- Integrity issues -----------------------------------------------
     if integrity_hits:
         A("## 🧱 Integrity issues")
         A("")
@@ -994,7 +1026,6 @@ def generate_index(
                 A(f"- {issue}")
             A("")
 
-    # --- Integrity notes -------------------------------------------------
     if note_hits:
         A("## 📝 Integrity notes")
         A("")
@@ -1008,7 +1039,6 @@ def generate_index(
                 A(f"  - {note}")
         A("")
 
-    # --- Failures --------------------------------------------------------
     failed = [r for r in results if r.status == "failed"]
     if failed:
         A("## ❗ Failures — fix these first")
@@ -1027,7 +1057,6 @@ def generate_index(
             A("```")
             A("")
 
-    # --- Suspicious signatures ------------------------------------------
     if sus_multi:
         A("## 🔍 Suspicious signatures")
         A("")
@@ -1061,7 +1090,6 @@ def generate_index(
         A("</details>")
         A("")
 
-    # --- Cross-build signatures -----------------------------------------
     A("## 🔁 Cross-build warning signatures")
     A("")
     A("Warnings appearing in **more than one build**. "
@@ -1090,7 +1118,6 @@ def generate_index(
         A("_None._")
     A("")
 
-    # --- Unique to one build --------------------------------------------
     A("## 🧩 Unique to one build")
     A("")
     A("Warnings in exactly **one** build. Usually kernel- or config-specific.")
@@ -1105,7 +1132,6 @@ def generate_index(
         A("_No unique-to-one-build warnings._")
     A("")
 
-    # --- Not built -------------------------------------------------------
     not_built = [r for r in results if r.status == "not-built"]
     if not_built:
         A("## 🚫 Not built (no make.log)")
@@ -1234,14 +1260,14 @@ def main(argv: list[str] | None = None) -> int:
 
     builds = find_builds(diag_root)
     if not builds:
-        _warn(f"no nvidia-* branch directory found under {diag_root}")
+        _warn(f"no nvidia builds found under {diag_root}")
         return 0
 
     results: list[BuildResult] = []
-    for branch, variant, build_dir in builds:
+    for branch, variant, build_name, build_dir in builds:
         try:
             r = process_build(
-                branch, variant, build_dir,
+                branch, variant, build_name, build_dir,
                 harvest_root, args.header_lines, args.quiet,
             )
             results.append(r)

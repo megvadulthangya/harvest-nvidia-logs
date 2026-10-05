@@ -2,19 +2,18 @@
 #
 # clean-nvidia-container.sh
 #
-# Container-friendly nvidia cleanup. Mirrors the manual workflow:
-#   pacman -R  mhwd-nvidia-XXX nvidia-XXX-dkms nvidia-XXX-utils
-#              opencl-nvidia-XXX mhwd-db mhwd
-#   rm -rf /var/lib/dkms/nvidia/<version>
+# Container-friendly nvidia cleanup.
+# Removes ONLY the nvidia packages and their kernel module artifacts.
+# Never touches unrelated packages (dkms, gcc, libdrm, libglvnd, ...).
 #
-# Uses -Rdd (no dependency cascade) instead of -Rns so unrelated
-# packages (dkms, gcc, libdrm, libglvnd, ...) stay installed and
-# the next driver branch can reuse them.
+# Supports:
+#   - legacy branches:  340xx, 390xx, 470xx, 580xx, 580xx-open
+#   - current branch:   current  (nvidia-utils, nvidia-open-dkms, ...)
 #
 # Usage:
 #   clean-nvidia-container.sh [driver]
-#     driver: optional. "340xx", "390xx", "470xx", "580xx", etc.
-#             If omitted, cleans all known drivers.
+#     driver: "340xx" | "390xx" | "470xx" | "580xx" | "current"
+#             If omitted, cleans all known branches.
 #
 set -uo pipefail
 
@@ -22,19 +21,20 @@ DRIVER="${1:-}"
 
 info() { echo "[clean] $*"; }
 
-# Map driver → dkms state version
-declare -A DKMS_VER=(
-  [340xx]="340.108"
-  [390xx]="390.157"
-  [470xx]="470.256.02"
-  [580xx]="580.65.06"
-)
-
 # --- Build pacman pattern ---------------------------------------------------
 if [ -n "$DRIVER" ]; then
-  pattern="^(nvidia-${DRIVER}.*|opencl-nvidia-${DRIVER}.*|mhwd-nvidia-${DRIVER}.*|lib32-(nvidia|opencl-nvidia)-${DRIVER}.*|linux.*-nvidia-${DRIVER}.*|mhwd-db|mhwd)\$"
+  if [ "$DRIVER" = "current" ]; then
+    # Current branch: package names have no version suffix.
+    # Matches nvidia, nvidia-open, nvidia-utils, nvidia-dkms,
+    # nvidia-open-dkms, opencl-nvidia, lib32-nvidia-utils, ...
+    pattern="^(nvidia|nvidia-open|nvidia-utils|nvidia-dkms|nvidia-open-dkms|opencl-nvidia|lib32-nvidia-utils|lib32-opencl-nvidia|lib32-nvidia|mhwd-nvidia|mhwd-db|mhwd)\$"
+  else
+    # Legacy branch. The trailing .* also covers -open variants, so
+    # nvidia-580xx.* matches nvidia-580xx-open-dkms as well.
+    pattern="^(nvidia-${DRIVER}.*|opencl-nvidia-${DRIVER}.*|mhwd-nvidia-${DRIVER}.*|lib32-(nvidia|opencl-nvidia)-${DRIVER}.*|linux.*-nvidia-${DRIVER}.*|mhwd-db|mhwd)\$"
+  fi
 else
-  pattern="^(nvidia-(340xx|390xx|470xx|580xx).*|opencl-nvidia-(340xx|390xx|470xx|580xx).*|mhwd-nvidia-(340xx|390xx|470xx|580xx).*|lib32-(nvidia|opencl-nvidia)-(340xx|390xx|470xx|580xx).*|linux.*-nvidia-(340xx|390xx|470xx|580xx).*|mhwd-db|mhwd)\$"
+  pattern="^(nvidia|nvidia-open|nvidia-utils|nvidia-dkms|nvidia-open-dkms|opencl-nvidia|lib32-nvidia-utils|lib32-opencl-nvidia|lib32-nvidia|mhwd-nvidia|nvidia-(340xx|390xx|470xx|580xx|580xx-open).*|opencl-nvidia-(340xx|390xx|470xx|580xx|580xx-open).*|mhwd-nvidia-(340xx|390xx|470xx|580xx|580xx-open).*|lib32-(nvidia|opencl-nvidia)-(340xx|390xx|470xx|580xx|580xx-open).*|linux.*-nvidia-(340xx|390xx|470xx|580xx|580xx-open).*|mhwd-db|mhwd)\$"
 fi
 
 # --- 1. pacman packages -----------------------------------------------------
@@ -42,26 +42,19 @@ pkgs=$(pacman -Qq 2>/dev/null | grep -E "$pattern" | sort -u || true)
 if [ -n "$pkgs" ]; then
   info "uninstalling (no dependency cascade):"
   echo "$pkgs" | sed 's/^/    /'
+  # -Rdd: remove exactly these packages, ignore dependency checks.
   # shellcheck disable=SC2086
   pacman -Rdd --noconfirm $pkgs 2>&1 | sed 's/^/    /' || true
 else
   info "no matching packages installed"
 fi
 
-# --- 2. DKMS module state (per driver) --------------------------------------
-if [ -n "$DRIVER" ] && [ -n "${DKMS_VER[$DRIVER]:-}" ]; then
-  for d in /var/lib/dkms/nvidia /var/lib/dkms/nvidia-"${DKMS_VER[$DRIVER]}"; do
-    [ -e "$d" ] || continue
-    info "rm -rf $d"
-    rm -rf -- "$d" 2>/dev/null || true
-  done
-else
-  for d in /var/lib/dkms/nvidia*; do
-    [ -e "$d" ] || continue
-    info "rm -rf $d"
-    rm -rf -- "$d" 2>/dev/null || true
-  done
-fi
+# --- 2. DKMS state (all versions, closed + open) ----------------------------
+for d in /var/lib/dkms/nvidia /var/lib/dkms/nvidia-open; do
+  [ -e "$d" ] || continue
+  info "rm -rf $d"
+  rm -rf -- "$d" 2>/dev/null || true
+done
 
 # --- 3. DKMS registry -------------------------------------------------------
 if command -v dkms >/dev/null 2>&1; then
@@ -75,7 +68,7 @@ if command -v dkms >/dev/null 2>&1; then
       done
 fi
 
-# --- 4. Filesystem leftovers ------------------------------------------------
+# --- 4. Filesystem leftovers (nvidia only) ---------------------------------
 for p in \
   /usr/src/nvidia-* \
   /usr/share/vulkan/icd.d/nvidia_icd.json \
