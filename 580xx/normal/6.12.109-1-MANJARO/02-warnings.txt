@@ -1,2 +1,1 @@
        7  warning: this use of 'defined' may not be portable [-Wexpansion-to-defined]
-       1  warning: objtool: _nv0000  LD [M]  /build/official/extra/linux612-extramodules/nvidia-580xx/src/nvidia/580.178.04/build/nvidia-drm.o

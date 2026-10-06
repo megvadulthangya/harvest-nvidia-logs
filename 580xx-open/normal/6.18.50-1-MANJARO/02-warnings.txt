@@ -2,14 +2,6 @@
        7  warning: this use of 'defined' may not be portable [-Wexpansion-to-defined]
        3  warning: 'virtual void DisplayPort::EvoMainLink::clearFlushMode(unsigned int, bool)' was hidden [-Woverloaded-virtual=]
        3  warning: 'virtual bool DisplayPort::EvoMainLink::setFlushMode()' was hidden [-Woverloaded-virtual=]
-       3  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK builuild
-       3  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK builRETHUNK build
-       2  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK builild
-       2  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK bd
-       2  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK builETHUNK build
-       2  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK builHUNK build
-       2  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATIild
-       2  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK buK build
        1  warning: variable 'DIDT10Count' set but not used [-Wunused-but-set-variable=]
        1  warning: variable 'extDTDCount' set but not used [-Wunused-but-set-variable=]
        1  warning: variable 'i' set but not used [-Wunused-but-set-variable=]
@@ -35,46 +27,3 @@
        1  warning: no previous prototype for 'libspdm_x509_get_issuer_orgnization_name' [-Wmissing-prototypes]
        1  warning: no previous prototype for 'libspdm_x509_get_signature_algorithm' [-Wmissing-prototypes]
        1  warning: no previous prototype for 'libspdm_gen_x509_csr' [-Wmissing-prototypes]
-       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK ild
-       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK bud
-       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNKd
-       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATIOd
-       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGd
-       1  warning: objtool: <func>+0xADDR: 'naked' return found in MId
-       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK buTHUNK build
-       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNGATION_RETHUNK build
-       1  warning: objtool: <func>+0xADDR: 'naked' return found in
-       1  warning: objtool: <func>+0xADDR: 'naked' return found in MIT
-       1  warning: objtool: <func>+0xADDR: 'naked' return foundild
-       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK buTIGATION_RETHUNK build
-       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGAT
-       1  warning: objtool: <func>+0xADDR: 'naked' return found
-       1  warning: objtool: <func>+0xADDR
-       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_Rild
-       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK buiON_RETHUNK build
-       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK bui build
-       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITuild
-       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK buiION_RETHUNK build
-       1  warning: objtool: <func>+0xADDR: 'naked' return founduild
-       1  warning: objtool: <func>+0xADDR: 'naked' return fouild
-       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGbuild
-       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITild
-       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK buiild
-       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITd
-       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_
-       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIild
-       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIld
-       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK
-       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK buiIGATION_RETHUNK build
-       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETd
-       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_REuild
-       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK buION_RETHUNK build
-       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK builUNK build
-       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK bETHUNK build
-       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK bMITIGATION_RETHUNK build
-       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK bTHUNK build
-       1  warning: objtool: _ZN11DisplayPort26ClearPayloadIdTableMessage16parseResponseAckEPNS_14EncodedMessageEPNS_15BiHUNK build
-       1  warning: objtool: _ZN11DisplayPort14MessageManager7Message16MessageEventSink13messageFailedEPS1_PNS_7NakDataE+
-       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGUNK build
-       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK builON_RETHUNK build
-       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHU MITIGATION_RETHUNK build

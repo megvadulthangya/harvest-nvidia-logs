@@ -10,8 +10,8 @@ log lines:       47962
 build dir:       /build/official/extra/linux612-extramodules/nvidia-580xx
 
 errors:          0
-warnings clean:  8  (unique: 2)
-warnings noise:  47474  (unique: 1)
+warnings clean:  7  (unique: 1)
+warnings noise:  47475  (unique: 1)
 suspicious:      0  (unique: 0)
 modules on disk: 5  [nvidia, nvidia-drm, nvidia-modeset, nvidia-peermem, nvidia-uvm]
 log LD [M]:      ['nvidia', 'nvidia-drm', 'nvidia-modeset', 'nvidia-peermem', 'nvidia-uvm']
@@ -20,4 +20,3 @@ log cached:      no
 
 === Top clean warning groups ===
        7  warning: this use of 'defined' may not be portable [-Wexpansion-to-defined]
-       1  warning: objtool: _nv0000  LD [M]  /build/official/extra/linux612-extramodules/nvidia-580xx/src/nvidia/580.178.04/build/nvidia-drm.o

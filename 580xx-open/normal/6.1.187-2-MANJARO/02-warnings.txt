@@ -1,7 +1,14 @@
      390  warning: variable 'aggregate_mask' set but not used [-Wunused-but-set-variable=]
+       5  warning: objtool:ETHUNK build
        3  warning: 'virtual void DisplayPort::EvoMainLink::clearFlushMode(unsigned int, bool)' was hidden [-Woverloaded-virtual=]
        3  warning: 'virtual bool DisplayPort::EvoMainLink::setFlushMode()' was hidden [-Woverloaded-virtual=]
+       3  warning: objtool:HUNK build
        1  warning: variable 'DIDT10Count' set but not used [-Wunused-but-set-variable=]
        1  warning: variable 'extDTDCount' set but not used [-Wunused-but-set-variable=]
        1  warning: variable 'i' set but not used [-Wunused-but-set-variable=]
        1  warning: unused variable 'size' [-Wunused-variable]
+       1  warning: objtool:
+       1  warning: objtool:uild
+       1  warning: objtool:K build
+       1  warning: objtool: build
+       1  warning: objtool:d

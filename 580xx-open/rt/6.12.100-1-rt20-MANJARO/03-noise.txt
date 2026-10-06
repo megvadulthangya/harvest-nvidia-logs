@@ -1,2 +1,30 @@
-    8879  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK build
-      57  warning: objtool: <func>+0xADDR: data relocation to !ENDBR: <func>+0xADDR
+   10936  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK build
+     137  warning: objtool: <func>+0xADDR: data relocation to !ENDBR: <func>+0xADDR
+       6  warning: objturn found in MITIGATION_RETHUNK build
+       4  warning: objtTIGATION_RETHUNK build
+       4  warning: objteturn found in MITIGATION_RETHUNK build
+       3  warning: objt_RETHUNK build
+       3  warning: objtund in MITIGATION_RETHUNK build
+       3  warning: objtturn found in MITIGATION_RETHUNK build
+       2  warning: objtGATION_RETHUNK build
+       2  warning: objtON_RETHUNK build
+       2  warning: objt found in MITIGATION_RETHUNK build
+       2  warning: objtn MITIGATION_RETHUNK build
+       2  warning: objtfound in MITIGATION_RETHUNK build
+       2  warning: objtIGATION_RETHUNK build
+       2  warning: objtreturn found in MITIGATION_RETHUNK build
+       2  warning: objt' return found in MITIGATION_RETHUNK build
+       2  warning: objtn found in MITIGATION_RETHUNK build
+       1  warning: objtTION_RETHUNK build
+       1  warning: objtRETHUNK build
+       1  warning: objtATION_RETHUNK build
+       1  warning: objtd in MITIGATION_RETHUNK build
+       1  warning: objt MITIGATION_RETHUNK build
+       1  warning: objtMITIGATION_RETHUNK build
+       1  warning: objtin MITIGATION_RETHUNK build
+       1  warning: objtITIGATION_RETHUNK build
+       1  warning: objt in MITIGATION_RETHUNK build
+       1  warning: objtng: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK build
+       1  warning: objtION_RETHUNK build
+       1  warning: objted' return found in MITIGATION_RETHUNK build
+       1  warning: objtrn found in MITIGATION_RETHUNK build

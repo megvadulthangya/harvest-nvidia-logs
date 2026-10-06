@@ -1,26 +1,16 @@
      390  warning: variable 'aggregate_mask' set but not used [-Wunused-but-set-variable=]
-       9  warning: objtd
+      10  warning: objtd
+       8  warning: objtld
        7  warning: this use of 'defined' may not be portable [-Wexpansion-to-defined]
-       7  warning: objt build
-       6  warning: objtuild
-       6  warning: objtbuild
-       5  warning: objtld
-       4  warning: objt
-       4  warning: objtTHUNK build
-       4  warning: objt in MITIGATION_RETHUNK build
+       6  warning: objt
+       6  warning: objt build
+       5  warning: objtUNK build
+       4  warning: objtNK build
+       4  warning: objtild
+       4  warning: objtuild
        3  warning: 'virtual void DisplayPort::EvoMainLink::clearFlushMode(unsigned int, bool)' was hidden [-Woverloaded-virtual=]
        3  warning: 'virtual bool DisplayPort::EvoMainLink::setFlushMode()' was hidden [-Woverloaded-virtual=]
-       3  warning: objtild
-       3  warning: objtin MITIGATION_RETHUNK build
-       3  warning: objtHUNK build
-       3  warning: objtturn found in MITIGATION_RETHUNK build
-       3  warning: <func>+0xADDR
-       2  warning: objtTIGATION_RETHUNK build
-       2  warning: objtIGATION_RETHUNK build
-       2  warning: objtMITIGATION_RETHUNK build
-       2  warning: objteturn found in MITIGATION_RETHUNK build
-       2  warning: objtION_RETHUNK build
-       2  warning: objtON_RETHUNK build
+       2  warning: objtK build
        1  warning: variable 'DIDT10Count' set but not used [-Wunused-but-set-variable=]
        1  warning: variable 'extDTDCount' set but not used [-Wunused-but-set-variable=]
        1  warning: variable 'i' set but not used [-Wunused-but-set-variable=]
@@ -46,21 +36,6 @@
        1  warning: no previous prototype for 'libspdm_x509_get_issuer_orgnization_name' [-Wmissing-prototypes]
        1  warning: no previous prototype for 'libspdm_x509_get_signature_algorithm' [-Wmissing-prototypes]
        1  warning: no previous prototype for 'libspdm_gen_x509_csr' [-Wmissing-prototypes]
-       1  warning: objtUNK build
-       1  warning: objtNK build
-       1  warning: objtound in MITIGATION_RETHUNK build
-       1  warning: objtK build
-       1  warning: objtd in MITIGATION_RETHUNK build
-       1  warning: objtITIGATION_RETHUNK build
-       1  warning: objt MITIGATION_RETHUNK build
-       1  warning: objtGATION_RETHUNK build
-       1  warning: objtfound in MITIGATION_RETHUNK build
-       1  warning: objt_RETHUNK build
-       1  warning: objtATION_RETHUNK build
-       1  warning: objtn found in MITIGATION_RETHUNK build
-       1  warning: objtrn found in MITIGATION_RETHUNK build
-       1  warning: objtn MITIGATION_RETHUNK build
-       1  warning: objtund in MITIGATION_RETHUNK build
-       1  warning: objt' return found in MITIGATION_RETHUNK build
-       1  warning: objtreturn found in MITIGATION_RETHUNK build
-       1  warning: objtTION_RETHUNK build
+       1  warning: objtHUNK build
+       1  warning: objtbuild
+       1  warning: objtTHUNK build

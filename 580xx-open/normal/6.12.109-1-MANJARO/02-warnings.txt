@@ -1,22 +1,7 @@
      390  warning: variable 'aggregate_mask' set but not used [-Wunused-but-set-variable=]
        7  warning: this use of 'defined' may not be portable [-Wexpansion-to-defined]
-       5  warning: objtoolild
-       5  warning: objtooluild
-       4  warning: objtool build
-       4  warning: objtool
-       4  warning: objtoold
        3  warning: 'virtual void DisplayPort::EvoMainLink::clearFlushMode(unsigned int, bool)' was hidden [-Woverloaded-virtual=]
        3  warning: 'virtual bool DisplayPort::EvoMainLink::setFlushMode()' was hidden [-Woverloaded-virtual=]
-       3  warning: objtoolNK build
-       3  warning: objtoolRETHUNK build
-       2  warning: objtoolld
-       2  warning: objtoolATION_RETHUNK build
-       2  warning: objtoolTHUNK build
-       2  warning: objtoolMITIGATION_RETHUNK build
-       2  warning: objtool MITIGATION_RETHUNK build
-       2  warning: objtoolurn found in MITIGATION_RETHUNK build
-       2  warning: objtoolx0
-       2  warning: <func>+0xADDR
        1  warning: variable 'DIDT10Count' set but not used [-Wunused-but-set-variable=]
        1  warning: variable 'extDTDCount' set but not used [-Wunused-but-set-variable=]
        1  warning: variable 'i' set but not used [-Wunused-but-set-variable=]
@@ -42,27 +27,3 @@
        1  warning: no previous prototype for 'libspdm_x509_get_issuer_orgnization_name' [-Wmissing-prototypes]
        1  warning: no previous prototype for 'libspdm_x509_get_signature_algorithm' [-Wmissing-prototypes]
        1  warning: no previous prototype for 'libspdm_gen_x509_csr' [-Wmissing-prototypes]
-       1  warning: objtoolHUNK build
-       1  warning: objtoolON_RETHUNK build
-       1  warning: objtoolfound in MITIGATION_RETHUNK build
-       1  warning: objtoolund in MITIGATION_RETHUNK build
-       1  warning: objtoolIGATION_RETHUNK build
-       1  warning: objtoolturn found in MITIGATION_RETHUNK build
-       1  warning: objtoold in MITIGATION_RETHUNK build
-       1  warning: objtoolK build
-       1  warning: objtoolN_RETHUNK build
-       1  warning: objtoolin MITIGATION_RETHUNK build
-       1  warning: objtoold' return found in MITIGATION_RETHUNK build
-       1  warning: objtoolUNK build
-       1  warning: objtool objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK build
-       1  warning: objtoolION_RETHUNK build
-       1  warning: objtoolnd in MITIGATION_RETHUNK build
-       1  warning: objtoolreturn found in MITIGATION_RETHUNK build
-       1  warning: objtoolTION_RETHUNK build
-       1  warning: objtooln found in MITIGATION_RETHUNK build
-       1  warning: objtoolrn found in MITIGATION_RETHUNK build
-       1  warning: objtool found in MITIGATION_RETHUNK build
-       1  warning: objtool' return found in MITIGATION_RETHUNK build
-       1  warning: objtooleturn found in MITIGATION_RETHUNK build
-       1  warning: objtool0xADDR
-       1  warning: objtool0

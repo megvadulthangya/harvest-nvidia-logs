@@ -1,1 +1,0 @@
-       1  warning: objtool: _nv00  LD [M]  /build/official/extra/linux66-rt-extramodules/nvidia-580xx/src/nvidia/580.178.04/build/nvidia-peermem.o

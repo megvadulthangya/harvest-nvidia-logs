@@ -1,1 +1,1 @@
-   47474  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK build
+   47475  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK build

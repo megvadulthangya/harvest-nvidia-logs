@@ -1,4 +1,5 @@
    65370  warning: objtool: <func>+0xADDR: data relocation to !ENDBR: <func>+0xADDR
    29028  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK build
       76  warning: objtool: <func>+0xADDR: relocation to !ENDBR: <func>+0xADDR
+      30  warning: objtool: <func>+0xADDR: indirect jump found in MITIGATION_RETPOLINE build
       18  warning: objtool: <func>+0xADDR: sibling call from callable instruction with modified stack frame

@@ -10,8 +10,8 @@ log lines:       95216
 build dir:       /build/official/extra/linux612-extramodules/nvidia-390xx
 
 errors:          0
-warnings clean:  113  (unique: 76)
-warnings noise:  94492  (unique: 4)
+warnings clean:  83  (unique: 75)
+warnings noise:  94522  (unique: 5)
 suspicious:      0  (unique: 0)
 modules on disk: 4  [nvidia, nvidia-drm, nvidia-modeset, nvidia-uvm]
 log LD [M]:      ['nvidia', 'nvidia-drm', 'nvidia-modeset', 'nvidia-uvm']
@@ -19,7 +19,6 @@ log MODPOST:     yes
 log cached:      no
 
 === Top clean warning groups ===
-      30  warning: objtool: <func>+0xADDR: indirect jump found in MITIGATION_RETPOLINE build
        5  warning: Please avoid flushing system-wide workqueues. [-Wattribute-warning]
        3  warning: 'static' is not at beginning of declaration [-Wold-style-declaration]
        3  warning: implicit conversion from 'uvm_fault_access_type_t' to 'uvm_fault_type_t' [-Wenum-conversion]
@@ -44,3 +43,4 @@ log cached:      no
        1  warning: no previous prototype for 'uvm_api_disable_peer_access' [-Wmissing-prototypes]
        1  warning: no previous prototype for 'uvm8_test_flush_deferred_work' [-Wmissing-prototypes]
        1  warning: no previous prototype for 'uvm_channel_manager_print_pending_pushes' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'uvm_va_range_remove_gpu_va_space_managed' [-Wmissing-prototypes]

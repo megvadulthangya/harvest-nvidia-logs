@@ -3,16 +3,16 @@ driver:          580xx-open
 variant:         normal
 kernel:          7.3.0-rc2-1-MANJARO
 nvidia version:  580.178.04
-status:          suspicious
+status:          warnings
 log path:        /build/official/extra/linux73-extramodules/nvidia-580xx-open/src/nvidia/580.178.04/7.3.0-rc2-1-MANJARO/x86_64/log/make.log
-log size:        2103330 bytes
-log lines:       21628
+log size:        2103240 bytes
+log lines:       21626
 build dir:       /build/official/extra/linux73-extramodules/nvidia-580xx-open
 
 errors:          0
 warnings clean:  593  (unique: 30)
 warnings noise:  13821  (unique: 2)
-suspicious:      4  (unique: 2)
+suspicious:      0  (unique: 0)
 modules on disk: 5  [nvidia, nvidia-drm, nvidia-modeset, nvidia-peermem, nvidia-uvm]
 log LD [M]:      ['nvidia', 'nvidia-drm', 'nvidia-modeset', 'nvidia-peermem', 'nvidia-uvm']
 log MODPOST:     yes
@@ -44,7 +44,3 @@ log cached:      no
        1  warning: no previous prototype for 'libspdm_decode_base64' [-Wmissing-prototypes]
        1  warning: no previous prototype for 'libspdm_x509_get_common_name' [-Wmissing-prototypes]
        1  warning: no previous prototype for 'libspdm_x509_get_organization_name' [-Wmissing-prototypes]
-
-=== Suspicious groups ===
-       2  make[1]: hostname: No such file or directory
-       2  date: version.mk: No such file or directory
