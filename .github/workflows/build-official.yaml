@@ -3,7 +3,7 @@ name: Build Manjaro official NVIDIA modules and harvest logs
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 4 * * 0'   # weekly, Sunday 04:00 UTC (one hour after custom)
+    - cron: '0 4 * * 0'
 
 concurrency:
   group: build-official
@@ -29,12 +29,10 @@ jobs:
       - name: Prepare pacman (multilib + testing branch)
         run: |
           set -euxo pipefail
-
           if ! grep -q '^\[multilib\]' /etc/pacman.conf; then
             sed -i 's/^#\(\[multilib\]\)/\1/' /etc/pacman.conf
             sed -i 's/^#\(Include = \/etc\/pacman\.d\/mirrorlist\)/\1/' /etc/pacman.conf
           fi
-
           pacman-mirrors --api -B testing -R || true
           pacman -Syy --noconfirm
           pacman -Suu --noconfirm
@@ -54,7 +52,6 @@ jobs:
           mkdir -p /build/harvest-official /build/official
           chown -R builder:builder /build
 
-          # Fetch previous official-results branch (for --diff / changelog)
           if git clone --depth 1 --branch official-results \
               "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
               /tmp/prev 2>/dev/null; then
@@ -65,7 +62,6 @@ jobs:
             chown -R builder:builder /build/harvest-official
           fi
 
-          # Clone the Manjaro flat PKGBUILDs repo
           sudo -u builder -H bash -c '
             set -euxo pipefail
             git clone --depth 1 \
@@ -73,12 +69,12 @@ jobs:
               /build/official
           '
 
-      - name: Pre-install kernels and headers
+      - name: Pre-install available kernels and headers
         run: |
           set -uo pipefail
 
+          # Discover every linux*-extramodules prefix in the repo
           declare -A KERNELS
-
           for extramod in /build/official/extra/linux*-extramodules; do
             [ -d "$extramod" ] || continue
             prefix=$(basename "$extramod" | sed 's/-extramodules$//')
@@ -90,70 +86,35 @@ jobs:
             exit 0
           fi
 
-          echo "=== Kernels to pre-install ==="
+          echo "=== Kernel prefixes in repo ==="
           printf '  %s\n' "${!KERNELS[@]}" | sort
 
+          # Install each; only the successful ones go into AVAILABLE_FILE.
+          AVAILABLE_FILE=/tmp/available-kernels.txt
+          : > "$AVAILABLE_FILE"
+
           for prefix in "${!KERNELS[@]}"; do
-            echo "==> pacman -S --needed ${prefix} ${prefix}-headers"
-            pacman -S --noconfirm --needed "${prefix}" "${prefix}-headers" \
-              || echo "    [warn] not available: ${prefix} or ${prefix}-headers"
+            echo "==> trying: ${prefix} ${prefix}-headers"
+            if pacman -S --noconfirm --needed "${prefix}" "${prefix}-headers" 2>/dev/null; then
+              echo "$prefix" >> "$AVAILABLE_FILE"
+              echo "    [ok] ${prefix}"
+            else
+              echo "    [warn] not available (EOL?): ${prefix}"
+            fi
           done
 
-          echo "=== Installed kernels ==="
-          pacman -Qq | grep -E '^linux.*(-headers)?$' | sort || true
+          chmod 644 "$AVAILABLE_FILE"
 
-      - name: Build official utils and kernel modules sequentially
-        env:
-          WS: ${{ github.workspace }}
+          echo "=== Available (buildable) kernels ==="
+          cat "$AVAILABLE_FILE"
+
+      - name: Build official utils and kernel modules
         run: |
-          set -uo pipefail
-          sudo -u builder -H bash <<BUILD_SCRIPT
-          set -uo pipefail
-          WS="${WS}"
-
-          # utils-name → list of nvidia kernel-module folders it provides
-          declare -A UTILS_TO_MODULES
-          UTILS_TO_MODULES[nvidia-390xx-utils]="nvidia-390xx"
-          UTILS_TO_MODULES[nvidia-470xx-utils]="nvidia-470xx"
-          UTILS_TO_MODULES[nvidia-580xx-utils]="nvidia-580xx nvidia-580xx-open"
-          UTILS_TO_MODULES[nvidia-utils]="nvidia nvidia-open"
-
-          for utils_name in nvidia-390xx-utils nvidia-470xx-utils nvidia-580xx-utils nvidia-utils; do
-            utils_dir="/build/official/extra/\${utils_name}"
-            [ -d "\$utils_dir" ] || { echo "    [warn] no utils: \${utils_name}"; continue; }
-
-            echo "::group::Building \${utils_name}"
-
-            # ---- 1. utils (installs -dkms) --------------------------------
-            cd "\$utils_dir"
-            makepkg -si --noconfirm --skippgpcheck \\
-              || echo "    [warn] utils build failed: \${utils_name}"
-
-            # ---- 2. kernel modules for this branch ------------------------
-            for nv_folder in \${UTILS_TO_MODULES[\$utils_name]}; do
-              for extramod in /build/official/extra/linux*-extramodules; do
-                kdir="\$extramod/\$nv_folder"
-                [ -d "\$kdir" ] || continue
-                echo "==> \$(basename "\$extramod") / \$nv_folder"
-                cd "\$kdir"
-                makepkg -s --noconfirm --skippgpcheck \\
-                  || echo "    [warn] build failed: \$kdir"
-              done
-            done
-
-            # ---- 3. cleanup after this branch -----------------------------
-            case "\$utils_name" in
-              nvidia-390xx-utils) drv=390xx ;;
-              nvidia-470xx-utils) drv=470xx ;;
-              nvidia-580xx-utils) drv=580xx ;;
-              nvidia-utils)       drv=current ;;
-            esac
-            echo "==> cleanup after \${drv}"
-            sudo bash "\${WS}/clean-nvidia-container.sh" "\$drv" || true
-
-            echo "::endgroup::"
-          done
-          BUILD_SCRIPT
+          set -euxo pipefail
+          chmod +x "${WORKSPACE}/build-official.sh"
+          sudo -u builder -H bash "${WORKSPACE}/build-official.sh" \
+            "${WORKSPACE}" \
+            /tmp/available-kernels.txt
 
       - name: Harvest
         run: |

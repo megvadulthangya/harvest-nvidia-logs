@@ -49,14 +49,10 @@ else
   info "no matching packages installed"
 fi
 
-# --- 2. DKMS state (all versions, closed + open) ----------------------------
-for d in /var/lib/dkms/nvidia /var/lib/dkms/nvidia-open; do
-  [ -e "$d" ] || continue
-  info "rm -rf $d"
-  rm -rf -- "$d" 2>/dev/null || true
-done
-
-# --- 3. DKMS registry -------------------------------------------------------
+# --- 2. DKMS registry FIRST ------------------------------------------------
+# `dkms remove` must run BEFORE we nuke /var/lib/dkms, otherwise the
+# registry is gone and the auto-built .ko files stay in
+# /lib/modules/<kver>/extramodules/ forever.
 if command -v dkms >/dev/null 2>&1; then
   dkms status 2>/dev/null \
     | awk -F'[/,]' '/nvidia/{print $1"/"$2}' \
@@ -67,6 +63,14 @@ if command -v dkms >/dev/null 2>&1; then
         dkms remove "$v" --all 2>&1 | sed 's/^/    /' || true
       done
 fi
+
+# --- 3. DKMS state leftovers -----------------------------------------------
+# Whatever dkms remove could not clean up (orphaned entries, partial trees).
+for d in /var/lib/dkms/nvidia /var/lib/dkms/nvidia-open; do
+  [ -e "$d" ] || continue
+  info "rm -rf $d"
+  rm -rf -- "$d" 2>/dev/null || true
+done
 
 # --- 4. Filesystem leftovers (nvidia only) ---------------------------------
 for p in \
