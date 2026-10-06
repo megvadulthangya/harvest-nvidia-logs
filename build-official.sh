@@ -12,8 +12,9 @@
 #   Complex branches (580xx, current): pkgbase contains BOTH a closed and
 #     an open DKMS subpackage, both providing 'NVIDIA-MODULE' and thus
 #     conflicting. Strategy: build once with -s, install closed only,
-#     build closed modules, cleanup, install open only, build open
-#     modules, cleanup.
+#     build closed modules, cleanup, reinstall userspace (needed by the
+#     open DKMS's dependency on nvidia-utils=${pkgver}), install open
+#     DKMS only, build open modules, cleanup.
 #
 set -uo pipefail
 
@@ -41,11 +42,14 @@ build_kernel_modules() {
 # ---------------------------------------------------------------------------
 # Pre-install runtime deps that the built packages expect.
 # makepkg -si handles this automatically; our manual pacman -U does not.
+# inetutils provides the `hostname` binary used by some open kernel
+# module Makefiles (utils.mk) during the build.
 # ---------------------------------------------------------------------------
 info "pre-installing common nvidia runtime deps"
 sudo pacman -S --noconfirm --needed \
     libglvnd egl-wayland egl-gbm egl-x11 \
     desktop-file-utils \
+    inetutils \
     || info "some deps not available, continuing"
 
 # ---------------------------------------------------------------------------
@@ -107,6 +111,14 @@ build_complex() {
     # ---- Open half --------------------------------------------------------
     echo "::group::Building ${utils_name} (open)"
     cd "$utils_dir"
+
+    # The open DKMS depends on the userspace package from the same pkgbase
+    # (`nvidia-utils=${pkgver}`). The cleanup after the closed phase
+    # removed everything, so reinstall the userspace package from the
+    # .pkg.tar.zst files that are still on disk.
+    sudo pacman -U --noconfirm \
+        "${base}-utils-"*.pkg.tar.zst \
+        || echo "    [warn] userspace reinstall failed: ${utils_name}"
 
     # The open .pkg.tar.zst is still on disk from the earlier build.
     sudo pacman -U --noconfirm \

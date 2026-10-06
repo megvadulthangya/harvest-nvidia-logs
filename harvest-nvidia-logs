@@ -8,6 +8,17 @@ NVIDIA driver branches against multiple Manjaro kernels.
 
 Changelog
 ---------
+0.5.2
+  - is_noise: keyword-based matching for fragmented objtool warnings.
+    The open kernel modules (libspdm, DisplayPort C++) emit so much
+    objtool output that `make -jN` interleaves lines and produces
+    fragments like "warning: objtd" or "warning: objtoolK build".
+    These fragments still contain distinguishing keywords, so we match
+    on those in addition to the structured NOISE_PATTERNS.
+  - is_ignored_suspicious: a small IGNORE list for cosmetic Manjaro
+    PKGBUILD diagnostics ("date: version.mk: No such file or directory",
+    "make[N]: hostname: No such file or directory") that are not real
+    problems but match the generic SUSPICIOUS_RE.
 0.5.1
   - find_builds: also detect the Manjaro flat layout
     (`PKGBUILDs/extra/linux*-extramodules/nvidia*/`) alongside the
@@ -35,7 +46,7 @@ from datetime import datetime
 from pathlib import Path
 
 
-__version__ = "0.5.1"
+__version__ = "0.5.2"
 
 
 # ---------------------------------------------------------------------------
@@ -59,6 +70,26 @@ NOISE_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"warning: objtool:.*call to __fentry__"),
     re.compile(r"warning: objtool:.*stack state mismatch"),
 ]
+
+# Additional noise keywords for fragmented / interleaved objtool
+# warnings. Used by is_noise() as a fallback when a line does not
+# match one of the structured NOISE_PATTERNS because parallel make
+# jobs have interleaved output.
+NOISE_KEYWORDS: tuple[str, ...] = (
+    "MITIGATION_RETHUNK",
+    "RETHUNK build",
+    "naked' return found",
+    "missing int3 after ret",
+    "data relocation to !ENDBR",
+    "relocation to !ENDBR",
+    "unannotated intra-function call",
+    "stack state mismatch",
+    "indirect jump found in",
+    "return with modified stack frame",
+    "unreachable instruction",
+    "sibling call from callable instruction",
+    "call to __fentry__",
+)
 
 NOT_ACTIONABLE_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"warning: overriding recipe for target"),
@@ -97,6 +128,14 @@ SUSPICIOUS_RE = re.compile(
     r"|missing .*\.h\b"
     r"|\bnot found\b"
 )
+
+# Lines matching these are ignored by the suspicious detector even
+# though they match SUSPICIOUS_RE. They come from cosmetic build
+# system quirks, not real problems.
+IGNORE_SUSPICIOUS_PATTERNS: list[re.Pattern[str]] = [
+    re.compile(r"date: version\.mk: No such file or directory"),
+    re.compile(r"make\[\d+\]: hostname: No such file or directory"),
+]
 
 LD_M_RE = re.compile(r"LD \[M\]\s+(\S+)")
 MODPOST_MARKERS = ("MODPOST", "Building modules", "BTF [M]")
@@ -183,7 +222,13 @@ def normalize_generic(line: str) -> str:
 
 
 def is_noise(signature: str) -> bool:
-    return any(p.search(signature) for p in NOISE_PATTERNS)
+    if any(p.search(signature) for p in NOISE_PATTERNS):
+        return True
+    return any(kw in signature for kw in NOISE_KEYWORDS)
+
+
+def is_ignored_suspicious(line: str) -> bool:
+    return any(p.search(line) for p in IGNORE_SUSPICIOUS_PATTERNS)
 
 
 def is_actionable(signature: str) -> bool:
@@ -535,6 +580,8 @@ def process_build(
                 continue
 
             if SUSPICIOUS_RE.search(line):
+                if is_ignored_suspicious(line):
+                    continue
                 sig = normalize_generic(line)
                 if sig:
                     suspicious_counter[sig] += 1
