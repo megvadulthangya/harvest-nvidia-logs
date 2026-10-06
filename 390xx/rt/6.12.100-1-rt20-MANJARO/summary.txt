@@ -10,8 +10,8 @@ log lines:       95216
 build dir:       /build/official/extra/linux612-rt-extramodules/nvidia-390xx
 
 errors:          0
-warnings clean:  113  (unique: 76)
-warnings noise:  94492  (unique: 4)
+warnings clean:  114  (unique: 77)
+warnings noise:  94491  (unique: 4)
 suspicious:      0  (unique: 0)
 modules on disk: 4  [nvidia, nvidia-drm, nvidia-modeset, nvidia-uvm]
 log LD [M]:      ['nvidia', 'nvidia-drm', 'nvidia-modeset', 'nvidia-uvm']

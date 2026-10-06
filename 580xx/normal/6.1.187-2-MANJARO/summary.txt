@@ -5,13 +5,13 @@ kernel:          6.1.187-2-MANJARO
 nvidia version:  580.178.04
 status:          clean
 log path:        /build/official/extra/linux61-extramodules/nvidia-580xx/src/nvidia/580.178.04/6.1.187-2-MANJARO/x86_64/log/make.log
-log size:        22269775 bytes
+log size:        22269772 bytes
 log lines:       138441
 build dir:       /build/official/extra/linux61-extramodules/nvidia-580xx
 
 errors:          0
 warnings clean:  0  (unique: 0)
-warnings noise:  137982  (unique: 8)
+warnings noise:  137981  (unique: 8)
 suspicious:      0  (unique: 0)
 modules on disk: 5  [nvidia, nvidia-drm, nvidia-modeset, nvidia-peermem, nvidia-uvm]
 log LD [M]:      ['nvidia', 'nvidia-drm', 'nvidia-modeset', 'nvidia-peermem', 'nvidia-uvm']

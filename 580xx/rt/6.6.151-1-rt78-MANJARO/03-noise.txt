@@ -1,1 +1,1 @@
-   47475  warning: objtool: <func>+0xADDR: 'naked' return found in RETHUNK build
+   47474  warning: objtool: <func>+0xADDR: 'naked' return found in RETHUNK build

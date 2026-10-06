@@ -1,0 +1,50 @@
+build:           linux612-nvidia-580xx-open
+driver:          580xx-open
+variant:         normal
+kernel:          6.12.109-1-MANJARO
+nvidia version:  580.178.04
+status:          suspicious
+log path:        /build/official/extra/linux612-extramodules/nvidia-580xx-open/src/nvidia/580.178.04/6.12.109-1-MANJARO/x86_64/log/make.log
+log size:        3480779 bytes
+log lines:       20501
+build dir:       /build/official/extra/linux612-extramodules/nvidia-580xx-open
+
+errors:          0
+warnings clean:  496  (unique: 68)
+warnings noise:  8653  (unique: 2)
+suspicious:      4  (unique: 2)
+modules on disk: 5  [nvidia, nvidia-drm, nvidia-modeset, nvidia-peermem, nvidia-uvm]
+log LD [M]:      ['nvidia', 'nvidia-drm', 'nvidia-modeset', 'nvidia-peermem', 'nvidia-uvm']
+log MODPOST:     yes
+log cached:      no
+
+=== Top clean warning groups ===
+     390  warning: variable 'aggregate_mask' set but not used [-Wunused-but-set-variable=]
+       7  warning: this use of 'defined' may not be portable [-Wexpansion-to-defined]
+       5  warning: objtoolild
+       5  warning: objtooluild
+       4  warning: objtool build
+       4  warning: objtool
+       4  warning: objtoold
+       3  warning: 'virtual void DisplayPort::EvoMainLink::clearFlushMode(unsigned int, bool)' was hidden [-Woverloaded-virtual=]
+       3  warning: 'virtual bool DisplayPort::EvoMainLink::setFlushMode()' was hidden [-Woverloaded-virtual=]
+       3  warning: objtoolNK build
+       3  warning: objtoolRETHUNK build
+       2  warning: objtoolld
+       2  warning: objtoolATION_RETHUNK build
+       2  warning: objtoolTHUNK build
+       2  warning: objtoolMITIGATION_RETHUNK build
+       2  warning: objtool MITIGATION_RETHUNK build
+       2  warning: objtoolurn found in MITIGATION_RETHUNK build
+       2  warning: objtoolx0
+       2  warning: <func>+0xADDR
+       1  warning: variable 'DIDT10Count' set but not used [-Wunused-but-set-variable=]
+       1  warning: variable 'extDTDCount' set but not used [-Wunused-but-set-variable=]
+       1  warning: variable 'i' set but not used [-Wunused-but-set-variable=]
+       1  warning: no previous prototype for 'libspdm_random_seed' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'libspdm_check_crypto_backend' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'libspdm_hkdf_sha256_extract_and_expand' [-Wmissing-prototypes]
+
+=== Suspicious groups ===
+       2  make[1]: hostname: No such file or directory
+       2  date: version.mk: No such file or directory

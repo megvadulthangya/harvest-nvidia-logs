@@ -74,3 +74,4 @@
        1  warning: no previous prototype for 'nvkms_open_common' [-Wmissing-prototypes]
        1  warning: no previous prototype for 'nvkms_close_common' [-Wmissing-prototypes]
        1  warning: no previous prototype for 'nvkms_ioctl_common' [-Wmissing-prototypes]
+       1  warning: objtool: _nv0016  LD [M]  /build/official/extra/linux612-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/nvidia-drm.o
