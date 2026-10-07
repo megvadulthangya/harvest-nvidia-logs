@@ -8,20 +8,20 @@ NVIDIA driver branches against multiple Manjaro kernels.
 
 Changelog
 ---------
+0.5.4
+  - is_noise: broaden the fragment detection from
+    `signature.startswith("warning: objtool:")` to
+    `signature.startswith("warning: objt")`. The previous prefix missed
+    fragments like "warning: objtTHUNK build", "warning: objtd",
+    "warning: objtld" and "warning: objtool  LD [M] ..." (space instead
+    of colon) left over from interleaved parallel `make -jN` output.
+
 0.5.3
   - is_noise: structural check for fragmented objtool warnings.
-    Real objtool warnings always match the shape
-    `warning: objtool: <symbol>+0x<hex>: <message>`. Fragments left
-    over from interleaved parallel `make -jN` output (e.g.
-    "warning: objtool:", "warning: objtool:K build",
-    "warning: objtool:uild") lack this structure and are now
-    classified as noise regardless of their content.
 
 0.5.2
   - is_noise: keyword-based matching for fragmented objtool warnings.
-  - is_ignored_suspicious: ignore cosmetic Manjaro PKGBUILD diagnostics
-    ("date: version.mk: No such file or directory",
-    "make[N]: hostname: No such file or directory").
+  - is_ignored_suspicious: ignore cosmetic Manjaro PKGBUILD diagnostics.
 
 0.5.1
   - find_builds: also detect the Manjaro flat layout.
@@ -45,7 +45,7 @@ from datetime import datetime
 from pathlib import Path
 
 
-__version__ = "0.5.3"
+__version__ = "0.5.4"
 
 
 # ---------------------------------------------------------------------------
@@ -78,9 +78,6 @@ NOT_ACTIONABLE_PATTERNS: list[re.Pattern[str]] = [
     ),
 ]
 
-# Additional noise keywords for fragmented / interleaved objtool
-# warnings. Used by is_noise() as a fallback when a line does not
-# match one of the structured NOISE_PATTERNS.
 NOISE_KEYWORDS: tuple[str, ...] = (
     "MITIGATION_RETHUNK",
     "RETHUNK build",
@@ -132,9 +129,6 @@ SUSPICIOUS_RE = re.compile(
     r"|\bnot found\b"
 )
 
-# Lines matching these are ignored by the suspicious detector even
-# though they match SUSPICIOUS_RE. They come from cosmetic build
-# system quirks, not real problems.
 IGNORE_SUSPICIOUS_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"date: version\.mk: No such file or directory"),
     re.compile(r"make\[\d+\]: hostname: No such file or directory"),
@@ -232,7 +226,11 @@ def is_noise(signature: str) -> bool:
     # Structural check: a real objtool warning always contains
     # "objtool: <symbol>+0x<hex>:". Fragments left over from
     # interleaved parallel make output fail this and are dropped.
-    if signature.startswith("warning: objtool:") and not RE_VALID_OBJTOOL.match(signature):
+    # Accept any "warning: objt..." prefix (not just "warning: objtool:")
+    # so fragments like "warning: objtd", "warning: objtTHUNK build",
+    # and "warning: objtool  LD [M] ..." (space instead of colon) are
+    # also rejected.
+    if signature.startswith("warning: objt") and not RE_VALID_OBJTOOL.match(signature):
         return True
     return False
 
