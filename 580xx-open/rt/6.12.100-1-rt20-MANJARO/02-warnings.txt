@@ -1,16 +1,7 @@
      390  warning: variable 'aggregate_mask' set but not used [-Wunused-but-set-variable=]
-      10  warning: objtd
-       8  warning: objtld
        7  warning: this use of 'defined' may not be portable [-Wexpansion-to-defined]
-       6  warning: objt
-       6  warning: objt build
-       5  warning: objtUNK build
-       4  warning: objtNK build
-       4  warning: objtild
-       4  warning: objtuild
        3  warning: 'virtual void DisplayPort::EvoMainLink::clearFlushMode(unsigned int, bool)' was hidden [-Woverloaded-virtual=]
        3  warning: 'virtual bool DisplayPort::EvoMainLink::setFlushMode()' was hidden [-Woverloaded-virtual=]
-       2  warning: objtK build
        1  warning: variable 'DIDT10Count' set but not used [-Wunused-but-set-variable=]
        1  warning: variable 'extDTDCount' set but not used [-Wunused-but-set-variable=]
        1  warning: variable 'i' set but not used [-Wunused-but-set-variable=]
@@ -36,6 +27,6 @@
        1  warning: no previous prototype for 'libspdm_x509_get_issuer_orgnization_name' [-Wmissing-prototypes]
        1  warning: no previous prototype for 'libspdm_x509_get_signature_algorithm' [-Wmissing-prototypes]
        1  warning: no previous prototype for 'libspdm_gen_x509_csr' [-Wmissing-prototypes]
-       1  warning: objtHUNK build
-       1  warning: objtbuild
+       1  warning: objtd
        1  warning: objtTHUNK build
+       1  warning: objtld

@@ -1,0 +1,10 @@
+DKMS (dkms-3.4.4) make.log for nvidia/580.178.04 for kernel 7.2.9-1-MANJARO (x86_64)
+Wed Oct  7 16:46:03 UTC 2026
+
+Building module(s)
+# command: 'make' -j4 IGNORE_PREEMPT_RT_PRESENCE=1 NV_EXCLUDE_BUILD_MODULES='' KERNEL_UNAME=7.2.9-1-MANJARO modules
+make[1]: Entering directory '/usr/lib/modules/7.2.9-1-MANJARO/build'
+make[2]: Entering directory '/build/official/extra/linux72-extramodules/nvidia-580xx/src/nvidia/580.178.04/build'
+  SYMLINK nvidia/nv-kernel.o
+  SYMLINK nvidia-modeset/nv-modeset-kernel.o
+ CONFTEST: set_pages_uc

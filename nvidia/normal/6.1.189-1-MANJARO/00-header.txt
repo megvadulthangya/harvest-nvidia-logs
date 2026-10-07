@@ -1,0 +1,10 @@
+DKMS (dkms-3.4.4) make.log for nvidia/615.71.09 for kernel 6.1.189-1-MANJARO (x86_64)
+Wed Oct  7 18:08:48 UTC 2026
+
+Building module(s)
+# command: 'make' -j4 IGNORE_PREEMPT_RT_PRESENCE=1 NV_EXCLUDE_BUILD_MODULES='' KERNEL_UNAME=6.1.189-1-MANJARO modules
+  SYMLINK /build/official/extra/linux61-extramodules/nvidia/src/nvidia/615.71.09/build/nvidia/nv-kernel.o
+  SYMLINK /build/official/extra/linux61-extramodules/nvidia/src/nvidia/615.71.09/build/nvidia-modeset/nv-modeset-kernel.o
+ CONFTEST: set_pages_uc
+ CONFTEST: set_memory_uc
+ CONFTEST: set_memory_array_uc

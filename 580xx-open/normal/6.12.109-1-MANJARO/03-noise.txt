@@ -1,2 +1,0 @@
-   13502  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK build
-     286  warning: objtool: <func>+0xADDR: data relocation to !ENDBR: <func>+0xADDR

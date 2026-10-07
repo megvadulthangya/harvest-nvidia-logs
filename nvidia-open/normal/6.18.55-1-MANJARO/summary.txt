@@ -1,0 +1,26 @@
+build:           linux618-nvidia-open
+driver:          nvidia-open
+variant:         normal
+kernel:          6.18.55-1-MANJARO
+nvidia version:  615.71.09
+status:          warnings
+log path:        /build/official/extra/linux618-extramodules/nvidia-open/src/nvidia/615.71.09/6.18.55-1-MANJARO/x86_64/log/make.log
+log size:        1454851 bytes
+log lines:       13615
+build dir:       /build/official/extra/linux618-extramodules/nvidia-open
+
+errors:          0
+warnings clean:  7  (unique: 5)
+warnings noise:  11672  (unique: 1)
+suspicious:      0  (unique: 0)
+modules on disk: 5  [nvidia, nvidia-drm, nvidia-modeset, nvidia-peermem, nvidia-uvm]
+log LD [M]:      ['nvidia', 'nvidia-drm', 'nvidia-modeset', 'nvidia-peermem', 'nvidia-uvm']
+log MODPOST:     yes
+log cached:      no
+
+=== Top clean warning groups ===
+       2  warning: format '%d' expects argument of type 'int', but argument 2 has type 'uvm_processor_id_t' [-Wformat=]
+       2  warning: format '%d' expects argument of type 'int', but argument 3 has type 'uvm_processor_id_t' [-Wformat=]
+       1  warning: variable 'DIDT10Count' set but not used [-Wunused-but-set-variable=]
+       1  warning: variable 'extDTDCount' set but not used [-Wunused-but-set-variable=]
+       1  warning: variable 'i' set but not used [-Wunused-but-set-variable=]

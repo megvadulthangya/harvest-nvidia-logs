@@ -1,0 +1,46 @@
+build:           linux618-nvidia-580xx-open
+driver:          580xx-open
+variant:         normal
+kernel:          6.18.55-1-MANJARO
+nvidia version:  580.178.04
+status:          warnings
+log path:        /build/official/extra/linux618-extramodules/nvidia-580xx-open/src/nvidia/580.178.04/6.18.55-1-MANJARO/x86_64/log/make.log
+log size:        2037444 bytes
+log lines:       20501
+build dir:       /build/official/extra/linux618-extramodules/nvidia-580xx-open
+
+errors:          0
+warnings clean:  428  (unique: 29)
+warnings noise:  13151  (unique: 54)
+suspicious:      0  (unique: 0)
+modules on disk: 5  [nvidia, nvidia-drm, nvidia-modeset, nvidia-peermem, nvidia-uvm]
+log LD [M]:      ['nvidia', 'nvidia-drm', 'nvidia-modeset', 'nvidia-peermem', 'nvidia-uvm']
+log MODPOST:     yes
+log cached:      no
+
+=== Top clean warning groups ===
+     390  warning: variable 'aggregate_mask' set but not used [-Wunused-but-set-variable=]
+       7  warning: this use of 'defined' may not be portable [-Wexpansion-to-defined]
+       3  warning: 'virtual void DisplayPort::EvoMainLink::clearFlushMode(unsigned int, bool)' was hidden [-Woverloaded-virtual=]
+       3  warning: 'virtual bool DisplayPort::EvoMainLink::setFlushMode()' was hidden [-Woverloaded-virtual=]
+       1  warning: variable 'DIDT10Count' set but not used [-Wunused-but-set-variable=]
+       1  warning: variable 'extDTDCount' set but not used [-Wunused-but-set-variable=]
+       1  warning: variable 'i' set but not used [-Wunused-but-set-variable=]
+       1  warning: no previous prototype for 'libspdm_random_seed' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'libspdm_check_crypto_backend' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'libspdm_hkdf_sha256_extract_and_expand' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'libspdm_hkdf_sha384_extract_and_expand' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'libspdm_hkdf_sha512_extract_and_expand' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'libspdm_ec_set_pub_key' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'libspdm_ec_get_pub_key' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'libspdm_ec_check_key' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'libspdm_x509_construct_certificate' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'libspdm_x509_construct_certificate_stack' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'libspdm_x509_free' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'libspdm_x509_stack_free' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'libspdm_encode_base64' [-Wmissing-prototypes]
+       1  warning: unused variable 'size' [-Wunused-variable]
+       1  warning: no previous prototype for 'libspdm_decode_base64' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'libspdm_x509_get_common_name' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'libspdm_x509_get_organization_name' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'libspdm_x509_get_tbs_cert' [-Wmissing-prototypes]

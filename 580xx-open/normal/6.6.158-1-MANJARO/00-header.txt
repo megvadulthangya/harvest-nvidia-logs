@@ -1,0 +1,10 @@
+DKMS (dkms-3.4.4) make.log for nvidia/580.178.04 for kernel 6.6.158-1-MANJARO (x86_64)
+Wed Oct  7 17:30:26 UTC 2026
+
+Building module(s)
+# command: 'make' -j4 IGNORE_PREEMPT_RT_PRESENCE=1 NV_EXCLUDE_BUILD_MODULES='' KERNEL_UNAME=6.6.158-1-MANJARO modules
+make -C src/nvidia
+make -C src/nvidia-modeset
+make[1]: Entering directory '/build/official/extra/linux66-extramodules/nvidia-580xx-open/src/nvidia/580.178.04/build/src/nvidia'
+make[1]: Entering directory '/build/official/extra/linux66-extramodules/nvidia-580xx-open/src/nvidia/580.178.04/build/src/nvidia-modeset'
+ [ nvidia-modeset    ]  XZ           _out/Linux_x86_64/maxwell_shaders.xz
