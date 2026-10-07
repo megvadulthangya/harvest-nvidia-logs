@@ -8,29 +8,28 @@ NVIDIA driver branches against multiple Manjaro kernels.
 
 Changelog
 ---------
+0.5.3
+  - is_noise: structural check for fragmented objtool warnings.
+    Real objtool warnings always match the shape
+    `warning: objtool: <symbol>+0x<hex>: <message>`. Fragments left
+    over from interleaved parallel `make -jN` output (e.g.
+    "warning: objtool:", "warning: objtool:K build",
+    "warning: objtool:uild") lack this structure and are now
+    classified as noise regardless of their content.
+
 0.5.2
   - is_noise: keyword-based matching for fragmented objtool warnings.
-    The open kernel modules (libspdm, DisplayPort C++) emit so much
-    objtool output that `make -jN` interleaves lines and produces
-    fragments like "warning: objtd" or "warning: objtoolK build".
-    These fragments still contain distinguishing keywords, so we match
-    on those in addition to the structured NOISE_PATTERNS.
-  - is_ignored_suspicious: a small IGNORE list for cosmetic Manjaro
-    PKGBUILD diagnostics ("date: version.mk: No such file or directory",
-    "make[N]: hostname: No such file or directory") that are not real
-    problems but match the generic SUSPICIOUS_RE.
+  - is_ignored_suspicious: ignore cosmetic Manjaro PKGBUILD diagnostics
+    ("date: version.mk: No such file or directory",
+    "make[N]: hostname: No such file or directory").
+
 0.5.1
-  - find_builds: also detect the Manjaro flat layout
-    (`PKGBUILDs/extra/linux*-extramodules/nvidia*/`) alongside the
-    legacy `nvidia-*/{normal,rt}-kernels/linux*/` layout. Both finders
-    run and results are deduplicated. Auto-detection, no CLI flag.
-  - build_name for the flat layout is `<prefix>-<nvidia-folder>`
-    (e.g. `linux61-nvidia-390xx`), matching the legacy naming so that
-    the diff keys and state.json stay consistent.
-  - Only folders starting with `nvidia` are picked up from
-    `linux*-extramodules/`; other module directories (acpi_call,
-    bbswitch, broadcom-wl, r8168, rtl8723bu, tp_smapi, vhba-module,
-    virtualbox, zfs) are ignored.
+  - find_builds: also detect the Manjaro flat layout.
+
+0.4.1
+  - Normalize Unicode quotes to ASCII in warning signatures.
+  - Normalize `.tmp_<pid>` in generic lines to `.tmp_NNN`.
+  - Stabilize `_build_key`: use the PKGBUILD directory name.
 """
 
 from __future__ import annotations
@@ -46,7 +45,7 @@ from datetime import datetime
 from pathlib import Path
 
 
-__version__ = "0.5.2"
+__version__ = "0.5.3"
 
 
 # ---------------------------------------------------------------------------
@@ -71,10 +70,17 @@ NOISE_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"warning: objtool:.*stack state mismatch"),
 ]
 
+NOT_ACTIONABLE_PATTERNS: list[re.Pattern[str]] = [
+    re.compile(r"warning: overriding recipe for target"),
+    re.compile(r"warning: ignoring old recipe for target"),
+    re.compile(
+        r"warning: the compiler differs from the one used to build the kernel"
+    ),
+]
+
 # Additional noise keywords for fragmented / interleaved objtool
 # warnings. Used by is_noise() as a fallback when a line does not
-# match one of the structured NOISE_PATTERNS because parallel make
-# jobs have interleaved output.
+# match one of the structured NOISE_PATTERNS.
 NOISE_KEYWORDS: tuple[str, ...] = (
     "MITIGATION_RETHUNK",
     "RETHUNK build",
@@ -91,13 +97,10 @@ NOISE_KEYWORDS: tuple[str, ...] = (
     "call to __fentry__",
 )
 
-NOT_ACTIONABLE_PATTERNS: list[re.Pattern[str]] = [
-    re.compile(r"warning: overriding recipe for target"),
-    re.compile(r"warning: ignoring old recipe for target"),
-    re.compile(
-        r"warning: the compiler differs from the one used to build the kernel"
-    ),
-]
+# A real objtool warning always has this structure:
+#   warning: objtool: <symbol>+0x<hex>: <message>
+# Fragments from interleaved parallel make output do not.
+RE_VALID_OBJTOOL = re.compile(r"^warning: objtool:\s+\S+\+0x[0-9a-fA-F]+:")
 
 RE_BEFORE_WARNING = re.compile(r"^.*(?=warning:)")
 RE_QUOTED_PATH = re.compile(r"'/[^']*'")
@@ -224,15 +227,22 @@ def normalize_generic(line: str) -> str:
 def is_noise(signature: str) -> bool:
     if any(p.search(signature) for p in NOISE_PATTERNS):
         return True
-    return any(kw in signature for kw in NOISE_KEYWORDS)
-
-
-def is_ignored_suspicious(line: str) -> bool:
-    return any(p.search(line) for p in IGNORE_SUSPICIOUS_PATTERNS)
+    if any(kw in signature for kw in NOISE_KEYWORDS):
+        return True
+    # Structural check: a real objtool warning always contains
+    # "objtool: <symbol>+0x<hex>:". Fragments left over from
+    # interleaved parallel make output fail this and are dropped.
+    if signature.startswith("warning: objtool:") and not RE_VALID_OBJTOOL.match(signature):
+        return True
+    return False
 
 
 def is_actionable(signature: str) -> bool:
     return not any(p.search(signature) for p in NOT_ACTIONABLE_PATTERNS)
+
+
+def is_ignored_suspicious(line: str) -> bool:
+    return any(p.search(line) for p in IGNORE_SUSPICIOUS_PATTERNS)
 
 
 # ---------------------------------------------------------------------------
@@ -240,11 +250,6 @@ def is_actionable(signature: str) -> bool:
 # ---------------------------------------------------------------------------
 
 def _find_builds_legacy(diag_root: Path) -> list[tuple[str, str, str, Path]]:
-    """Legacy layout: <diag>/nvidia-*/{normal,rt}-kernels/linux*/.
-
-    Returns (branch, variant, build_name, build_dir). build_name matches
-    the PKGBUILD directory name.
-    """
     results: list[tuple[str, str, str, Path]] = []
     for branch_dir in sorted(diag_root.glob("nvidia-*")):
         if not branch_dir.is_dir():
@@ -262,13 +267,6 @@ def _find_builds_legacy(diag_root: Path) -> list[tuple[str, str, str, Path]]:
 
 
 def _branch_from_nv_folder(folder_name: str) -> str:
-    """Map an nvidia folder name to a branch label.
-
-    nvidia             -> nvidia
-    nvidia-open        -> nvidia-open
-    nvidia-390xx       -> 390xx
-    nvidia-580xx-open  -> 580xx-open
-    """
     if folder_name == "nvidia":
         return "nvidia"
     if folder_name == "nvidia-open":
@@ -279,12 +277,6 @@ def _branch_from_nv_folder(folder_name: str) -> str:
 
 
 def _find_builds_flat(diag_root: Path) -> list[tuple[str, str, str, Path]]:
-    """Manjaro flat layout:
-        <diag>/*/linux*-extramodules/nvidia*/
-
-    Only folders starting with `nvidia` are picked up; other modules
-    (acpi_call, bbswitch, ...) are ignored.
-    """
     results: list[tuple[str, str, str, Path]] = []
     seen: set[Path] = set()
 
@@ -293,8 +285,6 @@ def _find_builds_flat(diag_root: Path) -> list[tuple[str, str, str, Path]]:
             continue
         if not extramod_dir.name.endswith("-extramodules"):
             continue
-        # "linux61-extramodules" -> "linux61"
-        # "linux612-rt-extramodules" -> "linux612-rt"
         prefix = extramod_dir.name[: -len("-extramodules")]
         variant = "rt" if prefix.endswith("-rt") else "normal"
 
@@ -308,19 +298,14 @@ def _find_builds_flat(diag_root: Path) -> list[tuple[str, str, str, Path]]:
             seen.add(nv_dir)
 
             branch = _branch_from_nv_folder(nv_dir.name)
-            build_name = f"{prefix}-{nv_dir.name}"   # linux61-nvidia-390xx
+            build_name = f"{prefix}-{nv_dir.name}"
             results.append((branch, variant, build_name, nv_dir))
     return results
 
 
 def find_builds(diag_root: Path) -> list[tuple[str, str, str, Path]]:
-    """Detect builds from both the legacy and the flat layout.
-
-    Returns (branch, variant, build_name, build_dir) tuples.
-    """
     results = _find_builds_legacy(diag_root) + _find_builds_flat(diag_root)
 
-    # Deduplicate by build_dir (a directory is only processed once)
     seen: set[Path] = set()
     unique: list[tuple[str, str, str, Path]] = []
     for entry in results:
