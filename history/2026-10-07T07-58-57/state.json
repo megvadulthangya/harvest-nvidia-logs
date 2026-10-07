@@ -1,0 +1,233 @@
+{
+  "builds": {
+    "340xx/normal/linux61-nvidia-340xx": {
+      "clean_total": 2,
+      "clean_uniq": 2,
+      "err_count": 0,
+      "noise_total": 1,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "340xx/normal/linux612-nvidia-340xx": {
+      "clean_total": 6,
+      "clean_uniq": 3,
+      "err_count": 0,
+      "noise_total": 1,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "340xx/normal/linux618-nvidia-340xx": {
+      "clean_total": 3,
+      "clean_uniq": 3,
+      "err_count": 0,
+      "noise_total": 0,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "340xx/normal/linux66-nvidia-340xx": {
+      "clean_total": 6,
+      "clean_uniq": 3,
+      "err_count": 0,
+      "noise_total": 1,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "340xx/normal/linux71-nvidia-340xx": {
+      "clean_total": 3,
+      "clean_uniq": 3,
+      "err_count": 0,
+      "noise_total": 0,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "340xx/normal/linux72-nvidia-340xx": {
+      "clean_total": 3,
+      "clean_uniq": 3,
+      "err_count": 0,
+      "noise_total": 0,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "340xx/normal/linux73-nvidia-340xx": {
+      "clean_total": 3,
+      "clean_uniq": 3,
+      "err_count": 0,
+      "noise_total": 0,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "340xx/rt/linux61-rt-nvidia-340xx": {
+      "clean_total": 2,
+      "clean_uniq": 2,
+      "err_count": 0,
+      "noise_total": 1,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "340xx/rt/linux612-rt-nvidia-340xx": {
+      "clean_total": 6,
+      "clean_uniq": 3,
+      "err_count": 0,
+      "noise_total": 1,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "340xx/rt/linux66-rt-nvidia-340xx": {
+      "clean_total": 6,
+      "clean_uniq": 3,
+      "err_count": 0,
+      "noise_total": 1,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "390xx/normal/linux61-nvidia-390xx": {
+      "clean_total": 0,
+      "clean_uniq": 0,
+      "err_count": 0,
+      "noise_total": 164942,
+      "status": "clean",
+      "suspicious_total": 0
+    },
+    "390xx/normal/linux612-nvidia-390xx": {
+      "clean_total": 5,
+      "clean_uniq": 1,
+      "err_count": 0,
+      "noise_total": 94474,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "390xx/normal/linux618-nvidia-390xx": {
+      "clean_total": 1,
+      "clean_uniq": 1,
+      "err_count": 0,
+      "noise_total": 94474,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "390xx/normal/linux66-nvidia-390xx": {
+      "clean_total": 5,
+      "clean_uniq": 1,
+      "err_count": 0,
+      "noise_total": 94474,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "390xx/normal/linux71-nvidia-390xx": {
+      "clean_total": 1,
+      "clean_uniq": 1,
+      "err_count": 0,
+      "noise_total": 94474,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "390xx/normal/linux72-nvidia-390xx": {
+      "clean_total": 1,
+      "clean_uniq": 1,
+      "err_count": 0,
+      "noise_total": 94474,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "390xx/normal/linux73-nvidia-390xx": {
+      "clean_total": 1,
+      "clean_uniq": 1,
+      "err_count": 0,
+      "noise_total": 94474,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "390xx/rt/linux61-rt-nvidia-390xx": {
+      "clean_total": 0,
+      "clean_uniq": 0,
+      "err_count": 0,
+      "noise_total": 164942,
+      "status": "clean",
+      "suspicious_total": 0
+    },
+    "390xx/rt/linux612-rt-nvidia-390xx": {
+      "clean_total": 5,
+      "clean_uniq": 1,
+      "err_count": 0,
+      "noise_total": 94474,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "390xx/rt/linux66-rt-nvidia-390xx": {
+      "clean_total": 5,
+      "clean_uniq": 1,
+      "err_count": 0,
+      "noise_total": 94474,
+      "status": "warnings",
+      "suspicious_total": 0
+    }
+  },
+  "clean_signatures": {
+    "warning: Please avoid flushing system-wide workqueues. [-Wattribute-warning]": {
+      "builds": [
+        "340xx/normal/linux612-nvidia-340xx",
+        "340xx/normal/linux66-nvidia-340xx",
+        "340xx/rt/linux612-rt-nvidia-340xx",
+        "340xx/rt/linux66-rt-nvidia-340xx",
+        "390xx/normal/linux612-nvidia-390xx",
+        "390xx/normal/linux66-nvidia-390xx",
+        "390xx/rt/linux612-rt-nvidia-390xx",
+        "390xx/rt/linux66-rt-nvidia-390xx"
+      ],
+      "hits": 36
+    },
+    "warning: ignoring old recipe for target '<path>'": {
+      "builds": [
+        "340xx/normal/linux61-nvidia-340xx",
+        "340xx/normal/linux612-nvidia-340xx",
+        "340xx/normal/linux66-nvidia-340xx",
+        "340xx/rt/linux61-rt-nvidia-340xx",
+        "340xx/rt/linux612-rt-nvidia-340xx",
+        "340xx/rt/linux66-rt-nvidia-340xx"
+      ],
+      "hits": 6
+    },
+    "warning: ignoring old recipe for target 'Module.symvers'": {
+      "builds": [
+        "340xx/normal/linux618-nvidia-340xx",
+        "340xx/normal/linux71-nvidia-340xx",
+        "340xx/normal/linux72-nvidia-340xx",
+        "340xx/normal/linux73-nvidia-340xx"
+      ],
+      "hits": 4
+    },
+    "warning: ignoring return value of 'refcount_sub_and_test' declared with attribute 'warn_unused_result' [-Wunused-result]": {
+      "builds": [
+        "340xx/normal/linux618-nvidia-340xx",
+        "340xx/normal/linux71-nvidia-340xx",
+        "340xx/normal/linux72-nvidia-340xx",
+        "340xx/normal/linux73-nvidia-340xx",
+        "390xx/normal/linux618-nvidia-390xx",
+        "390xx/normal/linux71-nvidia-390xx",
+        "390xx/normal/linux72-nvidia-390xx",
+        "390xx/normal/linux73-nvidia-390xx"
+      ],
+      "hits": 8
+    },
+    "warning: overriding recipe for target '<path>'": {
+      "builds": [
+        "340xx/normal/linux61-nvidia-340xx",
+        "340xx/normal/linux612-nvidia-340xx",
+        "340xx/normal/linux66-nvidia-340xx",
+        "340xx/rt/linux61-rt-nvidia-340xx",
+        "340xx/rt/linux612-rt-nvidia-340xx",
+        "340xx/rt/linux66-rt-nvidia-340xx"
+      ],
+      "hits": 6
+    },
+    "warning: overriding recipe for target 'Module.symvers'": {
+      "builds": [
+        "340xx/normal/linux618-nvidia-340xx",
+        "340xx/normal/linux71-nvidia-340xx",
+        "340xx/normal/linux72-nvidia-340xx",
+        "340xx/normal/linux73-nvidia-340xx"
+      ],
+      "hits": 4
+    }
+  },
+  "timestamp": "2026-10-07T07-58-57"
+}

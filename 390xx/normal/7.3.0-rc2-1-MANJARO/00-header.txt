@@ -1,5 +1,5 @@
 DKMS (dkms-3.4.3) make.log for nvidia/390.157 for kernel 7.3.0-rc2-1-MANJARO (x86_64)
-Mon Oct  5 14:24:52 UTC 2026
+Wed Oct  7 07:53:21 UTC 2026
 
 Building module(s)
 # command: 'make' -j4 IGNORE_PREEMPT_RT_PRESENCE=1 NV_EXCLUDE_BUILD_MODULES='__EXCLUDE_MODULES' KERNEL_UNAME=7.3.0-rc2-1-MANJARO modules
@@ -7,4 +7,4 @@ make -C /lib/modules/7.3.0-rc2-1-MANJARO/build M=/build/diag/nvidia-390xx/normal
 make[1]: Entering directory '/usr/lib/modules/7.3.0-rc2-1-MANJARO/build'
 make[2]: Entering directory '/build/diag/nvidia-390xx/normal-kernels/linux73-nvidia-390xx/src/nvidia/390.157/build'
 uname -a
-Linux b9df6055ffde 6.17.0-1022-azure #22-Ubuntu SMP Mon Jul 27 17:24:03 UTC 2026 x86_64 GNU/Linux
+Linux 517205ea6f0a 6.17.0-1022-azure #22-Ubuntu SMP Mon Jul 27 17:24:03 UTC 2026 x86_64 GNU/Linux

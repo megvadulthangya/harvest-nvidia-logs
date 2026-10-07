@@ -1,5 +1,5 @@
 DKMS (dkms-3.4.3) make.log for nvidia/340.108 for kernel 7.3.0-rc2-1-MANJARO (x86_64)
-Mon Oct  5 13:58:42 UTC 2026
+Wed Oct  7 07:31:39 UTC 2026
 
 Building module(s)
 # command: make -j4 KERNELRELEASE=7.3.0-rc2-1-MANJARO module KERNEL_UNAME=7.3.0-rc2-1-MANJARO; make -C uvm module KERNEL_UNAME=7.3.0-rc2-1-MANJARO KBUILD_EXTMOD=/build/diag/nvidia-340xx/normal-kernels/linux73-nvidia-340xx/src/nvidia/340.108/build/uvm

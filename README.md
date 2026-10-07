@@ -1,4 +1,4 @@
-# Harvest Index — 2026-10-05 14:31:39 
+# Harvest Index — 2026-10-07 07:58:57 
 
 ## TL;DR
 
@@ -7,21 +7,21 @@
     - 8 builds · 36 hits · `warning: Please avoid flushing system-wide workqueues. [-Wattribute-warning]`
     - 8 builds · 8 hits · `warning: ignoring return value of 'refcount_sub_and_test' declared with attribute 'warn_unused_result' [-Wunused-result]`
 - **Informational:** 4 build-system signature(s) — no driver fix needed
-- **Since last run (`2026-10-05T12-30-02`):** ✅1 resolved · 🆕0 new · 🔀1 status changes
+- **Since last run (`2026-10-05T14-31-39`):** ✅0 resolved · 🆕0 new · 🔀0 status changes
 
-## 📊 Changes since 2026-10-05T12-30-02
+## 📊 Changes since 2026-10-05T14-31-39
 
-### ✅ Resolved signatures (1)
+### ✅ Resolved signatures (0)
 
-- `warning: objtool: _nv002ld -m elf_x86_64 -z noexecstack --no-warn-rwx-segments -r -o /build/diag/nvidia-390xx/normal-kernels/linux61-nvidia-390xx/src/nvidia/390.157/build/nvidia-modeset/nv-modeset-interface.o /build/diag/nvidia-390xx/normal-kernels/linux61-nvidia-390xx/src/nvidia/390.157/build/nvidia-modeset/nvidia-modeset-linux.o`
+_None._
 
 ### 🆕 New signatures (0)
 
 _None._
 
-### 🔀 Status changes (1)
+### 🔀 Status changes (0)
 
-- `390xx/normal/linux61-nvidia-390xx`: ⚠ warnings → ✅ clean
+_None._
 
 
 ## Overview
