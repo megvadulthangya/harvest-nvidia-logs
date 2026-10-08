@@ -59,7 +59,7 @@ from urllib.parse import quote
 from urllib.request import Request, urlopen
 
 
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 
 
 # ---------------------------------------------------------------------------
@@ -97,6 +97,9 @@ SOURCE_INCLUDE_PATTERNS = [
 ]
 
 KERNEL_NAMESPACE_PATTERN = re.compile(r"linux\d+(-rt)?-extramodules$")
+
+# Legacy layout: linuxYY[-rt]-nvidia-XXX
+LEGACY_KERNEL_DIR_PATTERN = re.compile(r"^(linux\d+)(-rt)?-nvidia-(.+)$")
 
 
 # ---------------------------------------------------------------------------
@@ -677,6 +680,16 @@ def _branch_label_from_kernel_dir(name: str, prefix: str) -> str:
     return name
 
 
+def _normalize_branch_label(label: str) -> str:
+    """Strip -open suffix and normalize nvidia-open -> nvidia so that
+    closed and open kernel modules match the same utils branch."""
+    if label.endswith("-open"):
+        return label[:-len("-open")]
+    if label == "nvidia-open":
+        return "nvidia"
+    return label
+
+
 def _kernel_prefix_variant(prefix_dir_name: str) -> tuple[str, str]:
     base = prefix_dir_name[: -len("-extramodules")]
     variant = "rt" if base.endswith("-rt") else "normal"
@@ -708,24 +721,40 @@ def _parse_all_pkgbuilds(cfg: Config) -> list[PackageInfo]:
         kernel_prefix = ""
         variant = ""
 
-        extramod_idx = None
-        for i, p in enumerate(parent.parts):
-            if p.endswith("-extramodules"):
-                extramod_idx = i
-                break
-
-        if extramod_idx is not None and extramod_idx + 1 < len(parent.parts):
-            kernel_prefix, variant = _kernel_prefix_variant(parent.parts[extramod_idx])
-            nv_dir = parent.parts[extramod_idx + 1]
-            branch_label = _branch_label_from_kernel_dir(nv_dir, kernel_prefix)
+        # --- Legacy layout detection ------------------------------------
+        # .../nvidia-XXX/{normal,rt}-kernels/linuxYY[-rt]-nvidia-XXX/
+        m_legacy = LEGACY_KERNEL_DIR_PATTERN.match(parent.name)
+        if m_legacy:
+            kernel_prefix = m_legacy.group(1) + (m_legacy.group(2) or "")
+            variant = "rt" if m_legacy.group(2) else "normal"
+            branch_label = m_legacy.group(3)  # "340xx", "580xx-open"
             kind = "kernel"
-        elif top_name.endswith("-utils"):
+
+        # --- Flat layout detection --------------------------------------
+        # .../linuxYY[-rt]-extramodules/nvidia-XXX/
+        if kind == "unknown":
+            extramod_idx = None
+            for i, p in enumerate(parent.parts):
+                if p.endswith("-extramodules"):
+                    extramod_idx = i
+                    break
+            if extramod_idx is not None and extramod_idx + 1 < len(parent.parts):
+                kernel_prefix, variant = _kernel_prefix_variant(parent.parts[extramod_idx])
+                nv_dir = parent.parts[extramod_idx + 1]
+                branch_label = _branch_label_from_kernel_dir(nv_dir, kernel_prefix)
+                kind = "kernel"
+
+        # --- Utils ------------------------------------------------------
+        if kind == "unknown" and top_name.endswith("-utils"):
             branch_label = _branch_label_from_utils_name(top_name)
             kind = "utils"
-        elif re.match(r"^nvidia(-\d+xx)?(-open)?$", top_name):
+
+        # --- Top-level non-flat kernel module ---------------------------
+        if kind == "unknown" and re.match(r"^nvidia(-\d+xx)?(-open)?$", top_name):
             branch_label = _branch_label_from_kernel_dir(top_name, "")
             kind = "kernel"
 
+        # --- required DKMS ----------------------------------------------
         required_dkms = ""
         for dep in meta.get("makedepends", []) + meta.get("depends", []):
             base = dep.split("=", 1)[0].split(">", 1)[0].split("<", 1)[0].strip()
@@ -797,26 +826,37 @@ def _build_plan(pkgs: list[PackageInfo]) -> BuildPlan:
         closed_modules: list[PackageInfo] = []
         open_modules: list[PackageInfo] = []
 
+        u_label_norm = _normalize_branch_label(u.branch_label)
+
         for k in kernel_pkgs:
-            if k.branch_label != u.branch_label and \
-               not (u.branch_label == "current" and k.branch_label == "nvidia"):
-                continue
-            if k.required_dkms == closed:
-                closed_modules.append(k)
-            elif open_dkms and k.required_dkms == open_dkms:
+            k_label_norm = _normalize_branch_label(k.branch_label)
+            if k_label_norm != u_label_norm:
+                # "current" utils also serve "nvidia" kernel modules
+                if not (u_label_norm == "current" and k_label_norm == "nvidia"):
+                    continue
+
+            # Decide closed vs open
+            is_open = False
+            if open_dkms and k.required_dkms == open_dkms:
+                is_open = True
+            elif "-open" in k.branch_label:
+                is_open = True
+            elif k.source_dir.name.endswith("-open"):
+                is_open = True
+
+            if is_open:
                 open_modules.append(k)
-            elif k.required_dkms == "":
-                if k.source_dir.name.endswith("-open"):
-                    open_modules.append(k)
-                else:
-                    closed_modules.append(k)
+            else:
+                closed_modules.append(k)
 
         plan.utils_plans.append(UtilsPlan(
             utils=u,
             closed_dkms=closed,
             open_dkms=open_dkms,
-            closed_modules=sorted(closed_modules, key=lambda x: x.kernel_prefix),
-            open_modules=sorted(open_modules, key=lambda x: x.kernel_prefix),
+            closed_modules=sorted(closed_modules,
+                                  key=lambda x: (x.kernel_prefix, x.variant)),
+            open_modules=sorted(open_modules,
+                                key=lambda x: (x.kernel_prefix, x.variant)),
             clean_label=u.branch_label,
         ))
 
@@ -827,6 +867,13 @@ def phase_inspect(cfg: Config) -> BuildPlan:
     log("inspect: parsing PKGBUILDs...")
     all_pkgs = _parse_all_pkgbuilds(cfg)
     log(f"inspect: found {len(all_pkgs)} PKGBUILD(s)")
+
+    # Diagnostics — how many of each kind
+    kinds: dict[str, int] = {}
+    for p in all_pkgs:
+        kinds[p.kind] = kinds.get(p.kind, 0) + 1
+    log("inspect: kinds = " + ", ".join(
+        f"{k}={v}" for k, v in sorted(kinds.items())))
 
     filtered = _apply_filters(all_pkgs, cfg)
     log(f"inspect: {len(filtered)} after filter")
