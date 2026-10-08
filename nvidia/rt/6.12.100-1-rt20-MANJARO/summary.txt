@@ -2,16 +2,16 @@ build:           linux612-rt-nvidia
 driver:          nvidia
 variant:         rt
 kernel:          6.12.100-1-rt20-MANJARO
-nvidia version:  615.71.09
+nvidia version:  615.78.08
 status:          warnings
-log path:        /build/official/extra/linux612-rt-extramodules/nvidia/src/nvidia/615.71.09/6.12.100-1-rt20-MANJARO/x86_64/log/make.log
-log size:        7917940 bytes
-log lines:       45269
+log path:        /build/official/extra/linux612-rt-extramodules/nvidia/src/nvidia/615.78.08/6.12.100-1-rt20-MANJARO/x86_64/log/make.log
+log size:        7919054 bytes
+log lines:       45281
 build dir:       /build/official/extra/linux612-rt-extramodules/nvidia
 
 errors:          0
 warnings clean:  4  (unique: 2)
-warnings noise:  44695  (unique: 1)
+warnings noise:  44699  (unique: 1)
 suspicious:      0  (unique: 0)
 modules on disk: 5  [nvidia, nvidia-drm, nvidia-modeset, nvidia-peermem, nvidia-uvm]
 log LD [M]:      ['nvidia', 'nvidia-drm', 'nvidia-modeset', 'nvidia-peermem', 'nvidia-uvm']

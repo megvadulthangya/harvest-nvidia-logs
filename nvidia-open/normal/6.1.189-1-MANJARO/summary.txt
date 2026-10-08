@@ -2,16 +2,16 @@ build:           linux61-nvidia-open
 driver:          nvidia-open
 variant:         normal
 kernel:          6.1.189-1-MANJARO
-nvidia version:  615.71.09
+nvidia version:  615.78.08
 status:          warnings
-log path:        /build/official/extra/linux61-extramodules/nvidia-open/src/nvidia/615.71.09/6.1.189-1-MANJARO/x86_64/log/make.log
-log size:        7236504 bytes
-log lines:       39412
+log path:        /build/official/extra/linux61-extramodules/nvidia-open/src/nvidia/615.78.08/6.1.189-1-MANJARO/x86_64/log/make.log
+log size:        7238002 bytes
+log lines:       39426
 build dir:       /build/official/extra/linux61-extramodules/nvidia-open
 
 errors:          0
 warnings clean:  7  (unique: 5)
-warnings noise:  37472  (unique: 2)
+warnings noise:  37478  (unique: 2)
 suspicious:      0  (unique: 0)
 modules on disk: 5  [nvidia, nvidia-drm, nvidia-modeset, nvidia-peermem, nvidia-uvm]
 log LD [M]:      ['nvidia', 'nvidia-drm', 'nvidia-modeset', 'nvidia-peermem', 'nvidia-uvm']

@@ -10,8 +10,8 @@ log lines:       20408
 build dir:       /build/official/extra/linux66-rt-extramodules/nvidia-580xx-open
 
 errors:          0
-warnings clean:  400  (unique: 7)
-warnings noise:  13801  (unique: 2)
+warnings clean:  402  (unique: 8)
+warnings noise:  8781  (unique: 28)
 suspicious:      0  (unique: 0)
 modules on disk: 5  [nvidia, nvidia-drm, nvidia-modeset, nvidia-peermem, nvidia-uvm]
 log LD [M]:      ['nvidia', 'nvidia-drm', 'nvidia-modeset', 'nvidia-peermem', 'nvidia-uvm']
@@ -22,6 +22,7 @@ log cached:      no
      390  warning: variable 'aggregate_mask' set but not used [-Wunused-but-set-variable=]
        3  warning: 'virtual void DisplayPort::EvoMainLink::clearFlushMode(unsigned int, bool)' was hidden [-Woverloaded-virtual=]
        3  warning: 'virtual bool DisplayPort::EvoMainLink::setFlushMode()' was hidden [-Woverloaded-virtual=]
+       2  warning: <func>+0xADDR
        1  warning: variable 'DIDT10Count' set but not used [-Wunused-but-set-variable=]
        1  warning: variable 'extDTDCount' set but not used [-Wunused-but-set-variable=]
        1  warning: variable 'i' set but not used [-Wunused-but-set-variable=]

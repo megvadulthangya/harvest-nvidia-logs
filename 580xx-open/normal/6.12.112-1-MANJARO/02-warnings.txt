@@ -2,6 +2,7 @@
        7  warning: this use of 'defined' may not be portable [-Wexpansion-to-defined]
        3  warning: 'virtual void DisplayPort::EvoMainLink::clearFlushMode(unsigned int, bool)' was hidden [-Woverloaded-virtual=]
        3  warning: 'virtual bool DisplayPort::EvoMainLink::setFlushMode()' was hidden [-Woverloaded-virtual=]
+       3  warning: <func>+0xADDR
        1  warning: variable 'DIDT10Count' set but not used [-Wunused-but-set-variable=]
        1  warning: variable 'extDTDCount' set but not used [-Wunused-but-set-variable=]
        1  warning: variable 'i' set but not used [-Wunused-but-set-variable=]
@@ -27,4 +28,3 @@
        1  warning: no previous prototype for 'libspdm_x509_get_issuer_orgnization_name' [-Wmissing-prototypes]
        1  warning: no previous prototype for 'libspdm_x509_get_signature_algorithm' [-Wmissing-prototypes]
        1  warning: no previous prototype for 'libspdm_gen_x509_csr' [-Wmissing-prototypes]
-       1  warning: objtool  LD [M]  /build/official/extra/linux612-extramodules/nvidia-580xx-open/src/nvidia/580.178.04/build/kernel-open/nvidia-peermem.o

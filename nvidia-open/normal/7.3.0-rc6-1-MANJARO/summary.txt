@@ -2,16 +2,16 @@ build:           linux73-nvidia-open
 driver:          nvidia-open
 variant:         normal
 kernel:          7.3.0-rc6-1-MANJARO
-nvidia version:  615.71.09
+nvidia version:  615.78.08
 status:          warnings
-log path:        /build/official/extra/linux73-extramodules/nvidia-open/src/nvidia/615.71.09/7.3.0-rc6-1-MANJARO/x86_64/log/make.log
-log size:        1454875 bytes
-log lines:       13615
+log path:        /build/official/extra/linux73-extramodules/nvidia-open/src/nvidia/615.78.08/7.3.0-rc6-1-MANJARO/x86_64/log/make.log
+log size:        1455497 bytes
+log lines:       13625
 build dir:       /build/official/extra/linux73-extramodules/nvidia-open
 
 errors:          0
 warnings clean:  7  (unique: 5)
-warnings noise:  11672  (unique: 1)
+warnings noise:  11674  (unique: 1)
 suspicious:      0  (unique: 0)
 modules on disk: 5  [nvidia, nvidia-drm, nvidia-modeset, nvidia-peermem, nvidia-uvm]
 log LD [M]:      ['nvidia', 'nvidia-drm', 'nvidia-modeset', 'nvidia-peermem', 'nvidia-uvm']

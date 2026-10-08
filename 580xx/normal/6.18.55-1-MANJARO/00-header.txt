@@ -1,5 +1,5 @@
 DKMS (dkms-3.4.4) make.log for nvidia/580.178.04 for kernel 6.18.55-1-MANJARO (x86_64)
-Wed Oct  7 16:36:18 UTC 2026
+Wed Oct  7 21:15:20 UTC 2026
 
 Building module(s)
 # command: 'make' -j4 IGNORE_PREEMPT_RT_PRESENCE=1 NV_EXCLUDE_BUILD_MODULES='' KERNEL_UNAME=6.18.55-1-MANJARO modules

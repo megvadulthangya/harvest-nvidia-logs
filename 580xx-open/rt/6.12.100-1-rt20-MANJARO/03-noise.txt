@@ -1,2 +1,40 @@
-   11258  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK build
-     286  warning: objtool: <func>+0xADDR: data relocation to !ENDBR: <func>+0xADDR
+    9976  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK build
+      44  warning: objtool: <func>+0xADDR: data relocation to !ENDBR: <func>+0xADDR
+      12  warning: objtd
+       6  warning: objtld
+       6  warning: objt
+       5  warning: objt build
+       5  warning: objtbuild
+       5  warning: objtild
+       5  warning: objtK build
+       4  warning: objtTIGATION_RETHUNK build
+       4  warning: objtuild
+       4  warning: objtHUNK build
+       4  warning: objtTHUNK build
+       4  warning: objtn MITIGATION_RETHUNK build
+       4  warning: objt in MITIGATION_RETHUNK build
+       3  warning: objtNK build
+       3  warning: objtMITIGATION_RETHUNK build
+       3  warning: objtrn found in MITIGATION_RETHUNK build
+       3  warning: objtin MITIGATION_RETHUNK build
+       2  warning: objtGATION_RETHUNK build
+       2  warning: objtUNK build
+       2  warning: objt_RETHUNK build
+       2  warning: objtN_RETHUNK build
+       2  warning: objt MITIGATION_RETHUNK build
+       2  warning: objtound in MITIGATION_RETHUNK build
+       2  warning: objturn found in MITIGATION_RETHUNK build
+       2  warning: objtreturn found in MITIGATION_RETHUNK build
+       2  warning: objtETHUNK build
+       2  warning: objteturn found in MITIGATION_RETHUNK build
+       2  warning: objt' return found in MITIGATION_RETHUNK build
+       1  warning: objtTION_RETHUNK build
+       1  warning: objtATION_RETHUNK build
+       1  warning: objtON_RETHUNK build
+       1  warning: objtRETHUNK build
+       1  warning: objtnd in MITIGATION_RETHUNK build
+       1  warning: objtIGATION_RETHUNK build
+       1  warning: objt found in MITIGATION_RETHUNK build
+       1  warning: objtturn found in MITIGATION_RETHUNK build
+       1  warning: objtd in MITIGATION_RETHUNK build
+       1  warning: objtION_RETHUNK build

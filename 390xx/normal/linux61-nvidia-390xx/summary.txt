@@ -22,16 +22,16 @@ log cached:      no
        4  warning: conflicting types for 'vm_flags_clear'; have 'void(struct vm_area_struct *, vm_flags_t)' {aka 'void(struct vm_area_struct *, long unsigned int)'}
 
 === Error excerpt (first 20) ===
-193: /build/official/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:337:5: error: implicit declaration of function 'vm_flags_set'; did you mean 'nv_vm_flags_set'? [-Wimplicit-function-declaration]
-203: /build/official/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:337:5: error: implicit declaration of function 'vm_flags_set'; did you mean 'nv_vm_flags_set'? [-Wimplicit-function-declaration]
+196: /build/official/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:337:5: error: implicit declaration of function 'vm_flags_set'; did you mean 'nv_vm_flags_set'? [-Wimplicit-function-declaration]
+200: /build/official/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:337:5: error: implicit declaration of function 'vm_flags_set'; did you mean 'nv_vm_flags_set'? [-Wimplicit-function-declaration]
 207: /build/official/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:337:5: error: implicit declaration of function 'vm_flags_set'; did you mean 'nv_vm_flags_set'? [-Wimplicit-function-declaration]
 212: /build/official/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:348:5: error: implicit declaration of function 'vm_flags_clear'; did you mean 'nv_vm_flags_clear'? [-Wimplicit-function-declaration]
-218: /build/official/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-timer.h:70:19: error: static declaration of 'timer_delete_sync' follows non-static declaration
-238: /build/official/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:337:5: error: implicit declaration of function 'vm_flags_set'; did you mean 'nv_vm_flags_set'? [-Wimplicit-function-declaration]
-243: /build/official/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:348:5: error: implicit declaration of function 'vm_flags_clear'; did you mean 'nv_vm_flags_clear'? [-Wimplicit-function-declaration]
-248: /build/official/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:348:5: error: implicit declaration of function 'vm_flags_clear'; did you mean 'nv_vm_flags_clear'? [-Wimplicit-function-declaration]
-254: /build/official/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-timer.h:70:19: error: static declaration of 'timer_delete_sync' follows non-static declaration
-273: /build/official/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-timer.h:70:19: error: static declaration of 'timer_delete_sync' follows non-static declaration
+217: /build/official/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:348:5: error: implicit declaration of function 'vm_flags_clear'; did you mean 'nv_vm_flags_clear'? [-Wimplicit-function-declaration]
+223: /build/official/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-timer.h:70:19: error: static declaration of 'timer_delete_sync' follows non-static declaration
+242: /build/official/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-timer.h:70:19: error: static declaration of 'timer_delete_sync' follows non-static declaration
+260: /build/official/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:348:5: error: implicit declaration of function 'vm_flags_clear'; did you mean 'nv_vm_flags_clear'? [-Wimplicit-function-declaration]
+266: /build/official/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-timer.h:70:19: error: static declaration of 'timer_delete_sync' follows non-static declaration
+286: /build/official/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:337:5: error: implicit declaration of function 'vm_flags_set'; did you mean 'nv_vm_flags_set'? [-Wimplicit-function-declaration]
 291: /build/official/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:348:5: error: implicit declaration of function 'vm_flags_clear'; did you mean 'nv_vm_flags_clear'? [-Wimplicit-function-declaration]
 297: /build/official/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-timer.h:70:19: error: static declaration of 'timer_delete_sync' follows non-static declaration
 317: /build/official/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-linux.h:2026:20: error: static declaration of 'vm_flags_set' follows non-static declaration
@@ -40,5 +40,5 @@ log cached:      no
 338: /build/official/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-linux.h:2031:20: error: static declaration of 'vm_flags_clear' follows non-static declaration
 345: /build/official/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-linux.h:2026:20: error: static declaration of 'vm_flags_set' follows non-static declaration
 352: /build/official/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-linux.h:2031:20: error: static declaration of 'vm_flags_clear' follows non-static declaration
-360: make[2]: *** [scripts/Makefile.build:250: /build/official/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/nvidia/nv-frontend.o] Error 1
-365: /build/official/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-linux.h:2026:20: error: static declaration of 'vm_flags_set' follows non-static declaration
+363: /build/official/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-linux.h:2026:20: error: static declaration of 'vm_flags_set' follows non-static declaration
+370: /build/official/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-linux.h:2031:20: error: static declaration of 'vm_flags_clear' follows non-static declaration

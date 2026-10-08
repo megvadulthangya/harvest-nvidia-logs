@@ -1,2 +1,2 @@
-   18736  warning: objtool: <func>+0xADDR: 'naked' return found in RETHUNK build
-   18736  warning: objtool: <func>+0xADDR: missing int3 after ret
+   18739  warning: objtool: <func>+0xADDR: 'naked' return found in RETHUNK build
+   18739  warning: objtool: <func>+0xADDR: missing int3 after ret
