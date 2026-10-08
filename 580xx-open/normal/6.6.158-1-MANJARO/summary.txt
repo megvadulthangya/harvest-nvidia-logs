@@ -10,8 +10,8 @@ log lines:       20408
 build dir:       /build/official/extra/linux66-extramodules/nvidia-580xx-open
 
 errors:          0
-warnings clean:  401  (unique: 8)
-warnings noise:  9242  (unique: 13)
+warnings clean:  400  (unique: 7)
+warnings noise:  13805  (unique: 2)
 suspicious:      0  (unique: 0)
 modules on disk: 5  [nvidia, nvidia-drm, nvidia-modeset, nvidia-peermem, nvidia-uvm]
 log LD [M]:      ['nvidia', 'nvidia-drm', 'nvidia-modeset', 'nvidia-peermem', 'nvidia-uvm']
@@ -26,4 +26,3 @@ log cached:      no
        1  warning: variable 'extDTDCount' set but not used [-Wunused-but-set-variable=]
        1  warning: variable 'i' set but not used [-Wunused-but-set-variable=]
        1  warning: unused variable 'size' [-Wunused-variable]
-       1  warning:

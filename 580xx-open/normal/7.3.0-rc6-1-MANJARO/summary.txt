@@ -11,7 +11,7 @@ build dir:       /build/official/extra/linux73-extramodules/nvidia-580xx-open
 
 errors:          0
 warnings clean:  593  (unique: 30)
-warnings noise:  13785  (unique: 6)
+warnings noise:  12937  (unique: 115)
 suspicious:      0  (unique: 0)
 modules on disk: 5  [nvidia, nvidia-drm, nvidia-modeset, nvidia-peermem, nvidia-uvm]
 log LD [M]:      ['nvidia', 'nvidia-drm', 'nvidia-modeset', 'nvidia-peermem', 'nvidia-uvm']

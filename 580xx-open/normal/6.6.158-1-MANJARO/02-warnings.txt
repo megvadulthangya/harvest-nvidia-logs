@@ -5,4 +5,3 @@
        1  warning: variable 'extDTDCount' set but not used [-Wunused-but-set-variable=]
        1  warning: variable 'i' set but not used [-Wunused-but-set-variable=]
        1  warning: unused variable 'size' [-Wunused-variable]
-       1  warning:

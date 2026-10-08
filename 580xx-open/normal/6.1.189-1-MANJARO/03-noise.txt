@@ -1,3 +1,43 @@
-   21449  warning: objtool: <func>+0xADDR: 'naked' return found in RETHUNK build
    17414  warning: objtool: <func>+0xADDR: missing int3 after ret
+   14269  warning: objtool: <func>+0xADDR: 'naked' return found in RETHUNK build
      286  warning: objtool: <func>+0xADDR: data relocation to !ENDBR: <func>+0xADDR
+       6  warning: objtool:ETHUNK build
+       6  warning: objtool:ld
+       5  warning: objtool: build
+       4  warning: objtool:
+       4  warning: objtool:ound in RETHUNK build
+       4  warning: objtool:d
+       4  warning: objtool:build
+       3  warning: objtool:uild
+       3  warning: objtool:HUNK build
+       3  warning: objtool:RETHUNK build
+       3  warning: objtool:found in RETHUNK build
+       3  warning: objtool:n RETHUNK build
+       3  warning: objtool:rn found in RETHUNK build
+       2  warning:  <func>+0xADDR: 'naked' return found in RETHUNK build
+       2  warning: objtool: RETHUNK build
+       2  warning: objtool:d' return found in RETHUNK build
+       2  warning: objtool:0xADDR: 'naked' return found in RETHUNK build
+       2  warning: objtool: in RETHUNK build
+       2  warning: objtool:NK build
+       2  warning: objtool:THUNK build
+       2  warning: objtool:d in RETHUNK build
+       2  warning: objtool:n found in RETHUNK build
+       2  warning: objtool:ed' return found in RETHUNK build
+       2  warning: objtool:und in RETHUNK build
+       1  warning: objtool:K build
+       1  warning: objtool:+0xADDR: 'naked' return found in RETHUNK build
+       1  warning: objtool:93: 'naked' return found in RETHUNK build
+       1  warning: objtool:aked' return found in RETHUNK build
+       1  warning: objtool:objtool: <func>+0xADDR: 'naked' return found in RETHUNK build
+       1  warning: objtool: return found in RETHUNK build
+       1  warning: objtool:naked' return found in RETHUNK build
+       1  warning: objtool:8: 'naked' return found in RETHUNK build
+       1  warning: objtool:return found in RETHUNK build
+       1  warning: objtool:ked' return found in RETHUNK build
+       1  warning: objtool: found in RETHUNK build
+       1  warning: objtool:urn found in RETHUNK build
+       1  warning: objtool:ild
+       1  warning: objtool:1: 'naked' return found in RETHUNK build
+       1  warning: objtool:turn found in RETHUNK build
+       1  warning: objtool:in RETHUNK build

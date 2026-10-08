@@ -1,5 +1,5 @@
 DKMS (dkms-3.4.4) make.log for nvidia/390.157 for kernel 6.6.158-1-MANJARO (x86_64)
-Wed Oct  7 20:22:23 UTC 2026
+Thu Oct  8 09:14:33 UTC 2026
 
 Building module(s)
 # command: 'make' -j4 IGNORE_PREEMPT_RT_PRESENCE=1 NV_EXCLUDE_BUILD_MODULES='__EXCLUDE_MODULES' KERNEL_UNAME=6.6.158-1-MANJARO modules

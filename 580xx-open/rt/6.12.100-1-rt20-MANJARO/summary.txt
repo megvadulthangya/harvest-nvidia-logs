@@ -10,8 +10,8 @@ log lines:       20499
 build dir:       /build/official/extra/linux612-rt-extramodules/nvidia-580xx-open
 
 errors:          0
-warnings clean:  431  (unique: 30)
-warnings noise:  10132  (unique: 40)
+warnings clean:  428  (unique: 29)
+warnings noise:  13780  (unique: 3)
 suspicious:      0  (unique: 0)
 modules on disk: 5  [nvidia, nvidia-drm, nvidia-modeset, nvidia-peermem, nvidia-uvm]
 log LD [M]:      ['nvidia', 'nvidia-drm', 'nvidia-modeset', 'nvidia-peermem', 'nvidia-uvm']
@@ -23,7 +23,6 @@ log cached:      no
        7  warning: this use of 'defined' may not be portable [-Wexpansion-to-defined]
        3  warning: 'virtual void DisplayPort::EvoMainLink::clearFlushMode(unsigned int, bool)' was hidden [-Woverloaded-virtual=]
        3  warning: 'virtual bool DisplayPort::EvoMainLink::setFlushMode()' was hidden [-Woverloaded-virtual=]
-       3  warning: <func>+0xADDR
        1  warning: variable 'DIDT10Count' set but not used [-Wunused-but-set-variable=]
        1  warning: variable 'extDTDCount' set but not used [-Wunused-but-set-variable=]
        1  warning: variable 'i' set but not used [-Wunused-but-set-variable=]
@@ -44,3 +43,4 @@ log cached:      no
        1  warning: no previous prototype for 'libspdm_decode_base64' [-Wmissing-prototypes]
        1  warning: no previous prototype for 'libspdm_x509_get_common_name' [-Wmissing-prototypes]
        1  warning: no previous prototype for 'libspdm_x509_get_organization_name' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'libspdm_x509_get_tbs_cert' [-Wmissing-prototypes]

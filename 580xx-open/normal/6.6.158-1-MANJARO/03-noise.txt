@@ -1,13 +1,2 @@
-    8941  warning: objtool: <func>+0xADDR: 'naked' return found in RETHUNK build
+   13519  warning: objtool: <func>+0xADDR: 'naked' return found in RETHUNK build
      286  warning: objtool: <func>+0xADDR: data relocation to !ENDBR: <func>+0xADDR
-       2  warning: objtool:d
-       2  warning: objtool: build
-       2  warning: objtool:K build
-       2  warning: objtool:turn found in RETHUNK build
-       1  warning: objtool:uild
-       1  warning: objtool:RETHUNK build
-       1  warning: objtool:build
-       1  warning: objtool:ld
-       1  warning: objtool:found in RETHUNK build
-       1  warning: objtool:ed' return found in RETHUNK build
-       1  warning: objtool:d' return found in RETHUNK build
