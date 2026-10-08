@@ -35,13 +35,9 @@ Platform APIs used for non-flat discovery:
   - GitLab           (gitlab.manjaro.org)
   - GitHub           (github.com)
 
-Configuration via CLI args and/or a TOML file:
+Configuration via CLI args and/or a TOML file.
 
-  nvidia-ci --config ci-config.toml --all
-  nvidia-ci --all --url https://github.com/user --drivers 340xx,390xx
-  nvidia-ci --phase discover --url https://code.manjaro.org/packages
-
-Dependencies: Python 3.11+ (for tomllib), git, curl or urllib.
+Dependencies: Python 3.11+ (for tomllib), git.
 """
 
 from __future__ import annotations
@@ -63,7 +59,7 @@ from urllib.parse import quote
 from urllib.request import Request, urlopen
 
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 
 
 # ---------------------------------------------------------------------------
@@ -132,12 +128,10 @@ def run(cmd: list[str], check: bool = True, capture: bool = False) -> subprocess
 
 
 def looks_like_placeholder(token: str) -> bool:
-    """Detect tokens that obviously are not real (docs examples etc.)."""
     low = token.lower()
     for marker in ("xxx", "your_token", "example", "changeme", "placeholder"):
         if marker in low:
             return True
-    # Real GitHub tokens are 40+ chars; anything shorter is suspicious
     if len(token) < 20:
         return True
     return False
@@ -309,8 +303,6 @@ def merge_config(args: argparse.Namespace, toml: dict) -> Config:
 # ---------------------------------------------------------------------------
 
 def http_json(url: str, token: str | None = None) -> object:
-    """Fetch JSON from a URL. If a token is provided but rejected (401),
-    retry without it so public repos still work."""
     headers = {"User-Agent": f"nvidia-ci/{__version__}"}
     use_token = token and not looks_like_placeholder(token)
     if use_token:
@@ -1096,16 +1088,25 @@ def phase_harvest(cfg: Config) -> None:
         die(f"{HARVEST_BINARY} not found in PATH or alongside this script")
 
     changelog = cfg.harvest_dir / "driver-changelog.md"
-    run([
+
+    base_args = [
         binary,
         "-d", str(cfg.sources_dir),
         "-o", str(cfg.harvest_dir),
         "--diff",
-        "--changelog", str(changelog),
         "--history-keep", str(cfg.history_keep),
         "-n", str(cfg.header_lines),
         "-q",
-    ])
+    ]
+    full_args = base_args + ["--changelog", str(changelog)]
+
+    proc = subprocess.run(full_args, check=False)
+    if proc.returncode != 0:
+        warn(f"harvest exit {proc.returncode} with --changelog; retrying "
+             f"without it (older harvest-nvidia-logs installed?)")
+        proc = subprocess.run(base_args, check=False)
+        if proc.returncode != 0:
+            die(f"harvest failed with exit {proc.returncode}")
 
     index = cfg.harvest_dir / "INDEX.md"
     if index.is_file():
