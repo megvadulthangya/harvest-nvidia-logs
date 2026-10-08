@@ -8,13 +8,15 @@ NVIDIA driver branches against multiple Manjaro kernels.
 
 Changelog
 ---------
+0.5.5
+  - is_noise: reject warnings whose body is empty or consists only of a
+    function+address reference (e.g. "warning:" alone, or
+    "warning: <func>+0xADDR"). These are the last remnants of objtool
+    output fragmented by interleaved parallel `make -jN` and have no
+    semantic content.
+
 0.5.4
-  - is_noise: broaden the fragment detection from
-    `signature.startswith("warning: objtool:")` to
-    `signature.startswith("warning: objt")`. The previous prefix missed
-    fragments like "warning: objtTHUNK build", "warning: objtd",
-    "warning: objtld" and "warning: objtool  LD [M] ..." (space instead
-    of colon) left over from interleaved parallel `make -jN` output.
+  - is_noise: broaden fragment detection to any "warning: objt" prefix.
 
 0.5.3
   - is_noise: structural check for fragmented objtool warnings.
@@ -45,7 +47,7 @@ from datetime import datetime
 from pathlib import Path
 
 
-__version__ = "0.5.4"
+__version__ = "0.5.5"
 
 
 # ---------------------------------------------------------------------------
@@ -98,6 +100,10 @@ NOISE_KEYWORDS: tuple[str, ...] = (
 #   warning: objtool: <symbol>+0x<hex>: <message>
 # Fragments from interleaved parallel make output do not.
 RE_VALID_OBJTOOL = re.compile(r"^warning: objtool:\s+\S+\+0x[0-9a-fA-F]+:")
+
+# A warning whose body is just an address reference (no symbol name, no
+# message text) has no semantic content and is always a fragment.
+RE_ADDR_ONLY_BODY = re.compile(r"^<func>\+0xADDR$")
 
 RE_BEFORE_WARNING = re.compile(r"^.*(?=warning:)")
 RE_QUOTED_PATH = re.compile(r"'/[^']*'")
@@ -226,11 +232,15 @@ def is_noise(signature: str) -> bool:
     # Structural check: a real objtool warning always contains
     # "objtool: <symbol>+0x<hex>:". Fragments left over from
     # interleaved parallel make output fail this and are dropped.
-    # Accept any "warning: objt..." prefix (not just "warning: objtool:")
-    # so fragments like "warning: objtd", "warning: objtTHUNK build",
-    # and "warning: objtool  LD [M] ..." (space instead of colon) are
-    # also rejected.
     if signature.startswith("warning: objt") and not RE_VALID_OBJTOOL.match(signature):
+        return True
+    # Body-content check: reject warnings whose body is empty or is only
+    # a function+address reference (no symbol name, no message). These
+    # are contentless fragments of a longer warning line.
+    body = signature[len("warning:"):].strip() if signature.startswith("warning:") else ""
+    if signature.startswith("warning:") and (
+        not body or RE_ADDR_ONLY_BODY.match(body)
+    ):
         return True
     return False
 
