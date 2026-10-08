@@ -41,8 +41,7 @@ Configuration via CLI args and/or a TOML file:
   nvidia-ci --all --url https://github.com/user --drivers 340xx,390xx
   nvidia-ci --phase discover --url https://code.manjaro.org/packages
 
-Dependencies: Python 3.11+ (for tomllib), git, curl or urllib,
-              jq is NOT required.
+Dependencies: Python 3.11+ (for tomllib), git, curl or urllib.
 """
 
 from __future__ import annotations
@@ -60,11 +59,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Iterable
 from urllib.error import HTTPError, URLError
-from urllib.parse import quote, urlencode
+from urllib.parse import quote
 from urllib.request import Request, urlopen
 
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 
 # ---------------------------------------------------------------------------
@@ -83,20 +82,6 @@ DEFAULT_RESULTS_BRANCH = "results"
 
 HARVEST_BINARY = "harvest-nvidia-logs"
 
-# Skip these when discovering repos. Match is case-insensitive substring
-# or suffix based. This list is intentionally broad to reduce noise from
-# unrelated packages that happen to share the "nvidia" prefix.
-SOURCE_EXCLUDE_PATTERNS = [
-    r"settings$",
-    r"driver-assistant",
-    r"graphics-drivers",
-    r"^lib32-",
-    r"bumblebee",
-    r"harvest-nvidia-logs",
-    r"nvidia-utils\.git$",       # keep this? no — see below
-]
-
-# ^ The nvidia-utils exclusion above is wrong — we DO want it.
 SOURCE_EXCLUDE_PATTERNS = [
     r"-settings$",
     r"driver-assistant",
@@ -106,10 +91,6 @@ SOURCE_EXCLUDE_PATTERNS = [
     r"harvest-nvidia-logs",
 ]
 
-# A repository name is considered relevant if it matches one of these.
-# `nvidia` and `nvidia-open` are the current branch. `nvidia-XXXxx` and
-# `nvidia-XXXxx-utils` are legacy branches. `nvidia-utils` is current
-# userspace.
 SOURCE_INCLUDE_PATTERNS = [
     re.compile(r"^nvidia$"),
     re.compile(r"^nvidia-open$"),
@@ -119,7 +100,6 @@ SOURCE_INCLUDE_PATTERNS = [
     re.compile(r"^nvidia-\d+xx-open$"),
 ]
 
-# For kernel module sub-namespaces (GitLab: linux*-extramodules groups)
 KERNEL_NAMESPACE_PATTERN = re.compile(r"linux\d+(-rt)?-extramodules$")
 
 
@@ -145,11 +125,22 @@ def die(msg: str, code: int = 1) -> None:
 
 
 def run(cmd: list[str], check: bool = True, capture: bool = False) -> subprocess.CompletedProcess:
-    """Run a command, streaming output unless capture=True."""
     log(f"$ {' '.join(str(c) for c in cmd)}")
     if capture:
         return subprocess.run(cmd, check=check, text=True, capture_output=True)
     return subprocess.run(cmd, check=check)
+
+
+def looks_like_placeholder(token: str) -> bool:
+    """Detect tokens that obviously are not real (docs examples etc.)."""
+    low = token.lower()
+    for marker in ("xxx", "your_token", "example", "changeme", "placeholder"):
+        if marker in low:
+            return True
+    # Real GitHub tokens are 40+ chars; anything shorter is suspicious
+    if len(token) < 20:
+        return True
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -158,40 +149,40 @@ def run(cmd: list[str], check: bool = True, capture: bool = False) -> subprocess
 
 @dataclass
 class SourceRepo:
-    url: str            # full clone URL
-    branch: str         # branch to clone
-    target: Path        # target directory
-    kind: str           # "utils" | "kernel" | "flat" | "unknown"
-    label: str = ""     # short identifier (e.g. "nvidia-390xx-utils")
+    url: str
+    branch: str
+    target: Path
+    kind: str
+    label: str = ""
 
 
 @dataclass
 class PackageInfo:
-    name: str                   # top-level pkgname (utils pkgbase)
+    name: str
     pkgver: str
     pkgrel: str
     source_dir: Path
     pkgbuild_path: Path
-    dkms_names: list[str]       # all *-dkms subpackages
-    kind: str                   # "utils" | "kernel" | "unknown"
-    branch_label: str = ""      # e.g. "390xx", "nvidia", "nvidia-open"
-    kernel_prefix: str = ""     # for kernel modules: "linux61"
-    variant: str = ""           # for kernel modules: "normal" | "rt"
+    dkms_names: list[str]
+    kind: str
+    branch_label: str = ""
+    kernel_prefix: str = ""
+    variant: str = ""
     makedepends: list[str] = field(default_factory=list)
     depends: list[str] = field(default_factory=list)
     conflicts: list[str] = field(default_factory=list)
     provides: list[str] = field(default_factory=list)
-    required_dkms: str = ""     # for kernel modules: which DKMS it needs
+    required_dkms: str = ""
 
 
 @dataclass
 class UtilsPlan:
     utils: PackageInfo
-    closed_dkms: str | None         # e.g. "nvidia-580xx-dkms"
-    open_dkms: str | None           # e.g. "nvidia-580xx-open-dkms"
+    closed_dkms: str | None
+    open_dkms: str | None
     closed_modules: list[PackageInfo] = field(default_factory=list)
     open_modules: list[PackageInfo] = field(default_factory=list)
-    clean_label: str = ""           # label passed to clean-nvidia-container.sh
+    clean_label: str = ""
 
 
 @dataclass
@@ -244,7 +235,6 @@ def load_config(path: Path | None) -> dict:
 def merge_config(args: argparse.Namespace, toml: dict) -> Config:
     cfg = Config()
 
-    # TOML first
     src = toml.get("source", {})
     if "url" in src:
         cfg.url = src["url"]
@@ -276,7 +266,6 @@ def merge_config(args: argparse.Namespace, toml: dict) -> Config:
     if "results_branch" in pub:
         cfg.results_branch = pub["results_branch"]
 
-    # CLI overrides
     if args.url:
         cfg.url = args.url
     if args.workdir:
@@ -320,14 +309,21 @@ def merge_config(args: argparse.Namespace, toml: dict) -> Config:
 # ---------------------------------------------------------------------------
 
 def http_json(url: str, token: str | None = None) -> object:
+    """Fetch JSON from a URL. If a token is provided but rejected (401),
+    retry without it so public repos still work."""
     headers = {"User-Agent": f"nvidia-ci/{__version__}"}
-    if token:
+    use_token = token and not looks_like_placeholder(token)
+    if use_token:
         headers["Authorization"] = f"Bearer {token}"
+
     req = Request(url, headers=headers)
     try:
         with urlopen(req, timeout=30) as resp:
             return json.loads(resp.read().decode("utf-8"))
     except HTTPError as e:
+        if e.code == 401 and use_token:
+            warn(f"HTTP 401 with token; retrying without auth for {url}")
+            return http_json(url, None)
         die(f"HTTP {e.code} for {url}: {e.reason}")
     except URLError as e:
         die(f"network error for {url}: {e.reason}")
@@ -336,7 +332,6 @@ def http_json(url: str, token: str | None = None) -> object:
 def paginated_json(base_url: str, token: str | None, page_param: str = "page",
                    limit_param: str = "per_page", limit: int = 100,
                    max_pages: int = 20) -> list:
-    """Fetch all pages from a paginated endpoint, returning the flat list."""
     results: list = []
     for page in range(1, max_pages + 1):
         sep = "&" if "?" in base_url else "?"
@@ -357,7 +352,6 @@ def paginated_json(base_url: str, token: str | None, page_param: str = "page",
 # ---------------------------------------------------------------------------
 
 def detect_platform(url: str) -> str:
-    """Return 'forgejo' | 'gitlab' | 'github' | 'unknown'."""
     low = url.lower()
     if "github.com" in low or "api.github.com" in low:
         return "github"
@@ -369,14 +363,11 @@ def detect_platform(url: str) -> str:
 
 
 def is_repo_url(url: str) -> bool:
-    """Heuristic: does the URL point at a single repository?"""
     low = url.lower()
     if low.endswith(".git"):
         return True
-    # github.com/user/repo (exactly 2 segments after host)
     m = re.match(r"^https?://[^/]+/([^/]+)/([^/]+?)/?$", url)
     if m:
-        # exclude user/org-only URLs like /users/name
         return True
     return False
 
@@ -386,7 +377,6 @@ def is_repo_url(url: str) -> bool:
 # ---------------------------------------------------------------------------
 
 def discover_flat_repo(url: str, cfg: Config) -> list[SourceRepo]:
-    """Handle a direct repository URL (flat layout)."""
     branch = cfg.source_branch or "HEAD"
     name = url.rstrip("/").split("/")[-1]
     if name.endswith(".git"):
@@ -402,12 +392,10 @@ def discover_flat_repo(url: str, cfg: Config) -> list[SourceRepo]:
 
 
 def discover_non_flat(url: str, cfg: Config, token: str | None) -> list[SourceRepo]:
-    """Handle a user / org / group URL — query the platform API."""
     platform = detect_platform(url)
     repos: list[dict] = []
 
     if platform == "github":
-        # https://github.com/user OR https://github.com/org
         m = re.match(r"^https?://github\.com/([^/]+)/?$", url)
         if not m:
             die(f"cannot parse GitHub URL: {url}")
@@ -420,7 +408,6 @@ def discover_non_flat(url: str, cfg: Config, token: str | None) -> list[SourceRe
             r["_name"] = r["name"]
 
     elif platform == "gitlab":
-        # https://gitlab.manjaro.org/packages/extra → group API
         m = re.match(r"^https?://([^/]+)/(.+?)/?$", url)
         if not m:
             die(f"cannot parse GitLab URL: {url}")
@@ -437,7 +424,6 @@ def discover_non_flat(url: str, cfg: Config, token: str | None) -> list[SourceRe
             r["_name"] = r["path"]
 
     elif platform == "forgejo":
-        # https://code.manjaro.org/packages → org API
         m = re.match(r"^https?://([^/]+)/([^/]+)/?$", url)
         if not m:
             die(f"cannot parse Forgejo URL: {url}")
@@ -452,7 +438,6 @@ def discover_non_flat(url: str, cfg: Config, token: str | None) -> list[SourceRe
     else:
         die(f"unsupported URL for non-flat discovery: {url}")
 
-    # Filter by include / exclude patterns
     selected: list[dict] = []
     for r in repos:
         name = r["_name"]
@@ -464,7 +449,6 @@ def discover_non_flat(url: str, cfg: Config, token: str | None) -> list[SourceRe
 
     log(f"platform={platform}  total={len(repos)}  selected={len(selected)}")
 
-    # Determine kind per repo
     out: list[SourceRepo] = []
     for r in selected:
         name = r["_name"]
@@ -487,11 +471,6 @@ def discover_non_flat(url: str, cfg: Config, token: str | None) -> list[SourceRe
 
 
 def discover_gitlab_kernel_namespaces(url: str, cfg: Config, token: str | None) -> list[SourceRepo]:
-    """
-    GitLab-only: additionally resolve `linux*-extramodules` subgroups and
-    the nvidia-* projects inside each. These contain the per-kernel
-    module PKGBUILDs in the non-flat layout.
-    """
     platform = detect_platform(url)
     if platform != "gitlab":
         return []
@@ -501,7 +480,6 @@ def discover_gitlab_kernel_namespaces(url: str, cfg: Config, token: str | None) 
         return []
     host, group_path = m.group(1), m.group(2)
 
-    # List subgroups of the given group
     encoded = quote(group_path, safe="")
     api = f"https://{host}/api/v4/groups/{encoded}/subgroups?per_page=100"
     try:
@@ -516,7 +494,6 @@ def discover_gitlab_kernel_namespaces(url: str, cfg: Config, token: str | None) 
         sg_path = sg.get("full_path", "")
         if not KERNEL_NAMESPACE_PATTERN.search(sg_path):
             continue
-        # List projects inside this subgroup
         encoded_sg = quote(sg_path, safe="")
         proj_api = (
             f"https://{host}/api/v4/groups/{encoded_sg}/projects"
@@ -551,10 +528,8 @@ def phase_discover(cfg: Config, token: str | None) -> list[SourceRepo]:
         sources = discover_flat_repo(cfg.url, cfg)
     else:
         sources = discover_non_flat(cfg.url, cfg, token)
-        # GitLab-only: also pull the kernel-module subgroups
         sources.extend(discover_gitlab_kernel_namespaces(cfg.url, cfg, token))
 
-    # Persist to disk
     manifest = cfg.sources_dir / "sources.json"
     manifest.write_text(json.dumps([asdict(s) for s in sources], indent=2, default=str))
 
@@ -608,78 +583,24 @@ _RE_ARRAY_ITEM = re.compile(r"'([^']*)'|\"([^\"]*)\"|(\S+)")
 
 
 def _parse_array_literal(raw: str) -> list[str]:
-    """Extract items from a bash array literal. Handles multi-line,
-    single and double quotes, and variables (which are skipped)."""
     items: list[str] = []
     for m in _RE_ARRAY_ITEM.finditer(raw):
         val = m.group(1) or m.group(2) or m.group(3) or ""
         val = val.strip().rstrip(",")
         if not val:
             continue
-        # Skip pure variable references and shell expansions
         if val.startswith("$") or val.startswith("(") or val.endswith(")"):
             continue
         items.append(val)
     return items
 
 
-def parse_pkgbuild(path: Path) -> dict:
-    """Extract the fields we care about from a PKGBUILD (best-effort,
-    no shell evaluation)."""
-    text = path.read_text(encoding="utf-8", errors="replace")
-
-    # Normalize line continuations for array parsing
-    normalized = re.sub(r"\\\n", " ", text)
-
-    result: dict = {
-        "pkgbase": None,
-        "pkgname": [],
-        "pkgver": None,
-        "pkgrel": None,
-        "depends": [],
-        "makedepends": [],
-        "conflicts": [],
-        "provides": [],
-    }
-
-    for line in normalized.splitlines():
-        m = _RE_ASSIGN.match(line)
-        if not m:
-            continue
-        key, raw = m.group(1), m.group(2).strip()
-
-        if key == "pkgbase":
-            v = raw.strip("'\"")
-            result["pkgbase"] = v
-        elif key == "pkgver":
-            result["pkgver"] = raw.strip("'\"")
-        elif key == "pkgrel":
-            result["pkgrel"] = raw.strip("'\"")
-        elif key == "pkgname":
-            if raw.startswith("("):
-                # Multi-line array — re-read the source with a broader regex
-                arr_text = _extract_array(text, "pkgname")
-                result["pkgname"] = _parse_array_literal(arr_text)
-            else:
-                result["pkgname"] = [raw.strip("'\"")]
-        elif key in ("depends", "makedepends", "conflicts", "provides"):
-            if raw.startswith("("):
-                arr_text = _extract_array(text, key)
-                result[key] = _parse_array_literal(arr_text)
-            else:
-                result[key] = [raw.strip("'\"")]
-
-    return result
-
-
 def _extract_array(text: str, varname: str) -> str:
-    """Return the raw text of a bash array assignment, handling nested
-    parentheses and quoted strings loosely."""
     pattern = re.compile(rf"^\s*{varname}\s*=\s*\(", re.MULTILINE)
     m = pattern.search(text)
     if not m:
         return ""
-    start = m.end() - 1  # at '('
+    start = m.end() - 1
     depth = 0
     i = start
     in_single = False
@@ -701,12 +622,52 @@ def _extract_array(text: str, varname: str) -> str:
     return ""
 
 
+def parse_pkgbuild(path: Path) -> dict:
+    text = path.read_text(encoding="utf-8", errors="replace")
+    normalized = re.sub(r"\\\n", " ", text)
+
+    result: dict = {
+        "pkgbase": None,
+        "pkgname": [],
+        "pkgver": None,
+        "pkgrel": None,
+        "depends": [],
+        "makedepends": [],
+        "conflicts": [],
+        "provides": [],
+    }
+
+    for line in normalized.splitlines():
+        m = _RE_ASSIGN.match(line)
+        if not m:
+            continue
+        key, raw = m.group(1), m.group(2).strip()
+
+        if key == "pkgbase":
+            result["pkgbase"] = raw.strip("'\"")
+        elif key == "pkgver":
+            result["pkgver"] = raw.strip("'\"")
+        elif key == "pkgrel":
+            result["pkgrel"] = raw.strip("'\"")
+        elif key == "pkgname":
+            if raw.startswith("("):
+                result["pkgname"] = _parse_array_literal(_extract_array(text, "pkgname"))
+            else:
+                result["pkgname"] = [raw.strip("'\"")]
+        elif key in ("depends", "makedepends", "conflicts", "provides"):
+            if raw.startswith("("):
+                result[key] = _parse_array_literal(_extract_array(text, key))
+            else:
+                result[key] = [raw.strip("'\"")]
+
+    return result
+
+
 # ---------------------------------------------------------------------------
 # Phase 3 — inspect
 # ---------------------------------------------------------------------------
 
 def _branch_label_from_utils_name(name: str) -> str:
-    """nvidia-390xx-utils -> 390xx ; nvidia-utils -> current"""
     if name == "nvidia-utils":
         return "current"
     m = re.match(r"^nvidia-(\d+xx)-utils$", name)
@@ -716,31 +677,26 @@ def _branch_label_from_utils_name(name: str) -> str:
 
 
 def _branch_label_from_kernel_dir(name: str, prefix: str) -> str:
-    """Extract '390xx' from 'nvidia-390xx' or 'nvidia-open' -> 'nvidia-open'."""
     if name in ("nvidia", "nvidia-open"):
         return name
-    m = re.match(r"^nvidia-(\d+xx)(?:-open)?$", name)
+    m = re.match(r"^nvidia-(\d+xx)(-open)?$", name)
     if m:
-        return m.group(1) + ("-open" if name.endswith("-open") else "")
+        return m.group(1) + (m.group(2) or "")
     return name
 
 
 def _kernel_prefix_variant(prefix_dir_name: str) -> tuple[str, str]:
-    """'linux61-extramodules' -> ('linux61', 'normal')
-       'linux61-rt-extramodules' -> ('linux61-rt', 'rt')"""
     base = prefix_dir_name[: -len("-extramodules")]
     variant = "rt" if base.endswith("-rt") else "normal"
     return base, variant
 
 
 def _parse_all_pkgbuilds(cfg: Config) -> list[PackageInfo]:
-    """Walk the entire sources tree, parse each PKGBUILD, return the list."""
     out: list[PackageInfo] = []
     root = cfg.sources_dir
 
     for pkgbuild in sorted(root.rglob("PKGBUILD")):
         parent = pkgbuild.parent
-        # Skip .git internals just in case
         if ".git" in parent.parts:
             continue
         try:
@@ -755,18 +711,11 @@ def _parse_all_pkgbuilds(cfg: Config) -> list[PackageInfo]:
 
         dkms_names = [n for n in pkgname_list if n.endswith("-dkms")]
 
-        # Determine kind and labels from the directory structure
         kind = "unknown"
         branch_label = ""
         kernel_prefix = ""
         variant = ""
 
-        # Non-flat: parent dir is the source repo name
-        # Flat: parent dir might be "nvidia-XXX" or a "linux*-extramodules/nvidia-XXX" path
-
-        parts_lower = [p.lower() for p in parent.parts]
-
-        # Is any ancestor a *-extramodules directory?
         extramod_idx = None
         for i, p in enumerate(parent.parts):
             if p.endswith("-extramodules"):
@@ -785,7 +734,6 @@ def _parse_all_pkgbuilds(cfg: Config) -> list[PackageInfo]:
             branch_label = _branch_label_from_kernel_dir(top_name, "")
             kind = "kernel"
 
-        # Extract the required DKMS from makedepends / depends
         required_dkms = ""
         for dep in meta.get("makedepends", []) + meta.get("depends", []):
             base = dep.split("=", 1)[0].split(">", 1)[0].split("<", 1)[0].strip()
@@ -815,16 +763,13 @@ def _parse_all_pkgbuilds(cfg: Config) -> list[PackageInfo]:
 
 
 def _apply_filters(pkgs: list[PackageInfo], cfg: Config) -> list[PackageInfo]:
-    """Apply --drivers / --exclude-drivers and --kernels / --exclude-kernels."""
     out = pkgs
-
     if cfg.drivers:
         wanted = set(cfg.drivers)
         out = [p for p in out if p.branch_label in wanted]
     if cfg.exclude_drivers:
         skip = set(cfg.exclude_drivers)
         out = [p for p in out if p.branch_label not in skip]
-
     if cfg.kernels:
         wanted = set(cfg.kernels)
         out = [p for p in out
@@ -833,21 +778,18 @@ def _apply_filters(pkgs: list[PackageInfo], cfg: Config) -> list[PackageInfo]:
         skip = set(cfg.exclude_kernels)
         out = [p for p in out
                if p.kind != "kernel" or p.kernel_prefix not in skip]
-
     return out
 
 
 def _build_plan(pkgs: list[PackageInfo]) -> BuildPlan:
     plan = BuildPlan()
 
-    # ---- kernel prefixes -----------------------------------------------
     kernels: set[str] = set()
     for p in pkgs:
         if p.kind == "kernel" and p.kernel_prefix:
             kernels.add(p.kernel_prefix)
     plan.kernels = sorted(kernels)
 
-    # ---- utils plans ---------------------------------------------------
     utils_pkgs = [p for p in pkgs if p.kind == "utils"]
     kernel_pkgs = [p for p in pkgs if p.kind == "kernel"]
 
@@ -867,19 +809,15 @@ def _build_plan(pkgs: list[PackageInfo]) -> BuildPlan:
             if k.branch_label != u.branch_label and \
                not (u.branch_label == "current" and k.branch_label == "nvidia"):
                 continue
-            # Match by required DKMS
             if k.required_dkms == closed:
                 closed_modules.append(k)
             elif open_dkms and k.required_dkms == open_dkms:
                 open_modules.append(k)
             elif k.required_dkms == "":
-                # Heuristic: if the folder name ends with -open, it's open
                 if k.source_dir.name.endswith("-open"):
                     open_modules.append(k)
                 else:
                     closed_modules.append(k)
-
-        clean_label = u.branch_label
 
         plan.utils_plans.append(UtilsPlan(
             utils=u,
@@ -887,7 +825,7 @@ def _build_plan(pkgs: list[PackageInfo]) -> BuildPlan:
             open_dkms=open_dkms,
             closed_modules=sorted(closed_modules, key=lambda x: x.kernel_prefix),
             open_modules=sorted(open_modules, key=lambda x: x.kernel_prefix),
-            clean_label=clean_label,
+            clean_label=u.branch_label,
         ))
 
     return plan
@@ -906,10 +844,10 @@ def phase_inspect(cfg: Config) -> BuildPlan:
         f"kernels: {', '.join(plan.kernels) or '—'}")
 
     for up in plan.utils_plans:
-        closed = len(up.closed_modules)
-        open_n = len(up.open_modules)
         kind = "complex" if up.open_dkms else "simple"
-        log(f"  {up.utils.name} [{kind}] closed_modules={closed} open_modules={open_n}")
+        log(f"  {up.utils.name} [{kind}] "
+            f"closed_modules={len(up.closed_modules)} "
+            f"open_modules={len(up.open_modules)}")
 
     plan_path = cfg.workdir / "build-plan.json"
     plan_path.write_text(json.dumps({
@@ -957,7 +895,6 @@ def phase_inspect(cfg: Config) -> BuildPlan:
 # ---------------------------------------------------------------------------
 
 def _pacman_query(name: str) -> tuple[str, str] | None:
-    """Return (version, repo) if pacman knows the package, else None."""
     try:
         proc = subprocess.run(
             ["pacman", "-Si", name],
@@ -985,8 +922,7 @@ def phase_eol(cfg: Config, plan: BuildPlan) -> list[dict]:
     seen: set[str] = set()
 
     for up in plan.utils_plans:
-        candidates: list[str] = []
-        candidates.append(up.utils.name)
+        candidates: list[str] = [up.utils.name]
         candidates.extend(up.utils.dkms_names)
         for m in up.closed_modules + up.open_modules:
             candidates.append(m.name)
@@ -995,7 +931,6 @@ def phase_eol(cfg: Config, plan: BuildPlan) -> list[dict]:
             if name in seen:
                 continue
             seen.add(name)
-
             hit = _pacman_query(name)
             if hit is None:
                 results.append({
@@ -1008,13 +943,12 @@ def phase_eol(cfg: Config, plan: BuildPlan) -> list[dict]:
                 manjaro_ver, repo = hit
                 results.append({
                     "package": name,
-                    "repo_version": None,       # filled below for utils
+                    "repo_version": None,
                     "manjaro_version": manjaro_ver,
                     "repo_name": repo,
                     "status": "ok",
                 })
 
-    # Cross-check utils versions
     for up in plan.utils_plans:
         expected = f"{up.utils.pkgver}-{up.utils.pkgrel}"
         for r in results:
@@ -1024,7 +958,6 @@ def phase_eol(cfg: Config, plan: BuildPlan) -> list[dict]:
                         not r["manjaro_version"].startswith(up.utils.pkgver):
                     r["status"] = "stale"
 
-    # Kernel prefixes
     for prefix in plan.kernels:
         hit = _pacman_query(prefix)
         results.append({
@@ -1076,7 +1009,6 @@ def _pacman_install(files: Iterable[Path]) -> bool:
 def _cleanup(cfg: Config, label: str) -> None:
     script = cfg.workdir / "clean-nvidia-container.sh"
     if not script.is_file():
-        # try alongside the harvest binary
         alt = Path(__file__).parent / "clean-nvidia-container.sh"
         if alt.is_file():
             script = alt
@@ -1084,10 +1016,7 @@ def _cleanup(cfg: Config, label: str) -> None:
         warn(f"cleanup script not found, skipping ({label})")
         return
     try:
-        subprocess.run(
-            ["sudo", "bash", str(script), label],
-            check=False,
-        )
+        subprocess.run(["sudo", "bash", str(script), label], check=False)
     except FileNotFoundError:
         warn("sudo not available; cleanup skipped")
 
@@ -1105,7 +1034,6 @@ def phase_build(cfg: Config, plan: BuildPlan) -> None:
         is_complex = up.open_dkms is not None
 
         if not is_complex:
-            # Simple branch: -si works
             if not _makepkg(up.utils.source_dir, install=True):
                 warn(f"skipping kernel modules for {up.utils.name}")
                 _cleanup(cfg, up.clean_label)
@@ -1115,14 +1043,12 @@ def phase_build(cfg: Config, plan: BuildPlan) -> None:
             _cleanup(cfg, up.clean_label)
             continue
 
-        # Complex branch: two DKMS in one pkgbase
         if not _makepkg(up.utils.source_dir, install=False):
             warn(f"skipping kernel modules for {up.utils.name}")
             _cleanup(cfg, up.clean_label)
             continue
 
         base = up.utils.name[:-len("-utils")]
-        # Install closed half
         closed_files = _glob_artifacts(up.utils.source_dir, [
             f"{base}-utils-*.pkg.tar.zst",
             f"opencl-{base}-*.pkg.tar.zst",
@@ -1136,7 +1062,6 @@ def phase_build(cfg: Config, plan: BuildPlan) -> None:
 
         _cleanup(cfg, up.clean_label)
 
-        # Reinstall userspace + open dkms
         userspace_files = _glob_artifacts(up.utils.source_dir, [
             f"{base}-utils-*.pkg.tar.zst",
         ])
@@ -1182,7 +1107,6 @@ def phase_harvest(cfg: Config) -> None:
         "-q",
     ])
 
-    # Mirror INDEX.md -> README.md
     index = cfg.harvest_dir / "INDEX.md"
     if index.is_file():
         (cfg.harvest_dir / "README.md").write_text(index.read_text())
@@ -1191,7 +1115,6 @@ def phase_harvest(cfg: Config) -> None:
         if idx.is_file():
             (d / "README.md").write_text(idx.read_text())
 
-    # Append EOL section to README.md
     eol_path = cfg.workdir / "eol-list.json"
     if eol_path.is_file():
         eol_data = json.loads(eol_path.read_text())
@@ -1227,6 +1150,8 @@ def phase_publish(cfg: Config) -> None:
     repo = os.environ.get("GITHUB_REPOSITORY")
     if not token or not repo:
         die("publish: GITHUB_TOKEN and GITHUB_REPOSITORY must be set")
+    if looks_like_placeholder(token):
+        die("publish: GITHUB_TOKEN looks like a placeholder")
 
     remote_url = f"https://x-access-token:{token}@github.com/{repo}.git"
     tmp = Path("/tmp/nvidia-ci-publish")
@@ -1234,21 +1159,22 @@ def phase_publish(cfg: Config) -> None:
         shutil.rmtree(tmp)
 
     run(["git", "clone", remote_url, str(tmp)])
-    subprocess.run(["git", "config", "user.email",
-                    "github-actions[bot]@users.noreply.github.com"],
-                   cwd=tmp, check=True)
-    subprocess.run(["git", "config", "user.name", "github-actions[bot]"],
-                   cwd=tmp, check=True)
+    subprocess.run(
+        ["git", "config", "user.email",
+         "github-actions[bot]@users.noreply.github.com"],
+        cwd=tmp, check=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "github-actions[bot]"],
+        cwd=tmp, check=True,
+    )
 
-    # Switch to the results branch (create it if needed)
     has_branch = subprocess.run(
         ["git", "ls-remote", "--exit-code", "origin", cfg.results_branch],
         cwd=tmp, capture_output=True,
     ).returncode == 0
 
     if has_branch:
-        run(["git", "fetch", "--depth", "1", "origin", cfg.results_branch],
-            check=True) if False else None
         subprocess.run(
             ["git", "fetch", "--depth", "1", "origin", cfg.results_branch],
             cwd=tmp, check=True,
@@ -1264,7 +1190,6 @@ def phase_publish(cfg: Config) -> None:
             cwd=tmp, check=True,
         )
 
-    # Replace working tree
     for child in tmp.iterdir():
         if child.name == ".git":
             continue
@@ -1287,14 +1212,8 @@ def phase_publish(cfg: Config) -> None:
         return
 
     ts = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
-    subprocess.run(
-        ["git", "commit", "-m", f"harvest: {ts}"],
-        cwd=tmp, check=True,
-    )
-    subprocess.run(
-        ["git", "push", "origin", cfg.results_branch],
-        cwd=tmp, check=True,
-    )
+    subprocess.run(["git", "commit", "-m", f"harvest: {ts}"], cwd=tmp, check=True)
+    subprocess.run(["git", "push", "origin", cfg.results_branch], cwd=tmp, check=True)
     log(f"publish: pushed to {cfg.results_branch}")
 
 
@@ -1313,8 +1232,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--config", help="TOML config file")
 
     p.add_argument("--all", action="store_true",
-                   help="Run discover → clone → inspect → eol → build → "
-                        "harvest (and publish if --publish)")
+                   help="Run all phases")
     p.add_argument("--phase", choices=[
         "discover", "clone", "inspect", "eol", "build", "harvest", "publish",
     ], help="Run a single phase")
@@ -1337,7 +1255,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     p.add_argument("--publish", action="store_true",
                    help="Push results to the results branch (GitHub Actions only)")
-    p.add_argument("--results-branch", help=f"Results branch (default: {DEFAULT_RESULTS_BRANCH})")
+    p.add_argument("--results-branch",
+                   help=f"Results branch (default: {DEFAULT_RESULTS_BRANCH})")
     p.add_argument("--history-keep", type=int,
                    help=f"History snapshots to keep (default: {DEFAULT_HISTORY_KEEP})")
     p.add_argument("--header-lines", type=int, help="Header lines per make.log")
@@ -1358,7 +1277,6 @@ def main(argv: list[str] | None = None) -> int:
 
     token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GITLAB_TOKEN")
 
-    # State handoff: discover/inspect/eol always run before --all's later phases
     plan: BuildPlan | None = None
 
     def get_plan() -> BuildPlan:
@@ -1400,7 +1318,6 @@ def main(argv: list[str] | None = None) -> int:
             phase_publish(cfg)
         return 0
 
-    # Nothing explicit — print help
     build_parser().print_help()
     return 0
 
