@@ -17,7 +17,8 @@ Phases (each independently runnable via --phase, or all via --all):
              repositories (pacman -Ss) to spot EOL / stale packages.
   build      Execute the build plan (utils + kernel modules) in the
              correct order, handling simple and complex (dual-DKMS)
-             branches.
+             branches.  Kernels that do not exist in the Manjaro
+             repositories are skipped automatically.
   harvest    Invoke `harvest-nvidia-logs` on the resulting build tree.
   publish    Push README.md + history/ to the results branch.
              ONLY runs when --publish is given.
@@ -59,7 +60,7 @@ from urllib.parse import quote
 from urllib.request import Request, urlopen
 
 
-__version__ = "0.1.3"
+__version__ = "0.1.4"
 
 
 # ---------------------------------------------------------------------------
@@ -101,6 +102,12 @@ KERNEL_NAMESPACE_PATTERN = re.compile(r"linux\d+(-rt)?-extramodules$")
 # Legacy layout: linuxYY[-rt]-nvidia-XXX
 LEGACY_KERNEL_DIR_PATTERN = re.compile(r"^(linux\d+)(-rt)?-nvidia-(.+)$")
 
+# Anything containing these characters is not a literal package name —
+# it's a bash variable or expansion we cannot safely evaluate.  Such
+# names are dropped from the EOL scan (they would only ever produce a
+# bogus "not-in-manjaro" row).
+_UNEXPANDABLE_CHARS = ("$", "{", "}", "(", ")")
+
 
 # ---------------------------------------------------------------------------
 # Logging helpers
@@ -138,6 +145,16 @@ def looks_like_placeholder(token: str) -> bool:
     if len(token) < 20:
         return True
     return False
+
+
+def _valid_pkgname(name: str) -> bool:
+    """Reject names that contain bash variables or expansions."""
+    if not name:
+        return False
+    for ch in _UNEXPANDABLE_CHARS:
+        if ch in name:
+            return False
+    return True
 
 
 # ---------------------------------------------------------------------------
@@ -186,6 +203,7 @@ class UtilsPlan:
 class BuildPlan:
     utils_plans: list[UtilsPlan] = field(default_factory=list)
     kernels: list[str] = field(default_factory=list)
+    available_kernels: set[str] = field(default_factory=set)
     eol_packages: list[dict] = field(default_factory=list)
 
 
@@ -681,8 +699,6 @@ def _branch_label_from_kernel_dir(name: str, prefix: str) -> str:
 
 
 def _normalize_branch_label(label: str) -> str:
-    """Strip -open suffix and normalize nvidia-open -> nvidia so that
-    closed and open kernel modules match the same utils branch."""
     if label.endswith("-open"):
         return label[:-len("-open")]
     if label == "nvidia-open":
@@ -721,17 +737,15 @@ def _parse_all_pkgbuilds(cfg: Config) -> list[PackageInfo]:
         kernel_prefix = ""
         variant = ""
 
-        # --- Legacy layout detection ------------------------------------
-        # .../nvidia-XXX/{normal,rt}-kernels/linuxYY[-rt]-nvidia-XXX/
+        # --- Legacy layout: linuxYY[-rt]-nvidia-XXX ---------------------
         m_legacy = LEGACY_KERNEL_DIR_PATTERN.match(parent.name)
         if m_legacy:
             kernel_prefix = m_legacy.group(1) + (m_legacy.group(2) or "")
             variant = "rt" if m_legacy.group(2) else "normal"
-            branch_label = m_legacy.group(3)  # "340xx", "580xx-open"
+            branch_label = m_legacy.group(3)
             kind = "kernel"
 
-        # --- Flat layout detection --------------------------------------
-        # .../linuxYY[-rt]-extramodules/nvidia-XXX/
+        # --- Flat layout: linuxYY[-rt]-extramodules/nvidia-XXX ----------
         if kind == "unknown":
             extramod_idx = None
             for i, p in enumerate(parent.parts):
@@ -754,7 +768,6 @@ def _parse_all_pkgbuilds(cfg: Config) -> list[PackageInfo]:
             branch_label = _branch_label_from_kernel_dir(top_name, "")
             kind = "kernel"
 
-        # --- required DKMS ----------------------------------------------
         required_dkms = ""
         for dep in meta.get("makedepends", []) + meta.get("depends", []):
             base = dep.split("=", 1)[0].split(">", 1)[0].split("<", 1)[0].strip()
@@ -831,11 +844,9 @@ def _build_plan(pkgs: list[PackageInfo]) -> BuildPlan:
         for k in kernel_pkgs:
             k_label_norm = _normalize_branch_label(k.branch_label)
             if k_label_norm != u_label_norm:
-                # "current" utils also serve "nvidia" kernel modules
                 if not (u_label_norm == "current" and k_label_norm == "nvidia"):
                     continue
 
-            # Decide closed vs open
             is_open = False
             if open_dkms and k.required_dkms == open_dkms:
                 is_open = True
@@ -868,7 +879,6 @@ def phase_inspect(cfg: Config) -> BuildPlan:
     all_pkgs = _parse_all_pkgbuilds(cfg)
     log(f"inspect: found {len(all_pkgs)} PKGBUILD(s)")
 
-    # Diagnostics — how many of each kind
     kinds: dict[str, int] = {}
     for p in all_pkgs:
         kinds[p.kind] = kinds.get(p.kind, 0) + 1
@@ -967,6 +977,8 @@ def phase_eol(cfg: Config, plan: BuildPlan) -> list[dict]:
             candidates.append(m.name)
 
         for name in candidates:
+            if not _valid_pkgname(name):
+                continue
             if name in seen:
                 continue
             seen.add(name)
@@ -990,6 +1002,8 @@ def phase_eol(cfg: Config, plan: BuildPlan) -> list[dict]:
 
     for up in plan.utils_plans:
         expected = f"{up.utils.pkgver}-{up.utils.pkgrel}"
+        if not _valid_pkgname(up.utils.name):
+            continue
         for r in results:
             if r["package"] == up.utils.name:
                 r["repo_version"] = expected
@@ -997,6 +1011,8 @@ def phase_eol(cfg: Config, plan: BuildPlan) -> list[dict]:
                         not r["manjaro_version"].startswith(up.utils.pkgver):
                     r["status"] = "stale"
 
+    # Kernel prefix existence — this drives available_kernels, used
+    # later by phase_build to skip EOL kernels.
     for prefix in plan.kernels:
         hit = _pacman_query(prefix)
         results.append({
@@ -1005,12 +1021,16 @@ def phase_eol(cfg: Config, plan: BuildPlan) -> list[dict]:
             "manjaro_version": hit[0] if hit else None,
             "status": "ok" if hit else "not-in-manjaro",
         })
+        if hit is not None:
+            plan.available_kernels.add(prefix)
 
     eol_path = cfg.workdir / "eol-list.json"
     eol_path.write_text(json.dumps(results, indent=2))
 
     n_bad = sum(1 for r in results if r["status"] != "ok")
     log(f"eol: {n_bad}/{len(results)} package(s) flagged -> {eol_path}")
+    log(f"eol: available kernels: "
+        f"{', '.join(sorted(plan.available_kernels)) or '—'}")
     return results
 
 
@@ -1068,6 +1088,28 @@ def _glob_artifacts(dir_: Path, patterns: list[str]) -> list[Path]:
 
 
 def phase_build(cfg: Config, plan: BuildPlan) -> None:
+    # Compute the set of kernels we are allowed to build for.  If the
+    # eol phase ran, it already filled plan.available_kernels.  If not,
+    # query pacman now so that --phase build alone also works.
+    if not plan.available_kernels and plan.kernels:
+        for prefix in plan.kernels:
+            if _pacman_query(prefix) is not None:
+                plan.available_kernels.add(prefix)
+        log(f"build: available kernels (from pacman): "
+            f"{', '.join(sorted(plan.available_kernels)) or '—'}")
+
+    skipped_kernels = sorted(set(plan.kernels) - plan.available_kernels)
+    if skipped_kernels:
+        warn(f"build: skipping kernels not in Manjaro repo: "
+             f"{', '.join(skipped_kernels)}")
+
+    def build_modules(modules: list[PackageInfo]) -> None:
+        for m in modules:
+            if m.kernel_prefix and m.kernel_prefix not in plan.available_kernels:
+                log(f"  skip {m.name} — kernel {m.kernel_prefix} not available")
+                continue
+            _makepkg(m.source_dir, install=False)
+
     for up in plan.utils_plans:
         log(f"=== build: {up.utils.name} ===")
         is_complex = up.open_dkms is not None
@@ -1077,8 +1119,7 @@ def phase_build(cfg: Config, plan: BuildPlan) -> None:
                 warn(f"skipping kernel modules for {up.utils.name}")
                 _cleanup(cfg, up.clean_label)
                 continue
-            for m in up.closed_modules:
-                _makepkg(m.source_dir, install=False)
+            build_modules(up.closed_modules)
             _cleanup(cfg, up.clean_label)
             continue
 
@@ -1096,8 +1137,7 @@ def phase_build(cfg: Config, plan: BuildPlan) -> None:
         ])
         _pacman_install(closed_files)
 
-        for m in up.closed_modules:
-            _makepkg(m.source_dir, install=False)
+        build_modules(up.closed_modules)
 
         _cleanup(cfg, up.clean_label)
 
@@ -1111,8 +1151,7 @@ def phase_build(cfg: Config, plan: BuildPlan) -> None:
         ])
         _pacman_install(open_files)
 
-        for m in up.open_modules:
-            _makepkg(m.source_dir, install=False)
+        build_modules(up.open_modules)
 
         _cleanup(cfg, up.clean_label)
 
