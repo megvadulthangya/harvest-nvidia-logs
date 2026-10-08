@@ -1,67 +1,12 @@
-# ============================================================================
-# Official Manjaro NVIDIA build + harvest
-# ============================================================================
-#
-# Builds the official Manjaro nvidia packages and pushes the harvest
-# result to a dedicated `official-results` branch.  Kept separate from
-# build.yml so the two never interfere.
-#
-# ----------------------------------------------------------------------------
-# WHAT GETS BUILT — the `url` input decides
-# ----------------------------------------------------------------------------
-#
-# The default URL (see `workflow_dispatch` inputs below) points at
-# Manjaro's current flat repository.  Two alternative URL forms are
-# also supported; you can switch by simply typing a different URL
-# into the "Run workflow" dialog — no file edit required.
-#
-# 1.  https://code.manjaro.org/packages/PKGBUILDs.git
-#     FLAT (current).  Single repository, every PKGBUILD is a
-#     subdirectory inside it.  This is the default.
-#
-# 2.  https://code.manjaro.org/packages
-#     NON-FLAT, one repo per package.  Use this if Manjaro later
-#     splits the flat tree back into individual repositories
-#     (nvidia-XXX-utils, linuxYY-extramodules/nvidia-XXX, …).
-#     nvidia-ci.py calls the Forgejo API, lists every repo in the
-#     `packages` org, and keeps the nvidia-* ones.  No exact
-#     subgroup path needs to be known.
-#
-#     A host-only form (https://code.manjaro.org) also works as a
-#     global instance search, but Forgejo's global search only
-#     matches repository names — prefer the org-scoped form.
-#
-# 3.  https://gitlab.manjaro.org
-#     HISTORICAL reference.  The old Manjaro GitLab instance is now
-#     read-only (archived).  It hosted exactly the non-flat layout
-#     we anticipate in (2), so it stays here as a working example
-#     of the non-flat code path.  Do not use in production.
-#     Note the URL is only the host: GitLab's global project
-#     search finds every nvidia-* project anywhere on the
-#     instance without needing a specific group name.
-#
-# ----------------------------------------------------------------------------
-# BRANCH OVERRIDES
-# ----------------------------------------------------------------------------
-#
-# In flat mode (URL form 1), `source-branch` selects the branch to
-# clone.  Empty means the remote default branch.
-#
-# In non-flat mode (URL forms 2 and 3), `drivers-branch` and
-# `kernels-branch` override the default branch of the utils and
-# kernel-module repositories respectively.  Empty means each
-# repository's own default branch.
-# ============================================================================
-
-name: Build Manjaro official NVIDIA modules and harvest logs
+name: Build NVIDIA modules and harvest logs
 
 on:
   workflow_dispatch:
     inputs:
       url:
-        description: "Source URL — see file header for supported forms"
+        description: "Source URL — flat repo (.git) OR user/org/group"
         required: true
-        default: "https://code.manjaro.org/packages/PKGBUILDs.git"
+        default: "https://github.com/megvadulthangya"
       source-branch:
         description: "Flat repo branch (empty = remote default)"
         required: false
@@ -69,11 +14,11 @@ on:
       drivers-branch:
         description: "Non-flat drivers branch (empty = remote default)"
         required: false
-        default: ""
+        default: "develop"
       kernels-branch:
         description: "Non-flat kernel modules branch (empty = remote default)"
         required: false
-        default: ""
+        default: "develop"
       manjaro-branch:
         description: "Manjaro branch"
         type: choice
@@ -101,7 +46,7 @@ on:
       results-branch:
         description: "Results branch to push to"
         required: true
-        default: "official-results"
+        default: "results"
       publish:
         description: "Push results to GitHub"
         type: boolean
@@ -112,11 +57,11 @@ on:
         default: "30"
 
   schedule:
-    # Weekly on Sunday at 04:00 UTC (one hour after the custom run)
-    - cron: '0 4 * * 0'
+    - cron: '0 3 * * 0'   # weekly, Sunday 03:00 UTC
 
+# Prevent two runs from stomping on each other
 concurrency:
-  group: build-nvidia-official
+  group: build-nvidia-${{ github.repository }}
   cancel-in-progress: false
 
 jobs:
@@ -125,22 +70,23 @@ jobs:
     container:
       image: manjarolinux/build:latest
     permissions:
-      contents: write
+      contents: write       # needed for the results push
 
     env:
-      # Active settings — the flat Manjaro repository is the default.
-      # To run a different scenario, override `url` in the "Run
-      # workflow" dialog.  Nothing here needs editing to switch.
-      URL:              ${{ inputs.url             || 'https://code.manjaro.org/packages/PKGBUILDs.git' }}
+      # Inputs, with fallbacks for the scheduled trigger (where inputs
+      # are empty).  These defaults describe the *custom* profile.
+      # Duplicate this file as build-official.yml and change the
+      # defaults (URL + results-branch) for the official Manjaro run.
+      URL:              ${{ inputs.url             || 'https://github.com/megvadulthangya' }}
       SOURCE_BRANCH:    ${{ inputs.source-branch   || '' }}
-      DRIVERS_BRANCH:   ${{ inputs.drivers-branch  || '' }}
-      KERNELS_BRANCH:   ${{ inputs.kernels-branch  || '' }}
+      DRIVERS_BRANCH:   ${{ inputs.drivers-branch  || 'develop' }}
+      KERNELS_BRANCH:   ${{ inputs.kernels-branch  || 'develop' }}
       MANJARO_BRANCH:   ${{ inputs.manjaro-branch  || 'testing' }}
       DRIVERS:          ${{ inputs.drivers         || '' }}
       EXCLUDE_DRIVERS:  ${{ inputs.exclude-drivers || '' }}
       KERNELS:          ${{ inputs.kernels         || '' }}
       EXCLUDE_KERNELS:  ${{ inputs.exclude-kernels || '' }}
-      RESULTS_BRANCH:   ${{ inputs.results-branch  || 'official-results' }}
+      RESULTS_BRANCH:   ${{ inputs.results-branch  || 'results' }}
       PUBLISH:          ${{ inputs.publish }}
       HISTORY_KEEP:     ${{ inputs.history-keep    || '30' }}
 
@@ -164,6 +110,7 @@ jobs:
           pacman -Syy --noconfirm
           pacman -Suu --noconfirm
 
+          # python is required by nvidia-ci.py; sudo by the builder setup.
           pacman -S --noconfirm --needed python sudo
 
       - name: Create builder user
@@ -193,6 +140,8 @@ jobs:
         run: |
           set -euxo pipefail
 
+          # Build the argument list dynamically so we only pass
+          # non-empty optional values.
           args=(
             --all
             --url "${URL}"
@@ -222,6 +171,8 @@ jobs:
           if [ -n "${EXCLUDE_KERNELS}" ]; then
             args+=(--exclude-kernels "${EXCLUDE_KERNELS}")
           fi
+          # publish is a boolean input; on the scheduled trigger it
+          # comes through as the empty string, which means "yes".
           if [ "${PUBLISH}" != "false" ]; then
             args+=(--publish)
           fi

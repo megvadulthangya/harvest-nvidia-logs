@@ -8,8 +8,8 @@ branches across multiple Manjaro kernels.
 
 Phases (each independently runnable via --phase, or all via --all):
 
-  discover   Resolve an input URL (flat repo OR user/org/group) into a
-             concrete list of source repositories to clone.
+  discover   Resolve an input URL into a concrete list of source
+             repositories to clone.
   clone      git clone each discovered repository.
   inspect    Parse every PKGBUILD, build a structured build plan, and
              determine the DKMS multiplicity of each utils package.
@@ -26,17 +26,35 @@ Phases (each independently runnable via --phase, or all via --all):
 Designed to run both inside GitHub Actions and on a local workstation.
 Nothing is pushed unless --publish is explicitly set.
 
-Sources support:
-  - Flat layout:   single repo URL (…/PKGBUILDs.git)
-  - Non-flat:      GitHub user, GitLab group, Forgejo org
-  - Any git URL:   direct clone target
+SOURCE URL FORMATS
+==================
 
-Platform APIs used for non-flat discovery:
+  <url>.git              → single repository (flat or kernel module repo)
+  <host>                 → global search across the platform instance
+  <host>/<group>         → scoped search (org / user / group)
+
+Concrete examples:
+
+  https://code.manjaro.org/packages/PKGBUILDs.git
+        → flat repository (all PKGBUILDs live inside, as subdirs)
+
+  https://code.manjaro.org/packages
+        → Forgejo org listing (packages/PKGBUILDs, packages/nvidia-*)
+
+  https://gitlab.manjaro.org
+        → GitLab global project search: all projects whose name
+          matches "nvidia" anywhere on the instance
+
+  https://gitlab.manjaro.org/packages
+        → GitLab group listing (with include_subgroups=true)
+
+  https://github.com/megvadulthangya
+        → GitHub user or org
+
+Platform APIs used:
   - Forgejo / Gitea  (code.manjaro.org)
   - GitLab           (gitlab.manjaro.org)
   - GitHub           (github.com)
-
-Configuration via CLI args and/or a TOML file.
 
 Dependencies: Python 3.11+ (for tomllib), git.
 """
@@ -60,7 +78,7 @@ from urllib.parse import quote
 from urllib.request import Request, urlopen
 
 
-__version__ = "0.1.4"
+__version__ = "0.1.5"
 
 
 # ---------------------------------------------------------------------------
@@ -97,15 +115,12 @@ SOURCE_INCLUDE_PATTERNS = [
     re.compile(r"^nvidia-\d+xx-open$"),
 ]
 
-KERNEL_NAMESPACE_PATTERN = re.compile(r"linux\d+(-rt)?-extramodules$")
-
 # Legacy layout: linuxYY[-rt]-nvidia-XXX
 LEGACY_KERNEL_DIR_PATTERN = re.compile(r"^(linux\d+)(-rt)?-nvidia-(.+)$")
 
 # Anything containing these characters is not a literal package name —
 # it's a bash variable or expansion we cannot safely evaluate.  Such
-# names are dropped from the EOL scan (they would only ever produce a
-# bogus "not-in-manjaro" row).
+# names are dropped from the EOL scan.
 _UNEXPANDABLE_CHARS = ("$", "{", "}", "(", ")")
 
 
@@ -148,7 +163,6 @@ def looks_like_placeholder(token: str) -> bool:
 
 
 def _valid_pkgname(name: str) -> bool:
-    """Reject names that contain bash variables or expansions."""
     if not name:
         return False
     for ch in _UNEXPANDABLE_CHARS:
@@ -345,6 +359,7 @@ def http_json(url: str, token: str | None = None) -> object:
 def paginated_json(base_url: str, token: str | None, page_param: str = "page",
                    limit_param: str = "per_page", limit: int = 100,
                    max_pages: int = 20) -> list:
+    """Fetch a paginated endpoint that returns a top-level list."""
     results: list = []
     for page in range(1, max_pages + 1):
         sep = "&" if "?" in base_url else "?"
@@ -356,6 +371,28 @@ def paginated_json(base_url: str, token: str | None, page_param: str = "page",
             break
         results.extend(data)
         if len(data) < limit:
+            break
+    return results
+
+
+def paginated_forgejo_search(base_url: str, token: str | None,
+                             limit: int = 50, max_pages: int = 20) -> list:
+    """Forgejo /repos/search returns {"ok": true, "data": [...]}.
+    Some versions return a bare list — handle both."""
+    results: list = []
+    for page in range(1, max_pages + 1):
+        sep = "&" if "?" in base_url else "?"
+        url = f"{base_url}{sep}limit={limit}&page={page}"
+        data = http_json(url, token)
+        items: list = []
+        if isinstance(data, dict):
+            items = data.get("data", []) or []
+        elif isinstance(data, list):
+            items = data
+        if not items:
+            break
+        results.extend(items)
+        if len(items) < limit:
             break
     return results
 
@@ -376,13 +413,20 @@ def detect_platform(url: str) -> str:
 
 
 def is_repo_url(url: str) -> bool:
-    low = url.lower()
-    if low.endswith(".git"):
-        return True
-    m = re.match(r"^https?://[^/]+/([^/]+)/([^/]+?)/?$", url)
-    if m:
-        return True
-    return False
+    """A .git suffix unambiguously identifies a single repository.
+    Everything else is treated as a host, group, or user that needs
+    discovery."""
+    return url.lower().rstrip("/").endswith(".git")
+
+
+def parse_host_path(url: str) -> tuple[str, str | None]:
+    """Return (host, path_or_None).  path is everything after the first
+    slash, with no leading/trailing slash."""
+    url = url.rstrip("/")
+    m = re.match(r"^https?://([^/]+)(?:/(.+))?$", url)
+    if not m:
+        die(f"cannot parse URL: {url}")
+    return m.group(1), m.group(2)
 
 
 # ---------------------------------------------------------------------------
@@ -404,63 +448,18 @@ def discover_flat_repo(url: str, cfg: Config) -> list[SourceRepo]:
     )]
 
 
-def discover_non_flat(url: str, cfg: Config, token: str | None) -> list[SourceRepo]:
-    platform = detect_platform(url)
-    repos: list[dict] = []
-
-    if platform == "github":
-        m = re.match(r"^https?://github\.com/([^/]+)/?$", url)
-        if not m:
-            die(f"cannot parse GitHub URL: {url}")
-        owner = m.group(1)
-        api = f"https://api.github.com/users/{owner}/repos"
-        repos = paginated_json(api, token)
-        for r in repos:
-            r["_clone_url"] = r["clone_url"]
-            r["_default_branch"] = r.get("default_branch", "main")
-            r["_name"] = r["name"]
-
-    elif platform == "gitlab":
-        m = re.match(r"^https?://([^/]+)/(.+?)/?$", url)
-        if not m:
-            die(f"cannot parse GitLab URL: {url}")
-        host, group_path = m.group(1), m.group(2)
-        encoded_group = quote(group_path, safe="")
-        api = (
-            f"https://{host}/api/v4/groups/{encoded_group}/projects"
-            f"?include_subgroups=true"
-        )
-        repos = paginated_json(api, token)
-        for r in repos:
-            r["_clone_url"] = r["http_url_to_repo"]
-            r["_default_branch"] = r.get("default_branch") or "main"
-            r["_name"] = r["path"]
-
-    elif platform == "forgejo":
-        m = re.match(r"^https?://([^/]+)/([^/]+)/?$", url)
-        if not m:
-            die(f"cannot parse Forgejo URL: {url}")
-        host, org = m.group(1), m.group(2)
-        api = f"https://{host}/api/v1/orgs/{org}/repos"
-        repos = paginated_json(api, token, page_param="page", limit_param="limit")
-        for r in repos:
-            r["_clone_url"] = r["clone_url"]
-            r["_default_branch"] = r.get("default_branch") or "main"
-            r["_name"] = r["name"]
-
-    else:
-        die(f"unsupported URL for non-flat discovery: {url}")
-
+def _filter_and_label(repos: list[dict], cfg: Config) -> list[SourceRepo]:
+    """Apply include/exclude patterns and produce SourceRepo objects."""
     selected: list[dict] = []
     for r in repos:
-        name = r["_name"]
+        name = r.get("_name", "")
+        if not name:
+            continue
         if not any(p.match(name) for p in SOURCE_INCLUDE_PATTERNS):
             continue
         if any(re.search(x, name) for x in SOURCE_EXCLUDE_PATTERNS):
             continue
         selected.append(r)
-
-    log(f"platform={platform}  total={len(repos)}  selected={len(selected)}")
 
     out: list[SourceRepo] = []
     for r in selected:
@@ -469,68 +468,94 @@ def discover_non_flat(url: str, cfg: Config, token: str | None) -> list[SourceRe
         branch = cfg.drivers_branch or r["_default_branch"]
         if name.endswith("-utils"):
             kind = "utils"
-        elif name.endswith("-open") or name == "nvidia" or re.match(r"^nvidia-\d+xx$", name):
+        elif name.endswith("-open") or name == "nvidia" or \
+                re.match(r"^nvidia-\d+xx$", name):
             kind = "kernel"
             branch = cfg.kernels_branch or r["_default_branch"]
+
+        # target dir name: use only the final path segment to avoid
+        # mixing "packages__extra__nvidia-340xx" style names into the tree
+        dir_name = name.rsplit("/", 1)[-1]
 
         out.append(SourceRepo(
             url=r["_clone_url"],
             branch=branch,
-            target=cfg.sources_dir / name,
+            target=cfg.sources_dir / dir_name,
             kind=kind,
             label=name,
         ))
     return out
 
 
-def discover_gitlab_kernel_namespaces(url: str, cfg: Config, token: str | None) -> list[SourceRepo]:
+def discover_non_flat(url: str, cfg: Config, token: str | None) -> list[SourceRepo]:
     platform = detect_platform(url)
-    if platform != "gitlab":
-        return []
+    host, path = parse_host_path(url)
+    log(f"discover: platform={platform} host={host} path={path or '(none)'}")
 
-    m = re.match(r"^https?://([^/]+)/(.+?)/?$", url)
-    if not m:
-        return []
-    host, group_path = m.group(1), m.group(2)
+    repos: list[dict] = []
 
-    encoded = quote(group_path, safe="")
-    api = f"https://{host}/api/v4/groups/{encoded}/subgroups?per_page=100"
-    try:
-        subgroups = paginated_json(api, token)
-    except SystemExit:
-        return []
+    if platform == "github":
+        if path is None:
+            die("GitHub requires a user or org in the URL "
+                "(e.g. https://github.com/megvadulthangya)")
+        # Try user first, then org
+        tried = []
+        for api_tpl in (f"https://api.github.com/users/{path}/repos",
+                        f"https://api.github.com/orgs/{path}/repos"):
+            tried.append(api_tpl)
+            try:
+                result = paginated_json(api_tpl, token)
+            except SystemExit:
+                continue
+            if result:
+                repos = result
+                break
+        if not repos:
+            die(f"GitHub: no repos found for '{path}' (tried {', '.join(tried)})")
+        for r in repos:
+            r["_clone_url"] = r["clone_url"]
+            r["_default_branch"] = r.get("default_branch", "main")
+            r["_name"] = r["name"]
 
-    out: list[SourceRepo] = []
-    for sg in subgroups:
-        if not isinstance(sg, dict):
-            continue
-        sg_path = sg.get("full_path", "")
-        if not KERNEL_NAMESPACE_PATTERN.search(sg_path):
-            continue
-        encoded_sg = quote(sg_path, safe="")
-        proj_api = (
-            f"https://{host}/api/v4/groups/{encoded_sg}/projects"
-            f"?per_page=100"
-        )
-        try:
-            projects = paginated_json(proj_api, token)
-        except SystemExit:
-            continue
-        for p in projects:
-            if not isinstance(p, dict):
-                continue
-            name = p.get("path", "")
-            if not name.startswith("nvidia"):
-                continue
-            if any(re.search(x, name) for x in SOURCE_EXCLUDE_PATTERNS):
-                continue
-            out.append(SourceRepo(
-                url=p["http_url_to_repo"],
-                branch=cfg.kernels_branch or p.get("default_branch", "main"),
-                target=cfg.sources_dir / sg_path.replace("/", "__") / name,
-                kind="kernel",
-                label=f"{sg_path}/{name}",
-            ))
+    elif platform == "gitlab":
+        if path is None:
+            # Global search across the entire GitLab instance.
+            api = f"https://{host}/api/v4/projects?search=nvidia"
+            repos = paginated_json(api, token)
+        else:
+            encoded = quote(path, safe="")
+            api = (f"https://{host}/api/v4/groups/{encoded}/projects"
+                   f"?include_subgroups=true")
+            repos = paginated_json(api, token)
+        for r in repos:
+            r["_clone_url"] = r["http_url_to_repo"]
+            r["_default_branch"] = r.get("default_branch") or "main"
+            r["_name"] = r["path"]
+
+    elif platform == "forgejo":
+        if path is None:
+            # Global search.  Note: some Forgejo versions only match
+            # repository *names*, so this may return nothing if no repo
+            # literally contains "nvidia" in its name.
+            api = f"https://{host}/api/v1/repos/search?q=nvidia"
+            repos = paginated_forgejo_search(api, token)
+        else:
+            api = f"https://{host}/api/v1/orgs/{path}/repos"
+            repos = paginated_json(api, token,
+                                   page_param="page", limit_param="limit",
+                                   limit=50)
+        for r in repos:
+            r["_clone_url"] = r.get("clone_url", "")
+            r["_default_branch"] = r.get("default_branch") or "main"
+            r["_name"] = r.get("name", "")
+
+    else:
+        die(f"unsupported URL for non-flat discovery: {url}")
+
+    log(f"discover: api returned {len(repos)} repo(s)")
+
+    out = _filter_and_label(repos, cfg)
+    log(f"discover: after filtering: {len(out)} source(s)")
     return out
 
 
@@ -541,10 +566,10 @@ def phase_discover(cfg: Config, token: str | None) -> list[SourceRepo]:
         sources = discover_flat_repo(cfg.url, cfg)
     else:
         sources = discover_non_flat(cfg.url, cfg, token)
-        sources.extend(discover_gitlab_kernel_namespaces(cfg.url, cfg, token))
 
     manifest = cfg.sources_dir / "sources.json"
-    manifest.write_text(json.dumps([asdict(s) for s in sources], indent=2, default=str))
+    manifest.write_text(json.dumps([asdict(s) for s in sources],
+                                   indent=2, default=str))
 
     log(f"discover: {len(sources)} source(s) -> {manifest}")
     return sources
@@ -1011,8 +1036,6 @@ def phase_eol(cfg: Config, plan: BuildPlan) -> list[dict]:
                         not r["manjaro_version"].startswith(up.utils.pkgver):
                     r["status"] = "stale"
 
-    # Kernel prefix existence — this drives available_kernels, used
-    # later by phase_build to skip EOL kernels.
     for prefix in plan.kernels:
         hit = _pacman_query(prefix)
         results.append({
@@ -1088,9 +1111,6 @@ def _glob_artifacts(dir_: Path, patterns: list[str]) -> list[Path]:
 
 
 def phase_build(cfg: Config, plan: BuildPlan) -> None:
-    # Compute the set of kernels we are allowed to build for.  If the
-    # eol phase ran, it already filled plan.available_kernels.  If not,
-    # query pacman now so that --phase build alone also works.
     if not plan.available_kernels and plan.kernels:
         for prefix in plan.kernels:
             if _pacman_query(prefix) is not None:
@@ -1314,7 +1334,7 @@ def build_parser() -> argparse.ArgumentParser:
         description="Build and harvest NVIDIA driver branches across "
                     "multiple Manjaro kernels.",
     )
-    p.add_argument("--url", help="Source URL (repo .git, or user/org/group)")
+    p.add_argument("--url", help="Source URL (see module docstring)")
     p.add_argument("--workdir", help=f"Work directory (default: {DEFAULT_WORKDIR})")
     p.add_argument("--config", help="TOML config file")
 
@@ -1325,9 +1345,9 @@ def build_parser() -> argparse.ArgumentParser:
     ], help="Run a single phase")
 
     p.add_argument("--source-branch",
-                   help="Branch override for the source repo (flat)")
+                   help="Branch override for a flat source repo")
     p.add_argument("--drivers-branch",
-                   help="Branch override for drivers/ dirs (non-flat)")
+                   help="Branch override for utils/driver repos (non-flat)")
     p.add_argument("--kernels-branch",
                    help="Branch override for kernel modules (non-flat)")
 
