@@ -1,368 +1,253 @@
 # harvest-nvidia-logs
 
-> Collect, normalize and summarize `make.log` files produced by DKMS
-> when building legacy NVIDIA driver branches (340xx, 390xx, …) against
-> multiple Manjaro kernels.
+> Build NVIDIA driver branches against multiple Manjaro kernels and
+> turn the resulting `make.log` files into one readable status report.
 
 ![status](https://img.shields.io/badge/status-active-brightgreen)
-![python](https://img.shields.io/badge/python-3.10%2B-blue)
+![python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![license](https://img.shields.io/badge/license-MIT-lightgrey)
 
-If you maintain the `nvidia-340xx` / `nvidia-390xx` (or any other legacy
-NVIDIA branch) packages on Manjaro and build them against a dozen
-kernels at once, you know the pain: each build produces a `make.log`
-that can be multiple 100 000+ lines long, of which **99 % is objtool
-noise** from the driver's pre-built binary blobs (`ENDBR` relocation
-warnings, `naked return` warnings, `missing int3 after ret`, etc.).
-Buried somewhere in there is the one line that tells you why a build
-actually *failed*, or which deprecation is worth patching.
+If you maintain the `nvidia-340xx` / `nvidia-390xx` / `nvidia-580xx`
+(and current) driver branches on Manjaro and rebuild them against a
+dozen kernels at once, you know the pain: every build produces a
+`make.log` with tens of thousands of lines, most of which is objtool
+noise from pre-built binary blobs. The one line that tells you why a
+build actually failed is buried somewhere in there.
 
-`harvest-nvidia-logs` walks your diag tree, finds every `make.log`,
-splits the content into **errors / clean warnings / known noise /
-suspicious lines**, deduplicates and normalizes each warning into a
-stable signature, and produces a single `INDEX.md` that tells you — at
-a glance — what to fix first. On every run it also snapshots the state
-under `history/`, so a follow-up `--diff` run shows exactly which
-signatures were resolved, which appeared, and which builds changed
-status since the previous run.
+This project automates the whole workflow — from cloning the source
+repositories to producing a single `README.md` that lists every
+build, its status, and the actionable warnings across all of them.
 
 ---
 
-## Why
+## What it does
 
-The script was born from a real workflow: maintaining
-[`nvidia-340xx`](https://aur.archlinux.org/packages/?K=nvidia-340xx) and
-`nvidia-390xx` legacy driver packages on Manjaro, rebuilt against every
-current kernel (6.1, 6.6, 6.12, 7.x, plus RT variants). Every build
-produces a `make.log` with tens of thousands of objtool warnings from
-the NVIDIA kernel module, drowning out the few lines that matter.
+For every NVIDIA driver branch found in the configured source:
 
-Tools like [`buildlog-consultant`](https://github.com/jelmer/buildlog-consultant)
-or OpenCanary extract the interesting bits from a *single* build log,
-but none of them answer the question a packager really asks:
+1. Clones the source repositories (flat or non-flat layout).
+2. Parses the PKGBUILDs and generates a structured build plan.
+3. Installs the required kernels and headers.
+4. Builds the utils package, then every kernel module.
+5. Runs the cleanup script between branches.
+6. Harvests the resulting `make.log` files into a single
+   `README.md` with cross-build warning analysis.
+7. Optionally pushes the result to a dedicated results branch.
 
-> *"I have 20 builds. Which warning, if fixed once, unblocks the most
-> of them? And after my patch, did anything actually improve?"*
+It handles the two common layouts automatically:
 
-`harvest-nvidia-logs` answers exactly that.
+- **Flat**: one repository contains every PKGBUILD as a subdirectory
+  (Manjaro's current `code.manjaro.org/packages/PKGBUILDs`).
+- **Non-flat**: one repository per package (the classic GitLab layout,
+  and the anticipated future Forgejo layout).
 
----
-
-## Features
-
-- **Auto-discovery** — scans `<diag-root>/nvidia-*/{normal-kernels,rt-kernels}/`
-  and picks up any new branch (`nvidia-470xx`, `nvidia-580xx`, …) with
-  no code changes.
-- **Noise filtering** — known objtool spam is separated into
-  `03-noise.txt` and counted, never silently dropped.
-- **Signature normalization** — every warning is reduced to a stable
-  form: paths stripped, `symbol+0xHEX` collapsed to `<func>+0xADDR`,
-  hex literals collapsed to `0xADDR`. This makes "the same warning
-  across 20 builds" actually groupable.
-- **Suspicious line detection** — non-error, non-warning lines that
-  contain keywords like `cannot find`, `Permission denied`, `OOM`,
-  `segmentation fault`, `module not found` land in `04-suspicious.txt`
-  and elevate a build to `🔍 suspicious` status.
-- **Integrity checks** — cross-checks the log against the build tree:
-  if the log claims `LD [M]` for a module but no matching `.ko` /
-  `.ko.zst` exists on disk, that's flagged. Log-only trees (no
-  `module/`, `extramodules/`, or `pkg/`) are correctly recognized and
-  skipped, with an informational note instead of a false positive.
-- **Cross-build analysis** — the `INDEX.md` shows which signatures
-  appear in more than one build (fix-first candidates) and which are
-  unique to a single build (usually kernel-specific, low priority).
-- **History & diff** — every run writes a timestamped snapshot under
-  `history/`. `--diff` prepends a *"Changes since …"* section to
-  `INDEX.md` reporting resolved signatures, new signatures, status
-  transitions, and hit-count deltas.
-- **Not-built markers** — builds that failed before DKMS produced a
-  log (e.g. only a `PKGBUILD` exists) get a zero-byte `Not-built`
-  marker and a `summary.txt` explaining it.
-- **Zero dependencies** — Python 3.10+ stdlib only. No `pip install`.
-- **LLM-friendly output** — stable section names, Markdown tables,
-  fenced code blocks. Works well when pasted into an LLM for triage.
+Both layouts share the same downstream pipeline. The only difference
+is how the sources are discovered.
 
 ---
 
-## Requirements
+## Repository contents
 
-- Python **3.10+** (uses `X | Y` type syntax)
-- A Unix-like system (Linux, macOS, WSL)
-- A directory tree with NVIDIA driver builds, e.g.:
+Three tools, no external Python dependencies (stdlib only):
 
-```
-~/diag/
-├── nvidia-340xx/
-│   ├── normal-kernels/
-│   │   ├── linux61-nvidia-340xx/
-│   │   │   ├── src/nvidia/340.108/6.1.187-2-MANJARO/x86_64/log/make.log
-│   │   │   └── PKGBUILD
-│   │   └── linux66-nvidia-340xx/
-│   │       └── ...
-│   └── rt-kernels/
-│       └── linux61-rt-nvidia-340xx/
-│           └── ...
-└── nvidia-390xx/
-    ├── normal-kernels/
-    └── rt-kernels/
-```
+| File | Purpose |
+|------|---------|
+| `harvest-nvidia-logs` | Parses `make.log` files, generates the README, keeps a history of snapshots. Pure analysis. Can be run on any tree of make.log files. |
+| `nvidia-ci.py` | The orchestrator. Drives discover → clone → inspect → eol → build → harvest → publish. Calls `harvest-nvidia-logs` internally. |
+| `clean-nvidia-container.sh` | Removes NVIDIA packages, DKMS modules, and their artifacts between driver branches. |
 
-The exact nesting under `src/` doesn't matter — the script uses
-`rglob("make.log")` to find it.
+Two GitHub Actions workflows:
+
+| Workflow | Purpose |
+|----------|---------|
+| `.github/workflows/build.yaml` | The custom profile. Builds your own fork repositories. |
+| `.github/workflows/build-official.yaml` | The Manjaro official profile. Builds the upstream packages. |
+
+Both workflows call `nvidia-ci.py --all`. All inputs are settable
+from the "Run workflow" dialog; the default values differ.
 
 ---
 
-## Installation
+## Source URL formats
 
-### Manual
+`nvidia-ci.py` accepts three forms of `--url`, chosen automatically:
 
-```bash
-git clone https://github.com/<you>/harvest-nvidia-logs.git
-cd harvest-nvidia-logs
-sudo install -m 755 harvest-nvidia-logs /usr/local/bin/harvest-nvidia-logs
-```
+| Form | Meaning | Example |
+|------|---------|---------|
+| `…/repo.git` | single flat repository | `https://code.manjaro.org/packages/PKGBUILDs.git` |
+| `host/org` or `host/user` | scoped API discovery | `https://code.manjaro.org/packages` |
+| `host` | global API search | `https://gitlab.manjaro.org` |
 
-### Just run it in place
+Supported platforms:
 
-```bash
-./harvest-nvidia-logs -d ~/diag
-```
+- **Forgejo / Gitea** (`code.manjaro.org`)
+- **GitLab** (`gitlab.manjaro.org`)
+- **GitHub** (`github.com`)
 
----
-
-## Usage
-
-```bash
-# Default: scan ~/diag, write to ~/diag/harvest/
-harvest-nvidia-logs
-
-# Explicit diag root
-harvest-nvidia-logs -d "$HOME/diag"
-
-# Custom output location
-harvest-nvidia-logs -d ~/diag -o /tmp/harvest
-
-# Quiet mode (cron-friendly)
-harvest-nvidia-logs -q
-
-# Longer header excerpt per build (default: 10)
-harvest-nvidia-logs -n 20
-
-# Compare against the most recent snapshot and prepend a diff
-# section to INDEX.md
-harvest-nvidia-logs --diff
-
-# Cap the history directory (default: keep 20 snapshots, 0 = unlimited)
-harvest-nvidia-logs --history-keep 50
-
-# Show help
-harvest-nvidia-logs -h
-```
-
-| Flag | Env | Default | Meaning |
-|------|-----|---------|---------|
-| `-d`, `--diag-root` | `DIAG_ROOT` | `$HOME/diag` | Where to look for `nvidia-*` branches |
-| `-o`, `--harvest-dir` | — | `<diag-root>/harvest` | Where to write the output |
-| `-n`, `--header-lines` | — | `10` | Lines from top of each `make.log` to save |
-| `-q`, `--quiet` | — | off | Suppress progress on stderr |
-| `--diff` | — | off | Prepend a "Changes since last run" section to `INDEX.md` |
-| `--history-keep N` | — | `20` | Keep only N most recent snapshots (0 = keep all) |
+For non-flat layouts the platform API is queried and every `nvidia-*`
+repository is kept after filtering. You do not need to know the exact
+subgroup — the API returns projects from any subgroup.
 
 ---
 
-## Output
+## Output structure
+
+Everything goes into a `harvest/` directory:
 
 ```
-~/diag/harvest/
-├── INDEX.md                        ← start here
-├── history/
-│   ├── 2026-10-03T20-27-59/
-│   │   ├── INDEX.md                ← snapshot of that run
-│   │   └── state.json              ← machine-readable state
-│   └── 2026-10-04T09-14-22/
-│       ├── INDEX.md
-│       └── state.json
-├── 340xx/
-│   ├── normal/
-│   │   └── 6.1.187-2-MANJARO/
-│   │       ├── 00-header.txt       ← first N lines of make.log
-│   │       ├── 01-errors.txt       ← real errors only (0 bytes = OK)
-│   │       ├── 02-warnings.txt     ← clean, dedup'd, counted
-│   │       ├── 03-noise.txt        ← known objtool spam, counted
-│   │       ├── 04-suspicious.txt   ← non-error, non-warning "uh oh" lines
-│   │       └── summary.txt
-│   └── rt/
-│       └── 6.1.182-1-rt67-MANJARO/
-│           └── ...
-└── 390xx/
-    ├── normal/
-    └── rt/
-        └── linux66-rt-nvidia-390xx/
-            ├── Not-built           ← empty, marker only
-            └── summary.txt         ← explains why
+harvest/
+├── README.md                     ← the only file you need to open
+├── driver-changelog.md           ← append-only diff log
+└── history/
+    └── 2026-10-09T01-06-27/
+        ├── README.md             ← snapshot of that run
+        └── state.json            ← machine-readable state
 ```
 
-### `INDEX.md` — the only file you need to open
+Plus per-build directories, one per kernel, each containing:
+
+| File | Content |
+|------|---------|
+| `00-header.txt` | first N lines of the make.log |
+| `01-errors.txt` | real errors only (empty file = clean build) |
+| `02-warnings.txt` | clean, deduplicated, counted warnings |
+| `03-noise.txt` | known objtool spam, counted |
+| `04-suspicious.txt` | non-error, non-warning "uh-oh" lines |
+| `summary.txt` | per-build summary |
+| `Not-built` | empty marker when no make.log exists |
+
+### `README.md`
 
 Sections, in order:
 
-1. **📊 Changes since …** — only with `--diff`. Resolved signatures,
-   new signatures, status transitions, hit-count deltas.
-2. **Overview** — branch list, build counts by status, signature counts.
-3. **Legend** — symbol reference.
-4. **Status table** — one row per build, sortable by eye.
-5. **🧱 Integrity issues** — log vs. tree mismatches (likely silent
-   failures).
-6. **📝 Integrity notes** — non-critical observations (log-only tree,
-   cached build, possibly truncated log).
-7. **❗ Failures** — errors from `01-errors.txt`, 15-line excerpt each.
-8. **🔍 Suspicious signatures** — cross-build table of non-error,
-   non-warning lines that often indicate real problems, with a
-   collapsible context excerpt.
-9. **🔁 Cross-build warning signatures** — warnings seen in **more
-   than one** build, sorted by number of affected builds. **This is
-   the "fix this first" list.**
-10. **🧩 Unique to one build** — kernel- or config-specific warnings.
-11. **🚫 Not built** — builds with no `make.log` at all.
+1. **TL;DR** — build counts, top actionable warnings, informational
+   count, and a one-line "since last run" summary.
+2. **📊 Changes since …** — only with `--diff`. Resolved signatures,
+   new signatures, status transitions, hit count changes.
+3. **Overview** — root paths, branch list, build counts.
+4. **Legend** — status symbol reference.
+5. **Status table** — one row per build.
+6. **🧱 Integrity issues** — log vs. build tree mismatches.
+7. **📝 Integrity notes** — non-critical observations.
+8. **❗ Failures** — errors excerpted from `01-errors.txt`.
+9. **🔍 Suspicious signatures** — cross-build table of unusual lines.
+10. **🔁 Cross-build warning signatures** — split into actionable
+    (driver source) and informational (build system).
+11. **🧩 Unique to one build** — single-build warnings.
+12. **🚫 Not built** — builds with no make.log.
+13. **⚠ EOL / Out-of-sync packages** — appended by `nvidia-ci.py`.
+    Lists every package that is not present in the Manjaro repos
+    (or is present at a different version than the source).
+
+The file is designed to be consumed both by a human and by an LLM:
+stable section names, Markdown tables, fenced code blocks.
 
 ---
 
-## How the noise filtering works
+## EOL detection
 
-A raw warning line like:
+After building, `nvidia-ci.py` cross-checks every discovered package
+against the Manjaro repositories via `pacman -Si`. Three outcomes:
 
-```
-/home/user/nvidia-390xx/normal-kernels/linux61-nvidia-390xx/src/nvidia/390.157/build/nvidia.o: warning: objtool: .rodata+0x9e38: data relocation to !ENDBR: _nv023101rm+0x0
-```
+| Status | Meaning |
+|--------|---------|
+| `ok` | present at the expected version |
+| `stale` | present but the version differs from the source |
+| `not-in-manjaro` | not in the Manjaro repos at all |
 
-is normalized to:
-
-```
-warning: objtool: .rodata+0xADDR: data relocation to !ENDBR: <func>+0xADDR
-```
-
-Rules applied, in order:
-
-1. Everything before the *last* `warning:` is dropped (path prefix,
-   embedded fragments from concatenated log lines).
-2. Only quoted absolute paths (`'/…'`) are replaced with `'<path>'`,
-   so keywords like `'naked'` survive intact.
-3. Any `symbol+0xHEX` becomes `<func>+0xADDR` (single pass — the
-   replacement text is never rescanned).
-4. Any remaining `0xHEX` becomes `0xADDR`.
-
-After normalization, lines matching one of the `NOISE_PATTERNS` regexes
-(see top of the script) are moved to `03-noise.txt`. Everything else
-lands in `02-warnings.txt`. Both are `Counter`-counted and sorted by
-frequency.
-
-To add a new noise pattern, edit `NOISE_PATTERNS` at the top of the
-script. Patterns are matched against the *normalized* signature.
+The results are appended to the top-level `README.md` as a table. The
+same check also determines which kernel prefixes are available for
+building — if a kernel like `linux71` is no longer in the Manjaro
+repos, it is skipped instead of failing the build.
 
 ---
 
-## What "cross-build signature" means
+## Two workflows
 
-If a normalized warning signature appears in N > 1 different builds,
-it's a **cross-build signature**. Fixing it (once) benefits N builds.
+### `build.yaml` — custom fork profile
 
-The `INDEX.md` sorts these by N descending. Typical output for the
-`nvidia-390xx` branch across several kernels:
+Default inputs:
 
+- `url = https://github.com/megvadulthangya`
+- `drivers-branch = develop`
+- `kernels-branch = develop`
+- `results-branch = results`
+
+Runs weekly on Sunday at 03:00 UTC.
+
+### `build-official.yaml` — Manjaro official profile
+
+Default inputs:
+
+- `url = https://code.manjaro.org/packages/PKGBUILDs.git` (flat)
+- `results-branch = official-results`
+
+Runs weekly on Sunday at 04:00 UTC.
+
+The file header documents the three supported URL forms (current
+flat repo, future non-flat Forgejo, historical GitLab) and how to
+switch between them — no file edit is required; override the `url`
+input in the "Run workflow" dialog.
+
+---
+
+## Running locally
+
+Nothing is pushed unless `--publish` is explicitly given. On a
+workstation the tool writes everything to the work directory and
+exits.
+
+```bash
+# Full pipeline on a GitHub user's repositories
+python3 nvidia-ci.py --all \
+    --url https://github.com/your-user \
+    --drivers-branch develop \
+    --kernels-branch develop \
+    --workdir ~/nvidia-ci-build
+
+# Flat Manjaro repository
+python3 nvidia-ci.py --all \
+    --url https://code.manjaro.org/packages/PKGBUILDs.git \
+    --manjaro-branch testing \
+    --workdir ~/nvidia-ci-build
+
+# Just the discovery phase, see what would be cloned
+python3 nvidia-ci.py --phase discover --url https://github.com/your-user
 ```
-| # | Builds | Hits  | Signature                                                       |
-|---|-------:|------:|-----------------------------------------------------------------|
-| 1 | 10     | 65375 | warning: objtool: <func>+0xADDR: relocation to !ENDBR: …        |
-| 2 | 6      | 39714 | warning: objtool: <func>+0xADDR: 'naked' return found in …      |
-| 3 | 2      | 39714 | warning: objtool: <func>+0xADDR: missing int3 after ret         |
+
+`nvidia-ci.py` calls `harvest-nvidia-logs` from `$PATH` or from the
+same directory. Install it before the first run:
+
+```bash
+sudo install -m 755 harvest-nvidia-logs /usr/local/bin/harvest-nvidia-logs
+sudo install -m 755 clean-nvidia-container.sh /build/clean-nvidia-container.sh
 ```
 
-A fix in the driver source that silences signature #1 clears ~65 000
-lines of noise from every one of the 10 builds at once.
+---
+
+## GitHub Actions setup
+
+1. **Workflow permissions**: repository Settings → Actions → General →
+   Workflow permissions → set to **Read and write permissions**. This
+   allows the results push.
+2. **No secrets required** for public repositories. The built-in
+   `GITHUB_TOKEN` handles the push.
+3. **Results branch** is created automatically on the first run.
 
 ---
 
-## History and diff mode
+## Known limitations
 
-Every run writes a snapshot under `history/<timestamp>/`:
-
-- `state.json` — machine-readable: per-build status + every clean
-  signature with its hit count and affected builds.
-- `INDEX.md` — a copy of the generated index at that point in time.
-
-With `--diff`, the current run is compared against the **most recent
-snapshot**, and a section is prepended to `INDEX.md`:
-
-```markdown
-## 📊 Changes since 2026-10-03T20-27-59
-
-### ✅ Resolved signatures (2)
-- `warning: ignoring return value of 'refcount_sub_and_test'…`
-- `warning: ignoring old recipe for target '<path>'`
-
-### 🆕 New signatures (0)
-_None._
-
-### 🔀 Status changes (3)
-- `340xx/normal/6.12.109-1-MANJARO`: ⚠ warnings → ✅ clean
-- …
-```
-
-Snapshots are pruned to `--history-keep` (default 20). Set to 0 to
-keep everything.
-
-Because snapshots hold only `state.json` + `INDEX.md`, a single run
-costs a few KB on disk — cheap enough to keep dozens around.
-
----
-
-## Customization
-
-- **Noise patterns**: edit `NOISE_PATTERNS` (list of compiled regexes).
-- **Suspicious keywords**: edit `SUSPICIOUS_RE`.
-- **Default diag root**: change `DEFAULT_DIAG_ROOT` in the script, or
-  set `DIAG_ROOT` in your shell.
-- **Different driver branches**: nothing to do — any `nvidia-*`
-  directory under the diag root is picked up automatically.
-
-If you want the harvest to also work on **non-NVIDIA** kernel module
-builds, the only NVIDIA-specific parts are the branch naming convention
-(`nvidia-*`) and the noise patterns. Both are trivial to generalize.
-
----
-
-## Limitations
-
-- **NVIDIA-oriented noise list.** The default patterns target the
-  objtool warnings produced by the legacy 340xx / 390xx binary blobs.
-  Other drivers will produce different noise — add patterns as needed.
-- **Regex-only matching.** A warning signature is a string, not an
-  AST. Two semantically identical warnings with different wording will
-  appear as two signatures.
-- **No build orchestration.** The tool only analyzes logs that already
-  exist. It does not run DKMS or `makepkg`.
-- **Log-only trees cannot be artifact-checked.** If a build tree has
-  no `module/`, `extramodules/`, or `pkg/` directory, integrity checks
-  are skipped and a note is emitted instead of a warning.
-
----
-
-## Roadmap
-
-- [ ] Optional JSON output (`--json`) for programmatic consumption
-- [ ] Config file (`~/.config/harvest-nvidia-logs.toml`) for noise
-      patterns and per-branch rules
-- [ ] Packaged as `harvest-nvidia-logs` AUR package
-- [ ] Optional `--since <timestamp>` to diff against a specific
-      historical snapshot instead of the most recent one
-
----
-
-## Contributing
-
-Issues and PRs welcome. If you maintain a different legacy NVIDIA
-branch (470xx, 580xx) and want to contribute noise patterns, open a
-PR with a sample `make.log` snippet in the description.
+- **Manjaro 390xx on linux61 fails.** Real source-level incompatibility
+  (`vm_flags_set`, `vm_flags_clear`, `timer_delete_sync`). Manjaro's
+  patch set does not include the required backports; the harvest flags
+  this correctly, but the fix is a Manjaro-side concern.
+- **Flat layout folder listing requires a clone.** Forgejo and GitLab
+  APIs do not expose the directory tree of a repository, so the flat
+  `PKGBUILDs` repo must be cloned before its nvidia subdirectories can
+  be discovered.
+- **No artifact caching between runs.** Every run rebuilds everything.
+  This is intentional: it guarantees a fresh `make.log` from a known
+  toolchain state.
 
 ---
 
@@ -374,31 +259,28 @@ MIT — see `LICENSE`.
 
 ## Magyar összefoglaló
 
-A `harvest-nvidia-logs` egy Python script, ami a Manjaro alatt
-buildelt **NVIDIA legacy driver** (340xx, 390xx, …) DKMS
-`make.log` fájljait dolgozza fel. Végigjárja a `~/diag/nvidia-*/`
-mappát, minden kernel buildhez szétválogatja a logot:
+A projekt három eszközből áll, amelyek együtt egy teljes build- és
+elemző-pipeline-t alkotnak:
 
-- **`01-errors.txt`** — tényleges hibák (üres = sikeres build)
-- **`02-warnings.txt`** — valódi, javítandó warningok (dedupolva)
-- **`03-noise.txt`** — ismert objtool zaj (ENDBR, naked return, stb.)
-- **`04-suspicious.txt`** — nem-error, nem-warning gyanús sorok
-- **`00-header.txt`** — az első pár sor a logból
-- **`summary.txt`** — build-szintű összefoglaló
+- **`harvest-nvidia-logs`** — a `make.log` fájlokat dolgozza fel,
+  generál egy `README.md`-t és történelmi pillanatképeket.
+- **`nvidia-ci.py`** — az orchestrator. Felderíti a forrásokat,
+  klónozza, elemzi, buildeli, majd hívja a `harvest-nvidia-logs`-ot.
+- **`clean-nvidia-container.sh`** — a driver branch-ek között takarít.
 
-Végül generál egy **`INDEX.md`-t**, ami az összes buildet egy fájlban
-mutatja: státusz táblázat, integrity issues/notes, bukott buildek,
-suspicious és cross-build signature-ök (fix-first sorrendben), és
-egyedi warningok. Ezt a fájlt elég megnyitni — nem kell a 100 külön
-mappát böngészni.
+Két GitHub Action használja mindezt: `build.yaml` a saját
+forkokhoz, `build-official.yaml` a Manjaro hivatalos
+csomagjaihoz. Az eredmény egyetlen `README.md` a `results` vagy
+`official-results` branch-en, benne minden build státusza, a
+cross-build warningok, és az EOL / elavult csomagok listája.
 
-Minden futás egy **snapshotot** ír a `history/` mappába, és a
-`--diff` kapcsolóval az `INDEX.md` elejére bekerül egy *"Changes
-since …"* szekció: melyik warning tűnt el, melyik jelent meg,
-melyik build státusza változott. Ez pontosan azt válaszolja meg,
-hogy egy patch után javult-e valami.
-
-Telepítés: `sudo install -m 755 harvest-nvidia-logs /usr/local/bin/`
-Használat: `harvest-nvidia-logs` (opcionálisan `-d`, `-o`, `-q`, `-n`,
-`--diff`, `--history-keep N`)
+Lokálisan pontosan ugyanaz a parancs fut, csak `--publish` nélkül:
+a fájlok a gépen maradnak, semmi nem kerül fel a GitHubra.
 ```
+
+## Amit a README-ről érdemes tudni
+
+- **Nincs benne** semmi, amit nem teszteltünk. A "Known limitations" szekcióban lévő pontok tényleges problémák, nem elméleti.
+- **Nem említem a `--phase`-t** kivéve a "discover" példát — mert az a 99%-ban hasznos use case.
+- **A magyar összefoglaló** ugyanazt mondja, rövidebben.
+- **A legutóbbi futás** (official, most fut) még nem tudom, mit ad pontosan, de a README **nem** függ a konkrét eredménytől — a pipeline-t és a kimeneti formátumot írja le.
