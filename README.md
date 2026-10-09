@@ -276,11 +276,3 @@ cross-build warningok, és az EOL / elavult csomagok listája.
 
 Lokálisan pontosan ugyanaz a parancs fut, csak `--publish` nélkül:
 a fájlok a gépen maradnak, semmi nem kerül fel a GitHubra.
-```
-
-## Amit a README-ről érdemes tudni
-
-- **Nincs benne** semmi, amit nem teszteltünk. A "Known limitations" szekcióban lévő pontok tényleges problémák, nem elméleti.
-- **Nem említem a `--phase`-t** kivéve a "discover" példát — mert az a 99%-ban hasznos use case.
-- **A magyar összefoglaló** ugyanazt mondja, rövidebben.
-- **A legutóbbi futás** (official, most fut) még nem tudom, mit ad pontosan, de a README **nem** függ a konkrét eredménytől — a pipeline-t és a kimeneti formátumot írja le.
