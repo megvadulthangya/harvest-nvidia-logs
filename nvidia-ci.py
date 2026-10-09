@@ -78,7 +78,7 @@ from urllib.parse import quote
 from urllib.request import Request, urlopen
 
 
-__version__ = "0.1.5"
+__version__ = "0.1.6"
 
 
 # ---------------------------------------------------------------------------
@@ -117,6 +117,11 @@ SOURCE_INCLUDE_PATTERNS = [
 
 # Legacy layout: linuxYY[-rt]-nvidia-XXX
 LEGACY_KERNEL_DIR_PATTERN = re.compile(r"^(linux\d+)(-rt)?-nvidia-(.+)$")
+
+# Recognising our own packages by name.  Anything that doesn't match
+# these is not an NVIDIA package and is skipped during inspection.
+NVIDIA_UTILS_NAME_PATTERN = re.compile(r"^nvidia(-\d+xx)?-utils$")
+NVIDIA_KERNEL_TOP_NAME_PATTERN = re.compile(r"^nvidia(-\d+xx)?(-open)?$")
 
 # Anything containing these characters is not a literal package name —
 # it's a bash variable or expansion we cannot safely evaluate.  Such
@@ -359,7 +364,6 @@ def http_json(url: str, token: str | None = None) -> object:
 def paginated_json(base_url: str, token: str | None, page_param: str = "page",
                    limit_param: str = "per_page", limit: int = 100,
                    max_pages: int = 20) -> list:
-    """Fetch a paginated endpoint that returns a top-level list."""
     results: list = []
     for page in range(1, max_pages + 1):
         sep = "&" if "?" in base_url else "?"
@@ -377,8 +381,6 @@ def paginated_json(base_url: str, token: str | None, page_param: str = "page",
 
 def paginated_forgejo_search(base_url: str, token: str | None,
                              limit: int = 50, max_pages: int = 20) -> list:
-    """Forgejo /repos/search returns {"ok": true, "data": [...]}.
-    Some versions return a bare list — handle both."""
     results: list = []
     for page in range(1, max_pages + 1):
         sep = "&" if "?" in base_url else "?"
@@ -413,15 +415,10 @@ def detect_platform(url: str) -> str:
 
 
 def is_repo_url(url: str) -> bool:
-    """A .git suffix unambiguously identifies a single repository.
-    Everything else is treated as a host, group, or user that needs
-    discovery."""
     return url.lower().rstrip("/").endswith(".git")
 
 
 def parse_host_path(url: str) -> tuple[str, str | None]:
-    """Return (host, path_or_None).  path is everything after the first
-    slash, with no leading/trailing slash."""
     url = url.rstrip("/")
     m = re.match(r"^https?://([^/]+)(?:/(.+))?$", url)
     if not m:
@@ -449,7 +446,6 @@ def discover_flat_repo(url: str, cfg: Config) -> list[SourceRepo]:
 
 
 def _filter_and_label(repos: list[dict], cfg: Config) -> list[SourceRepo]:
-    """Apply include/exclude patterns and produce SourceRepo objects."""
     selected: list[dict] = []
     for r in repos:
         name = r.get("_name", "")
@@ -473,8 +469,6 @@ def _filter_and_label(repos: list[dict], cfg: Config) -> list[SourceRepo]:
             kind = "kernel"
             branch = cfg.kernels_branch or r["_default_branch"]
 
-        # target dir name: use only the final path segment to avoid
-        # mixing "packages__extra__nvidia-340xx" style names into the tree
         dir_name = name.rsplit("/", 1)[-1]
 
         out.append(SourceRepo(
@@ -498,7 +492,6 @@ def discover_non_flat(url: str, cfg: Config, token: str | None) -> list[SourceRe
         if path is None:
             die("GitHub requires a user or org in the URL "
                 "(e.g. https://github.com/megvadulthangya)")
-        # Try user first, then org
         tried = []
         for api_tpl in (f"https://api.github.com/users/{path}/repos",
                         f"https://api.github.com/orgs/{path}/repos"):
@@ -519,7 +512,6 @@ def discover_non_flat(url: str, cfg: Config, token: str | None) -> list[SourceRe
 
     elif platform == "gitlab":
         if path is None:
-            # Global search across the entire GitLab instance.
             api = f"https://{host}/api/v4/projects?search=nvidia"
             repos = paginated_json(api, token)
         else:
@@ -534,9 +526,6 @@ def discover_non_flat(url: str, cfg: Config, token: str | None) -> list[SourceRe
 
     elif platform == "forgejo":
         if path is None:
-            # Global search.  Note: some Forgejo versions only match
-            # repository *names*, so this may return nothing if no repo
-            # literally contains "nvidia" in its name.
             api = f"https://{host}/api/v1/repos/search?q=nvidia"
             repos = paginated_forgejo_search(api, token)
         else:
@@ -737,6 +726,15 @@ def _kernel_prefix_variant(prefix_dir_name: str) -> tuple[str, str]:
     return base, variant
 
 
+def _is_nvidia_related(parent: Path, top_name: str) -> bool:
+    """True if this PKGBUILD belongs to an NVIDIA package."""
+    if top_name.startswith("nvidia"):
+        return True
+    if "nvidia" in str(parent).lower():
+        return True
+    return False
+
+
 def _parse_all_pkgbuilds(cfg: Config) -> list[PackageInfo]:
     out: list[PackageInfo] = []
     root = cfg.sources_dir
@@ -754,6 +752,12 @@ def _parse_all_pkgbuilds(cfg: Config) -> list[PackageInfo]:
         pkgname_list: list[str] = meta.get("pkgname") or []
         pkgbase: str | None = meta.get("pkgbase")
         top_name = pkgbase or (pkgname_list[0] if pkgname_list else parent.name)
+
+        # Early skip: only nvidia-related packages matter.  Non-nvidia
+        # PKGBUILDs that happen to live in the same flat repo (coreboot-utils,
+        # systemd-utils, …) must not end up in the plan.
+        if not _is_nvidia_related(parent, top_name):
+            continue
 
         dkms_names = [n for n in pkgname_list if n.endswith("-dkms")]
 
@@ -783,15 +787,21 @@ def _parse_all_pkgbuilds(cfg: Config) -> list[PackageInfo]:
                 branch_label = _branch_label_from_kernel_dir(nv_dir, kernel_prefix)
                 kind = "kernel"
 
-        # --- Utils ------------------------------------------------------
-        if kind == "unknown" and top_name.endswith("-utils"):
+        # --- Utils: only nvidia-utils or nvidia-XXX-utils ---------------
+        if kind == "unknown" and NVIDIA_UTILS_NAME_PATTERN.match(top_name):
             branch_label = _branch_label_from_utils_name(top_name)
             kind = "utils"
 
         # --- Top-level non-flat kernel module ---------------------------
-        if kind == "unknown" and re.match(r"^nvidia(-\d+xx)?(-open)?$", top_name):
+        if kind == "unknown" and NVIDIA_KERNEL_TOP_NAME_PATTERN.match(top_name):
             branch_label = _branch_label_from_kernel_dir(top_name, "")
             kind = "kernel"
+
+        # If still unknown after all the shape checks, this PKGBUILD is
+        # inside an nvidia directory but doesn't match any known pattern.
+        # Skip it — better to miss an odd case than to pollute the plan.
+        if kind == "unknown":
+            continue
 
         required_dkms = ""
         for dep in meta.get("makedepends", []) + meta.get("depends", []):
@@ -902,7 +912,7 @@ def _build_plan(pkgs: list[PackageInfo]) -> BuildPlan:
 def phase_inspect(cfg: Config) -> BuildPlan:
     log("inspect: parsing PKGBUILDs...")
     all_pkgs = _parse_all_pkgbuilds(cfg)
-    log(f"inspect: found {len(all_pkgs)} PKGBUILD(s)")
+    log(f"inspect: found {len(all_pkgs)} nvidia PKGBUILD(s)")
 
     kinds: dict[str, int] = {}
     for p in all_pkgs:
@@ -1214,14 +1224,25 @@ def phase_harvest(cfg: Config) -> None:
         if proc.returncode != 0:
             die(f"harvest failed with exit {proc.returncode}")
 
+    # ------------------------------------------------------------------
+    # Post-process: the results branch should contain README.md, not
+    # INDEX.md.  harvest-nvidia-logs always writes INDEX.md, so we
+    # rename it here and remove any leftover INDEX.md files.
+    # ------------------------------------------------------------------
     index = cfg.harvest_dir / "INDEX.md"
+    readme = cfg.harvest_dir / "README.md"
     if index.is_file():
-        (cfg.harvest_dir / "README.md").write_text(index.read_text())
+        readme.write_text(index.read_text())
+        index.unlink()
+
     for d in sorted((cfg.harvest_dir / "history").glob("*/")):
         idx = d / "INDEX.md"
+        rme = d / "README.md"
         if idx.is_file():
-            (d / "README.md").write_text(idx.read_text())
+            rme.write_text(idx.read_text())
+            idx.unlink()
 
+    # Append the EOL section to the top-level README.md
     eol_path = cfg.workdir / "eol-list.json"
     if eol_path.is_file():
         eol_data = json.loads(eol_path.read_text())
@@ -1237,7 +1258,6 @@ def phase_harvest(cfg: Config) -> None:
                     f"| `{r['package']}` | {rv} | {mv} | {r['status']} |"
                 )
             lines.append("")
-            readme = cfg.harvest_dir / "README.md"
             readme.write_text(readme.read_text() + "\n".join(lines) + "\n")
             log(f"harvest: appended {len(bad)} EOL row(s) to README.md")
 
@@ -1297,6 +1317,7 @@ def phase_publish(cfg: Config) -> None:
             cwd=tmp, check=True,
         )
 
+    # Wipe the working tree but keep .git
     for child in tmp.iterdir():
         if child.name == ".git":
             continue
@@ -1305,12 +1326,17 @@ def phase_publish(cfg: Config) -> None:
         else:
             child.unlink()
 
+    # Copy the harvest output over
     for child in cfg.harvest_dir.iterdir():
         dst = tmp / child.name
         if child.is_dir():
             shutil.copytree(child, dst)
         else:
             shutil.copy2(child, dst)
+
+    # Defensive: remove any INDEX.md that might have survived
+    for idx in tmp.rglob("INDEX.md"):
+        idx.unlink()
 
     subprocess.run(["git", "add", "-A"], cwd=tmp, check=True)
     diff = subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=tmp)

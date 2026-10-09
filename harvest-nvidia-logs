@@ -4,16 +4,28 @@ harvest-nvidia-logs
 ===================
 
 Collect and noise-filter `make.log` files produced by DKMS when building
-NVIDIA driver branches against multiple Manjaro kernels.
+the legacy NVIDIA driver branches against multiple Manjaro kernels.
+
+Install::
+
+    sudo install -m 755 harvest-nvidia-logs /usr/local/bin/harvest-nvidia-logs
+
+No external dependencies — Python 3.10+ stdlib only.
 
 Changelog
 ---------
+0.5.6
+  - is_noise: reject short warning bodies (< 25 chars) that lack any
+    of the usual markers of a real compiler diagnostic (' " [ : . ;).
+    Fragments left over from interleaved `make -jN` output like
+    "warning:build", "warning:ild", "warning:UNK build" now fall
+    through this rule.
+  - is_noise: reject "warning: ob  LD [M]  …" fragments (objtool
+    prefix corrupted, "objtool:" broken into "ob" + linker line).
+
 0.5.5
-  - is_noise: reject warnings whose body is empty or consists only of a
-    function+address reference (e.g. "warning:" alone, or
-    "warning: <func>+0xADDR"). These are the last remnants of objtool
-    output fragmented by interleaved parallel `make -jN` and have no
-    semantic content.
+  - is_noise: reject warnings whose body is empty or is only a
+    function+address reference.
 
 0.5.4
   - is_noise: broaden fragment detection to any "warning: objt" prefix.
@@ -47,7 +59,7 @@ from datetime import datetime
 from pathlib import Path
 
 
-__version__ = "0.5.5"
+__version__ = "0.5.6"
 
 
 # ---------------------------------------------------------------------------
@@ -229,19 +241,36 @@ def is_noise(signature: str) -> bool:
         return True
     if any(kw in signature for kw in NOISE_KEYWORDS):
         return True
-    # Structural check: a real objtool warning always contains
-    # "objtool: <symbol>+0x<hex>:". Fragments left over from
-    # interleaved parallel make output fail this and are dropped.
+
+    # objtool prefix check (broadened in 0.5.4/0.5.5)
     if signature.startswith("warning: objt") and not RE_VALID_OBJTOOL.match(signature):
         return True
-    # Body-content check: reject warnings whose body is empty or is only
-    # a function+address reference (no symbol name, no message). These
-    # are contentless fragments of a longer warning line.
-    body = signature[len("warning:"):].strip() if signature.startswith("warning:") else ""
-    if signature.startswith("warning:") and (
-        not body or RE_ADDR_ONLY_BODY.match(body)
-    ):
+
+    # "warning: ob  LD [M]  …" — objtool fragment where the prefix got
+    # cut to "ob" and mixed with a linker line (0.5.6).
+    if signature.startswith("warning: ob "):
         return True
+
+    # Body content checks
+    if signature.startswith("warning:"):
+        body = signature[len("warning:"):].strip()
+
+        # Empty body
+        if not body:
+            return True
+
+        # Address-only body
+        if RE_ADDR_ONLY_BODY.match(body):
+            return True
+
+        # Short body without any typical warning markers (0.5.6).
+        # Real compiler diagnostics always contain at least one of
+        # these; fragments like "warning:build", "warning:ild",
+        # "warning:UNK build" contain none.
+        if len(body) < 25:
+            if not any(m in body for m in ("'", '"', "[", ":", ".", ";")):
+                return True
+
     return False
 
 
@@ -916,7 +945,7 @@ def _render_tldr(
 
 
 # ---------------------------------------------------------------------------
-# INDEX.md
+# README.md
 # ---------------------------------------------------------------------------
 
 def generate_index(
@@ -926,7 +955,7 @@ def generate_index(
     diff_lines: list[str] | None = None,
     diff_data: dict | None = None,
 ) -> None:
-    idx_path = harvest_root / "INDEX.md"
+    idx_path = harvest_root / "README.md"
     by_status = Counter(r.status for r in results)
 
     sig_map: dict[str, list[tuple[BuildResult, int]]] = defaultdict(list)
@@ -1201,7 +1230,7 @@ def _save_snapshot(
     (snap_dir / "state.json").write_text(
         json.dumps(state, indent=2, sort_keys=True)
     )
-    (snap_dir / "INDEX.md").write_text(index_text)
+    (snap_dir / "README.md").write_text(index_text)
     return snap_dir
 
 
@@ -1262,7 +1291,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument(
         "--diff", action="store_true",
-        help="Prepend a 'Changes since last run' section to INDEX.md "
+        help="Prepend a 'Changes since last run' section to README.md "
              "by comparing against the most recent history snapshot.",
     )
     p.add_argument(
@@ -1349,7 +1378,7 @@ def main(argv: list[str] | None = None) -> int:
         diff_data=diff_data,
     )
 
-    index_text = (harvest_root / "INDEX.md").read_text()
+    index_text = (harvest_root / "README.md").read_text()
     _save_snapshot(history_root, run_ts, curr_state, index_text)
 
     if args.history_keep > 0:
@@ -1357,7 +1386,7 @@ def main(argv: list[str] | None = None) -> int:
         if pruned:
             _log(f"pruned {pruned} old snapshot(s)", args.quiet)
 
-    _log(f"Index: {harvest_root / 'INDEX.md'}", args.quiet)
+    _log(f"Index: {harvest_root / 'README.md'}", args.quiet)
     return 0
 
 
