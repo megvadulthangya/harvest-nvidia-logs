@@ -11,7 +11,7 @@ build dir:       /build/sources/PKGBUILDs/extra/linux66-rt-extramodules/nvidia-5
 
 errors:          0
 warnings clean:  400  (unique: 7)
-warnings noise:  13788  (unique: 2)
+warnings noise:  9890  (unique: 42)
 suspicious:      0  (unique: 0)
 modules on disk: 5  [nvidia, nvidia-drm, nvidia-modeset, nvidia-peermem, nvidia-uvm]
 log LD [M]:      ['nvidia', 'nvidia-drm', 'nvidia-modeset', 'nvidia-peermem', 'nvidia-uvm']

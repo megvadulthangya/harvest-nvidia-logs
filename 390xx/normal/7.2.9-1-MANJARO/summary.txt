@@ -21,8 +21,8 @@ log cached:      no
 === Top clean warning groups ===
        3  warning: 'static' is not at beginning of declaration [-Wold-style-declaration]
        3  warning: implicit conversion from 'uvm_fault_access_type_t' to 'uvm_fault_type_t' [-Wenum-conversion]
-       1  warning: no previous prototype for 'nvidia_init_module' [-Wmissing-prototypes]
        1  warning: no previous prototype for 'nv_pci_register_driver' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'nvidia_init_module' [-Wmissing-prototypes]
        1  warning: no previous prototype for 'nvidia_exit_module' [-Wmissing-prototypes]
        1  warning: unused variable 'device' [-Wunused-variable]
        1  warning: no previous prototype for 'nv_load_dma_map_scatterlist' [-Wmissing-prototypes]

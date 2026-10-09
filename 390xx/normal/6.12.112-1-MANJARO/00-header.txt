@@ -1,10 +1,10 @@
 DKMS (dkms-3.4.4) make.log for nvidia/390.157 for kernel 6.12.112-1-MANJARO (x86_64)
-Thu Oct  8 08:15:35 PM UTC 2026
+Fri Oct  9 09:34:20 AM UTC 2026
 
 Building module(s)
 # command: 'make' -j4 IGNORE_PREEMPT_RT_PRESENCE=1 NV_EXCLUDE_BUILD_MODULES='__EXCLUDE_MODULES' KERNEL_UNAME=6.12.112-1-MANJARO modules
 make[1]: Entering directory '/usr/lib/modules/6.12.112-1-MANJARO/build'
   SYMLINK /build/sources/PKGBUILDs/extra/linux612-extramodules/nvidia-390xx/src/nvidia/390.157/build/nvidia/nv-kernel.o
   SYMLINK /build/sources/PKGBUILDs/extra/linux612-extramodules/nvidia-390xx/src/nvidia/390.157/build/nvidia-modeset/nv-modeset-kernel.o
- CONFTEST: remap_pfn_range
  CONFTEST: INIT_WORK
+ CONFTEST: remap_pfn_range

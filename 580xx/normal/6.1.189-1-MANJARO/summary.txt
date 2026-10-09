@@ -11,7 +11,7 @@ build dir:       /build/sources/PKGBUILDs/extra/linux61-extramodules/nvidia-580x
 
 errors:          0
 warnings clean:  0  (unique: 0)
-warnings noise:  137983  (unique: 8)
+warnings noise:  137982  (unique: 8)
 suspicious:      0  (unique: 0)
 modules on disk: 5  [nvidia, nvidia-drm, nvidia-modeset, nvidia-peermem, nvidia-uvm]
 log LD [M]:      ['nvidia', 'nvidia-drm', 'nvidia-modeset', 'nvidia-peermem', 'nvidia-uvm']

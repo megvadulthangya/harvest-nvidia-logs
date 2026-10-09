@@ -10,8 +10,8 @@ log lines:       13625
 build dir:       /build/sources/PKGBUILDs/extra/linux612-rt-extramodules/nvidia-open
 
 errors:          0
-warnings clean:  9  (unique: 7)
-warnings noise:  11672  (unique: 1)
+warnings clean:  7  (unique: 5)
+warnings noise:  11674  (unique: 1)
 suspicious:      0  (unique: 0)
 modules on disk: 5  [nvidia, nvidia-drm, nvidia-modeset, nvidia-peermem, nvidia-uvm]
 log LD [M]:      ['nvidia', 'nvidia-drm', 'nvidia-modeset', 'nvidia-peermem', 'nvidia-uvm']
@@ -24,5 +24,3 @@ log cached:      no
        1  warning: variable 'DIDT10Count' set but not used [-Wunused-but-set-variable=]
        1  warning: variable 'extDTDCount' set but not used [-Wunused-but-set-variable=]
        1  warning: variable 'i' set but not used [-Wunused-but-set-variable=]
-       1  warning: ob  LD [M]  /build/sources/PKGBUILDs/extra/linux612-rt-extramodules/nvidia-open/src/nvidia/615.78.08/build/kernel-open/nvidia-drm.o
-       1  warning: ob  LD [M]  /build/sources/PKGBUILDs/extra/linux612-rt-extramodules/nvidia-open/src/nvidia/615.78.08/build/kernel-open/nvidia-peermem.o

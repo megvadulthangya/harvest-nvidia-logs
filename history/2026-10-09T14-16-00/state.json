@@ -193,10 +193,10 @@
       "suspicious_total": 0
     },
     "580xx-open/normal/linux61-nvidia-580xx-open": {
-      "clean_total": 402,
-      "clean_uniq": 8,
+      "clean_total": 400,
+      "clean_uniq": 7,
       "err_count": 0,
-      "noise_total": 35446,
+      "noise_total": 39133,
       "status": "warnings",
       "suspicious_total": 0
     },
@@ -217,10 +217,10 @@
       "suspicious_total": 0
     },
     "580xx-open/normal/linux66-nvidia-580xx-open": {
-      "clean_total": 430,
-      "clean_uniq": 18,
+      "clean_total": 400,
+      "clean_uniq": 7,
       "err_count": 0,
-      "noise_total": 10666,
+      "noise_total": 13404,
       "status": "warnings",
       "suspicious_total": 0
     },
@@ -260,7 +260,7 @@
       "clean_total": 428,
       "clean_uniq": 29,
       "err_count": 0,
-      "noise_total": 13739,
+      "noise_total": 13740,
       "status": "warnings",
       "suspicious_total": 0
     },
@@ -268,7 +268,7 @@
       "clean_total": 400,
       "clean_uniq": 7,
       "err_count": 0,
-      "noise_total": 13788,
+      "noise_total": 9890,
       "status": "warnings",
       "suspicious_total": 0
     },
@@ -276,7 +276,7 @@
       "clean_total": 0,
       "clean_uniq": 0,
       "err_count": 0,
-      "noise_total": 137983,
+      "noise_total": 137982,
       "status": "clean",
       "suspicious_total": 0
     },
@@ -425,10 +425,10 @@
       "suspicious_total": 0
     },
     "nvidia-open/rt/linux612-rt-nvidia-open": {
-      "clean_total": 9,
-      "clean_uniq": 7,
+      "clean_total": 7,
+      "clean_uniq": 5,
       "err_count": 0,
-      "noise_total": 11672,
+      "noise_total": 11674,
       "status": "warnings",
       "suspicious_total": 0
     },
@@ -614,12 +614,6 @@
         "390xx/normal/linux73-nvidia-390xx"
       ],
       "hits": 23
-    },
-    "warning: build": {
-      "builds": [
-        "580xx-open/normal/linux66-nvidia-580xx-open"
-      ],
-      "hits": 1
     },
     "warning: conflicting types for 'nv_encode_caching' due to enum/integer mismatch; have 'int(pgprot_t *, NvU32,  nv_memory_type_t)' {aka 'int(struct pgprot *, unsigned int,  nv_memory_type_t)'} [-Wenum-int-mismatch]": {
       "builds": [
@@ -1972,18 +1966,6 @@
       ],
       "hits": 5
     },
-    "warning: ob  LD [M]  /build/sources/PKGBUILDs/extra/linux612-rt-extramodules/nvidia-open/src/nvidia/615.78.08/build/kernel-open/nvidia-drm.o": {
-      "builds": [
-        "nvidia-open/rt/linux612-rt-nvidia-open"
-      ],
-      "hits": 1
-    },
-    "warning: ob  LD [M]  /build/sources/PKGBUILDs/extra/linux612-rt-extramodules/nvidia-open/src/nvidia/615.78.08/build/kernel-open/nvidia-peermem.o": {
-      "builds": [
-        "nvidia-open/rt/linux612-rt-nvidia-open"
-      ],
-      "hits": 1
-    },
     "warning: this statement may fall through [-Wimplicit-fallthrough=]": {
       "builds": [
         "470xx/normal/linux61-nvidia-470xx",
@@ -2193,68 +2175,7 @@
         "nvidia-open/normal/linux73-nvidia-open"
       ],
       "hits": 18
-    },
-    "warning:ETHUNK build": {
-      "builds": [
-        "580xx-open/normal/linux66-nvidia-580xx-open"
-      ],
-      "hits": 3
-    },
-    "warning:HUNK build": {
-      "builds": [
-        "580xx-open/normal/linux66-nvidia-580xx-open"
-      ],
-      "hits": 1
-    },
-    "warning:NK build": {
-      "builds": [
-        "580xx-open/normal/linux66-nvidia-580xx-open"
-      ],
-      "hits": 2
-    },
-    "warning:THUNK build": {
-      "builds": [
-        "580xx-open/normal/linux66-nvidia-580xx-open"
-      ],
-      "hits": 2
-    },
-    "warning:UNK build": {
-      "builds": [
-        "580xx-open/normal/linux66-nvidia-580xx-open"
-      ],
-      "hits": 2
-    },
-    "warning:build": {
-      "builds": [
-        "580xx-open/normal/linux61-nvidia-580xx-open",
-        "580xx-open/normal/linux66-nvidia-580xx-open"
-      ],
-      "hits": 5
-    },
-    "warning:d": {
-      "builds": [
-        "580xx-open/normal/linux66-nvidia-580xx-open"
-      ],
-      "hits": 5
-    },
-    "warning:ild": {
-      "builds": [
-        "580xx-open/normal/linux66-nvidia-580xx-open"
-      ],
-      "hits": 5
-    },
-    "warning:ld": {
-      "builds": [
-        "580xx-open/normal/linux66-nvidia-580xx-open"
-      ],
-      "hits": 3
-    },
-    "warning:uild": {
-      "builds": [
-        "580xx-open/normal/linux66-nvidia-580xx-open"
-      ],
-      "hits": 3
     }
   },
-  "timestamp": "2026-10-09T01-06-27"
+  "timestamp": "2026-10-09T14-16-00"
 }

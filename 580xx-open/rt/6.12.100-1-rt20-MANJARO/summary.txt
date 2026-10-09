@@ -11,7 +11,7 @@ build dir:       /build/sources/PKGBUILDs/extra/linux612-rt-extramodules/nvidia-
 
 errors:          0
 warnings clean:  428  (unique: 29)
-warnings noise:  13739  (unique: 2)
+warnings noise:  13740  (unique: 2)
 suspicious:      0  (unique: 0)
 modules on disk: 5  [nvidia, nvidia-drm, nvidia-modeset, nvidia-peermem, nvidia-uvm]
 log LD [M]:      ['nvidia', 'nvidia-drm', 'nvidia-modeset', 'nvidia-peermem', 'nvidia-uvm']

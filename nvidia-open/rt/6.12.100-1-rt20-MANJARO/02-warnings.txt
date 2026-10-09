@@ -3,5 +3,3 @@
        1  warning: variable 'DIDT10Count' set but not used [-Wunused-but-set-variable=]
        1  warning: variable 'extDTDCount' set but not used [-Wunused-but-set-variable=]
        1  warning: variable 'i' set but not used [-Wunused-but-set-variable=]
-       1  warning: ob  LD [M]  /build/sources/PKGBUILDs/extra/linux612-rt-extramodules/nvidia-open/src/nvidia/615.78.08/build/kernel-open/nvidia-drm.o
-       1  warning: ob  LD [M]  /build/sources/PKGBUILDs/extra/linux612-rt-extramodules/nvidia-open/src/nvidia/615.78.08/build/kernel-open/nvidia-peermem.o
