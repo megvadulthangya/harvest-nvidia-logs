@@ -4,10 +4,10 @@ variant:         normal
 kernel:          6.12.112-1-MANJARO
 nvidia version:  390.157
 status:          warnings
-log path:        /build/official/extra/linux612-extramodules/nvidia-390xx/src/nvidia/390.157/6.12.112-1-MANJARO/x86_64/log/make.log
-log size:        16406266 bytes
+log path:        /build/sources/PKGBUILDs/extra/linux612-extramodules/nvidia-390xx/src/nvidia/390.157/6.12.112-1-MANJARO/x86_64/log/make.log
+log size:        17260199 bytes
 log lines:       95216
-build dir:       /build/official/extra/linux612-extramodules/nvidia-390xx
+build dir:       /build/sources/PKGBUILDs/extra/linux612-extramodules/nvidia-390xx
 
 errors:          0
 warnings clean:  83  (unique: 75)

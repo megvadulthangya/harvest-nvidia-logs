@@ -4,14 +4,14 @@ variant:         normal
 kernel:          6.6.158-1-MANJARO
 nvidia version:  580.178.04
 status:          warnings
-log path:        /build/official/extra/linux66-extramodules/nvidia-580xx-open/src/nvidia/580.178.04/6.6.158-1-MANJARO/x86_64/log/make.log
-log size:        3307494 bytes
-log lines:       20408
-build dir:       /build/official/extra/linux66-extramodules/nvidia-580xx-open
+log path:        /build/sources/PKGBUILDs/extra/linux66-extramodules/nvidia-580xx-open/src/nvidia/580.178.04/6.6.158-1-MANJARO/x86_64/log/make.log
+log size:        3437887 bytes
+log lines:       20410
+build dir:       /build/sources/PKGBUILDs/extra/linux66-extramodules/nvidia-580xx-open
 
 errors:          0
-warnings clean:  400  (unique: 7)
-warnings noise:  13805  (unique: 2)
+warnings clean:  430  (unique: 18)
+warnings noise:  10666  (unique: 21)
 suspicious:      0  (unique: 0)
 modules on disk: 5  [nvidia, nvidia-drm, nvidia-modeset, nvidia-peermem, nvidia-uvm]
 log LD [M]:      ['nvidia', 'nvidia-drm', 'nvidia-modeset', 'nvidia-peermem', 'nvidia-uvm']
@@ -20,9 +20,20 @@ log cached:      no
 
 === Top clean warning groups ===
      390  warning: variable 'aggregate_mask' set but not used [-Wunused-but-set-variable=]
+       5  warning:ild
+       5  warning:d
        3  warning: 'virtual void DisplayPort::EvoMainLink::clearFlushMode(unsigned int, bool)' was hidden [-Woverloaded-virtual=]
        3  warning: 'virtual bool DisplayPort::EvoMainLink::setFlushMode()' was hidden [-Woverloaded-virtual=]
+       3  warning:ETHUNK build
+       3  warning:uild
+       3  warning:build
+       3  warning:ld
+       2  warning:UNK build
+       2  warning:NK build
+       2  warning:THUNK build
        1  warning: variable 'DIDT10Count' set but not used [-Wunused-but-set-variable=]
        1  warning: variable 'extDTDCount' set but not used [-Wunused-but-set-variable=]
        1  warning: variable 'i' set but not used [-Wunused-but-set-variable=]
        1  warning: unused variable 'size' [-Wunused-variable]
+       1  warning:HUNK build
+       1  warning: build

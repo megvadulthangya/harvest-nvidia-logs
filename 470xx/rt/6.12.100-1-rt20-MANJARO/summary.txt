@@ -4,10 +4,10 @@ variant:         rt
 kernel:          6.12.100-1-rt20-MANJARO
 nvidia version:  470.256.02
 status:          warnings
-log path:        /build/official/extra/linux612-rt-extramodules/nvidia-470xx/src/nvidia/470.256.02/6.12.100-1-rt20-MANJARO/x86_64/log/make.log
-log size:        11630011 bytes
+log path:        /build/sources/PKGBUILDs/extra/linux612-rt-extramodules/nvidia-470xx/src/nvidia/470.256.02/6.12.100-1-rt20-MANJARO/x86_64/log/make.log
+log size:        12206403 bytes
 log lines:       64308
-build dir:       /build/official/extra/linux612-rt-extramodules/nvidia-470xx
+build dir:       /build/sources/PKGBUILDs/extra/linux612-rt-extramodules/nvidia-470xx
 
 errors:          0
 warnings clean:  60  (unique: 52)

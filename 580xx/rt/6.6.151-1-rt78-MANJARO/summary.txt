@@ -4,10 +4,10 @@ variant:         rt
 kernel:          6.6.151-1-rt78-MANJARO
 nvidia version:  580.178.04
 status:          clean
-log path:        /build/official/extra/linux66-rt-extramodules/nvidia-580xx/src/nvidia/580.178.04/6.6.151-1-rt78-MANJARO/x86_64/log/make.log
-log size:        8184198 bytes
+log path:        /build/sources/PKGBUILDs/extra/linux66-rt-extramodules/nvidia-580xx/src/nvidia/580.178.04/6.6.151-1-rt78-MANJARO/x86_64/log/make.log
+log size:        8614119 bytes
 log lines:       47935
-build dir:       /build/official/extra/linux66-rt-extramodules/nvidia-580xx
+build dir:       /build/sources/PKGBUILDs/extra/linux66-rt-extramodules/nvidia-580xx
 
 errors:          0
 warnings clean:  0  (unique: 0)

@@ -4,10 +4,10 @@ variant:         normal
 kernel:          6.1.189-1-MANJARO
 nvidia version:  615.78.08
 status:          warnings
-log path:        /build/official/extra/linux61-extramodules/nvidia/src/nvidia/615.78.08/6.1.189-1-MANJARO/x86_64/log/make.log
-log size:        20365948 bytes
+log path:        /build/sources/PKGBUILDs/extra/linux61-extramodules/nvidia/src/nvidia/615.78.08/6.1.189-1-MANJARO/x86_64/log/make.log
+log size:        21559115 bytes
 log lines:       132839
-build dir:       /build/official/extra/linux61-extramodules/nvidia
+build dir:       /build/sources/PKGBUILDs/extra/linux61-extramodules/nvidia
 
 errors:          0
 warnings clean:  4  (unique: 2)

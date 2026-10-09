@@ -4,10 +4,10 @@ variant:         normal
 kernel:          7.2.9-1-MANJARO
 nvidia version:  390.157
 status:          warnings
-log path:        /build/official/extra/linux72-extramodules/nvidia-390xx/src/nvidia/390.157/7.2.9-1-MANJARO/x86_64/log/make.log
-log size:        8626602 bytes
+log path:        /build/sources/PKGBUILDs/extra/linux72-extramodules/nvidia-390xx/src/nvidia/390.157/7.2.9-1-MANJARO/x86_64/log/make.log
+log size:        8627015 bytes
 log lines:       95145
-build dir:       /build/official/extra/linux72-extramodules/nvidia-390xx
+build dir:       /build/sources/PKGBUILDs/extra/linux72-extramodules/nvidia-390xx
 
 errors:          0
 warnings clean:  79  (unique: 75)
@@ -21,8 +21,8 @@ log cached:      no
 === Top clean warning groups ===
        3  warning: 'static' is not at beginning of declaration [-Wold-style-declaration]
        3  warning: implicit conversion from 'uvm_fault_access_type_t' to 'uvm_fault_type_t' [-Wenum-conversion]
-       1  warning: no previous prototype for 'nv_pci_register_driver' [-Wmissing-prototypes]
        1  warning: no previous prototype for 'nvidia_init_module' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'nv_pci_register_driver' [-Wmissing-prototypes]
        1  warning: no previous prototype for 'nvidia_exit_module' [-Wmissing-prototypes]
        1  warning: unused variable 'device' [-Wunused-variable]
        1  warning: no previous prototype for 'nv_load_dma_map_scatterlist' [-Wmissing-prototypes]

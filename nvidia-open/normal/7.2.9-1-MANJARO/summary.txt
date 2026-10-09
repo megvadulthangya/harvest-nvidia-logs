@@ -4,10 +4,10 @@ variant:         normal
 kernel:          7.2.9-1-MANJARO
 nvidia version:  615.78.08
 status:          warnings
-log path:        /build/official/extra/linux72-extramodules/nvidia-open/src/nvidia/615.78.08/7.2.9-1-MANJARO/x86_64/log/make.log
-log size:        1455433 bytes
-log lines:       13625
-build dir:       /build/official/extra/linux72-extramodules/nvidia-open
+log path:        /build/sources/PKGBUILDs/extra/linux72-extramodules/nvidia-open/src/nvidia/615.78.08/7.2.9-1-MANJARO/x86_64/log/make.log
+log size:        1455715 bytes
+log lines:       13627
+build dir:       /build/sources/PKGBUILDs/extra/linux72-extramodules/nvidia-open
 
 errors:          0
 warnings clean:  7  (unique: 5)

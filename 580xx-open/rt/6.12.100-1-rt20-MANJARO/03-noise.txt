@@ -1,3 +1,2 @@
-   13493  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK build
+   13453  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK build
      286  warning: objtool: <func>+0xADDR: data relocation to !ENDBR: <func>+0xADDR
-       1  warning: objt  LD [M]  /build/official/extra/linux612-rt-extramodules/nvidia-580xx-open/src/nvidia/580.178.04/build/kernel-open/nvidia-peermem.o

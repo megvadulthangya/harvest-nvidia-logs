@@ -4,10 +4,10 @@ variant:         normal
 kernel:          7.3.0-rc6-1-MANJARO
 nvidia version:  390.157
 status:          warnings
-log path:        /build/official/extra/linux73-extramodules/nvidia-390xx/src/nvidia/390.157/7.3.0-rc6-1-MANJARO/x86_64/log/make.log
-log size:        8626591 bytes
+log path:        /build/sources/PKGBUILDs/extra/linux73-extramodules/nvidia-390xx/src/nvidia/390.157/7.3.0-rc6-1-MANJARO/x86_64/log/make.log
+log size:        8627004 bytes
 log lines:       95145
-build dir:       /build/official/extra/linux73-extramodules/nvidia-390xx
+build dir:       /build/sources/PKGBUILDs/extra/linux73-extramodules/nvidia-390xx
 
 errors:          0
 warnings clean:  79  (unique: 75)

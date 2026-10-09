@@ -4,10 +4,10 @@ variant:         normal
 kernel:          7.2.9-1-MANJARO
 nvidia version:  580.178.04
 status:          warnings
-log path:        /build/official/extra/linux72-extramodules/nvidia-580xx-open/src/nvidia/580.178.04/7.2.9-1-MANJARO/x86_64/log/make.log
-log size:        2103224 bytes
-log lines:       21626
-build dir:       /build/official/extra/linux72-extramodules/nvidia-580xx-open
+log path:        /build/sources/PKGBUILDs/extra/linux72-extramodules/nvidia-580xx-open/src/nvidia/580.178.04/7.2.9-1-MANJARO/x86_64/log/make.log
+log size:        2108034 bytes
+log lines:       21628
+build dir:       /build/sources/PKGBUILDs/extra/linux72-extramodules/nvidia-580xx-open
 
 errors:          0
 warnings clean:  593  (unique: 30)

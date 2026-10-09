@@ -4,10 +4,10 @@ variant:         rt
 kernel:          6.1.182-1-rt67-MANJARO
 nvidia version:  615.78.08
 status:          warnings
-log path:        /build/official/extra/linux61-rt-extramodules/nvidia/src/nvidia/615.78.08/6.1.182-1-rt67-MANJARO/x86_64/log/make.log
-log size:        20763647 bytes
+log path:        /build/sources/PKGBUILDs/extra/linux61-rt-extramodules/nvidia/src/nvidia/615.78.08/6.1.182-1-rt67-MANJARO/x86_64/log/make.log
+log size:        21956814 bytes
 log lines:       132839
-build dir:       /build/official/extra/linux61-rt-extramodules/nvidia
+build dir:       /build/sources/PKGBUILDs/extra/linux61-rt-extramodules/nvidia
 
 errors:          0
 warnings clean:  4  (unique: 2)

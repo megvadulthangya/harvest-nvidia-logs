@@ -4,10 +4,10 @@ variant:         normal
 kernel:          7.3.0-rc6-1-MANJARO
 nvidia version:  580.178.04
 status:          warnings
-log path:        /build/official/extra/linux73-extramodules/nvidia-580xx/src/nvidia/580.178.04/7.3.0-rc6-1-MANJARO/x86_64/log/make.log
-log size:        4618486 bytes
+log path:        /build/sources/PKGBUILDs/extra/linux73-extramodules/nvidia-580xx/src/nvidia/580.178.04/7.3.0-rc6-1-MANJARO/x86_64/log/make.log
+log size:        4619884 bytes
 log lines:       49093
-build dir:       /build/official/extra/linux73-extramodules/nvidia-580xx
+build dir:       /build/sources/PKGBUILDs/extra/linux73-extramodules/nvidia-580xx
 
 errors:          0
 warnings clean:  173  (unique: 3)

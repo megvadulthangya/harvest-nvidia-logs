@@ -4,14 +4,14 @@ variant:         normal
 kernel:          6.1.189-1-MANJARO
 nvidia version:  580.178.04
 status:          warnings
-log path:        /build/official/extra/linux61-extramodules/nvidia-580xx-open/src/nvidia/580.178.04/6.1.189-1-MANJARO/x86_64/log/make.log
-log size:        8212384 bytes
-log lines:       45755
-build dir:       /build/official/extra/linux61-extramodules/nvidia-580xx-open
+log path:        /build/sources/PKGBUILDs/extra/linux61-extramodules/nvidia-580xx-open/src/nvidia/580.178.04/6.1.189-1-MANJARO/x86_64/log/make.log
+log size:        8570918 bytes
+log lines:       45757
+build dir:       /build/sources/PKGBUILDs/extra/linux61-extramodules/nvidia-580xx-open
 
 errors:          0
-warnings clean:  400  (unique: 7)
-warnings noise:  32058  (unique: 43)
+warnings clean:  402  (unique: 8)
+warnings noise:  35446  (unique: 5)
 suspicious:      0  (unique: 0)
 modules on disk: 5  [nvidia, nvidia-drm, nvidia-modeset, nvidia-peermem, nvidia-uvm]
 log LD [M]:      ['nvidia', 'nvidia-drm', 'nvidia-modeset', 'nvidia-peermem', 'nvidia-uvm']
@@ -22,6 +22,7 @@ log cached:      no
      390  warning: variable 'aggregate_mask' set but not used [-Wunused-but-set-variable=]
        3  warning: 'virtual void DisplayPort::EvoMainLink::clearFlushMode(unsigned int, bool)' was hidden [-Woverloaded-virtual=]
        3  warning: 'virtual bool DisplayPort::EvoMainLink::setFlushMode()' was hidden [-Woverloaded-virtual=]
+       2  warning:build
        1  warning: variable 'DIDT10Count' set but not used [-Wunused-but-set-variable=]
        1  warning: variable 'extDTDCount' set but not used [-Wunused-but-set-variable=]
        1  warning: variable 'i' set but not used [-Wunused-but-set-variable=]

@@ -4,10 +4,10 @@ variant:         rt
 kernel:          unknown
 nvidia version:  unknown
 status:          failed
-log path:        /build/official/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/make.log
-log size:        26728 bytes
+log path:        /build/sources/PKGBUILDs/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/make.log
+log size:        27848 bytes
 log lines:       384
-build dir:       /build/official/extra/linux61-rt-extramodules/nvidia-390xx
+build dir:       /build/sources/PKGBUILDs/extra/linux61-rt-extramodules/nvidia-390xx
 
 errors:          26
 warnings clean:  8  (unique: 2)
@@ -22,23 +22,23 @@ log cached:      no
        4  warning: conflicting types for 'vm_flags_clear'; have 'void(struct vm_area_struct *, vm_flags_t)' {aka 'void(struct vm_area_struct *, long unsigned int)'}
 
 === Error excerpt (first 20) ===
-193: /build/official/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:337:5: error: implicit declaration of function 'vm_flags_set'; did you mean 'nv_vm_flags_set'? [-Wimplicit-function-declaration]
-200: /build/official/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:337:5: error: implicit declaration of function 'vm_flags_set'; did you mean 'nv_vm_flags_set'? [-Wimplicit-function-declaration]
-207: /build/official/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:337:5: error: implicit declaration of function 'vm_flags_set'; did you mean 'nv_vm_flags_set'? [-Wimplicit-function-declaration]
-212: /build/official/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:348:5: error: implicit declaration of function 'vm_flags_clear'; did you mean 'nv_vm_flags_clear'? [-Wimplicit-function-declaration]
-219: /build/official/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:337:5: error: implicit declaration of function 'vm_flags_set'; did you mean 'nv_vm_flags_set'? [-Wimplicit-function-declaration]
-225: /build/official/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-timer.h:70:19: error: static declaration of 'timer_delete_sync' follows non-static declaration
-243: /build/official/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:348:5: error: implicit declaration of function 'vm_flags_clear'; did you mean 'nv_vm_flags_clear'? [-Wimplicit-function-declaration]
-249: /build/official/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-timer.h:70:19: error: static declaration of 'timer_delete_sync' follows non-static declaration
-267: /build/official/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:348:5: error: implicit declaration of function 'vm_flags_clear'; did you mean 'nv_vm_flags_clear'? [-Wimplicit-function-declaration]
-272: /build/official/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:348:5: error: implicit declaration of function 'vm_flags_clear'; did you mean 'nv_vm_flags_clear'? [-Wimplicit-function-declaration]
-278: /build/official/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-timer.h:70:19: error: static declaration of 'timer_delete_sync' follows non-static declaration
-297: /build/official/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-timer.h:70:19: error: static declaration of 'timer_delete_sync' follows non-static declaration
-317: /build/official/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-linux.h:2026:20: error: static declaration of 'vm_flags_set' follows non-static declaration
-324: /build/official/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-linux.h:2031:20: error: static declaration of 'vm_flags_clear' follows non-static declaration
-331: /build/official/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-linux.h:2026:20: error: static declaration of 'vm_flags_set' follows non-static declaration
-338: /build/official/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-linux.h:2031:20: error: static declaration of 'vm_flags_clear' follows non-static declaration
-349: /build/official/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-linux.h:2026:20: error: static declaration of 'vm_flags_set' follows non-static declaration
-356: /build/official/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-linux.h:2031:20: error: static declaration of 'vm_flags_clear' follows non-static declaration
-363: /build/official/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-linux.h:2026:20: error: static declaration of 'vm_flags_set' follows non-static declaration
-370: /build/official/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-linux.h:2031:20: error: static declaration of 'vm_flags_clear' follows non-static declaration
+193: /build/sources/PKGBUILDs/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:337:5: error: implicit declaration of function ‘vm_flags_set’; did you mean ‘nv_vm_flags_set’? [-Wimplicit-function-declaration]
+200: /build/sources/PKGBUILDs/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:337:5: error: implicit declaration of function ‘vm_flags_set’; did you mean ‘nv_vm_flags_set’? [-Wimplicit-function-declaration]
+207: /build/sources/PKGBUILDs/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:337:5: error: implicit declaration of function ‘vm_flags_set’; did you mean ‘nv_vm_flags_set’? [-Wimplicit-function-declaration]
+212: /build/sources/PKGBUILDs/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:348:5: error: implicit declaration of function ‘vm_flags_clear’; did you mean ‘nv_vm_flags_clear’? [-Wimplicit-function-declaration]
+218: /build/sources/PKGBUILDs/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-timer.h:70:19: error: static declaration of ‘timer_delete_sync’ follows non-static declaration
+236: /build/sources/PKGBUILDs/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:348:5: error: implicit declaration of function ‘vm_flags_clear’; did you mean ‘nv_vm_flags_clear’? [-Wimplicit-function-declaration]
+242: /build/sources/PKGBUILDs/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-timer.h:70:19: error: static declaration of ‘timer_delete_sync’ follows non-static declaration
+260: /build/sources/PKGBUILDs/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:348:5: error: implicit declaration of function ‘vm_flags_clear’; did you mean ‘nv_vm_flags_clear’? [-Wimplicit-function-declaration]
+266: /build/sources/PKGBUILDs/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-timer.h:70:19: error: static declaration of ‘timer_delete_sync’ follows non-static declaration
+286: /build/sources/PKGBUILDs/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:337:5: error: implicit declaration of function ‘vm_flags_set’; did you mean ‘nv_vm_flags_set’? [-Wimplicit-function-declaration]
+291: /build/sources/PKGBUILDs/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:348:5: error: implicit declaration of function ‘vm_flags_clear’; did you mean ‘nv_vm_flags_clear’? [-Wimplicit-function-declaration]
+297: /build/sources/PKGBUILDs/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-timer.h:70:19: error: static declaration of ‘timer_delete_sync’ follows non-static declaration
+317: /build/sources/PKGBUILDs/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-linux.h:2026:20: error: static declaration of ‘vm_flags_set’ follows non-static declaration
+324: /build/sources/PKGBUILDs/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-linux.h:2031:20: error: static declaration of ‘vm_flags_clear’ follows non-static declaration
+331: /build/sources/PKGBUILDs/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-linux.h:2026:20: error: static declaration of ‘vm_flags_set’ follows non-static declaration
+338: /build/sources/PKGBUILDs/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-linux.h:2031:20: error: static declaration of ‘vm_flags_clear’ follows non-static declaration
+349: /build/sources/PKGBUILDs/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-linux.h:2026:20: error: static declaration of ‘vm_flags_set’ follows non-static declaration
+356: /build/sources/PKGBUILDs/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-linux.h:2031:20: error: static declaration of ‘vm_flags_clear’ follows non-static declaration
+363: /build/sources/PKGBUILDs/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-linux.h:2026:20: error: static declaration of ‘vm_flags_set’ follows non-static declaration
+370: /build/sources/PKGBUILDs/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-linux.h:2031:20: error: static declaration of ‘vm_flags_clear’ follows non-static declaration

@@ -5,7 +5,7 @@ kernel:          unknown
 nvidia version:  unknown
 status:          not-built
 log path:        (none)
-build dir:       /build/official/extra/linux618-rt-extramodules/nvidia-470xx
+build dir:       /build/sources/PKGBUILDs/extra/linux618-rt-extramodules/nvidia-470xx
 
 errors:          0
 warnings clean:  0  (unique: 0)

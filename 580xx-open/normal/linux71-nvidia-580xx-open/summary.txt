@@ -5,7 +5,7 @@ kernel:          unknown
 nvidia version:  unknown
 status:          not-built
 log path:        (none)
-build dir:       /build/official/extra/linux71-extramodules/nvidia-580xx-open
+build dir:       /build/sources/PKGBUILDs/extra/linux71-extramodules/nvidia-580xx-open
 
 errors:          0
 warnings clean:  0  (unique: 0)

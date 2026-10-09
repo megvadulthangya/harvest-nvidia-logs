@@ -4,10 +4,10 @@ variant:         normal
 kernel:          6.18.55-1-MANJARO
 nvidia version:  580.178.04
 status:          warnings
-log path:        /build/official/extra/linux618-extramodules/nvidia-580xx-open/src/nvidia/580.178.04/6.18.55-1-MANJARO/x86_64/log/make.log
-log size:        2037444 bytes
-log lines:       20501
-build dir:       /build/official/extra/linux618-extramodules/nvidia-580xx-open
+log path:        /build/sources/PKGBUILDs/extra/linux618-extramodules/nvidia-580xx-open/src/nvidia/580.178.04/6.18.55-1-MANJARO/x86_64/log/make.log
+log size:        2040934 bytes
+log lines:       20503
+build dir:       /build/sources/PKGBUILDs/extra/linux618-extramodules/nvidia-580xx-open
 
 errors:          0
 warnings clean:  428  (unique: 29)

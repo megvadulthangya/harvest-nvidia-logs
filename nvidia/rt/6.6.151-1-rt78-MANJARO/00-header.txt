@@ -1,10 +1,10 @@
 DKMS (dkms-3.4.4) make.log for nvidia/615.78.08 for kernel 6.6.151-1-rt78-MANJARO (x86_64)
-Thu Oct  8 12:24:49 UTC 2026
+Thu Oct  8 23:31:28 UTC 2026
 
 Building module(s)
 # command: 'make' -j4 IGNORE_PREEMPT_RT_PRESENCE=1 NV_EXCLUDE_BUILD_MODULES='' KERNEL_UNAME=6.6.151-1-rt78-MANJARO modules
 make[1]: Entering directory '/usr/lib/modules/6.6.151-1-rt78-MANJARO/build'
-  SYMLINK /build/official/extra/linux66-rt-extramodules/nvidia/src/nvidia/615.78.08/build/nvidia/nv-kernel.o
-  SYMLINK /build/official/extra/linux66-rt-extramodules/nvidia/src/nvidia/615.78.08/build/nvidia-modeset/nv-modeset-kernel.o
+  SYMLINK /build/sources/PKGBUILDs/extra/linux66-rt-extramodules/nvidia/src/nvidia/615.78.08/build/nvidia/nv-kernel.o
+  SYMLINK /build/sources/PKGBUILDs/extra/linux66-rt-extramodules/nvidia/src/nvidia/615.78.08/build/nvidia-modeset/nv-modeset-kernel.o
  CONFTEST: set_pages_uc
  CONFTEST: set_memory_uc

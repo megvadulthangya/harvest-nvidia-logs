@@ -4,14 +4,14 @@ variant:         normal
 kernel:          7.3.0-rc6-1-MANJARO
 nvidia version:  580.178.04
 status:          warnings
-log path:        /build/official/extra/linux73-extramodules/nvidia-580xx-open/src/nvidia/580.178.04/7.3.0-rc6-1-MANJARO/x86_64/log/make.log
-log size:        2103240 bytes
-log lines:       21626
-build dir:       /build/official/extra/linux73-extramodules/nvidia-580xx-open
+log path:        /build/sources/PKGBUILDs/extra/linux73-extramodules/nvidia-580xx-open/src/nvidia/580.178.04/7.3.0-rc6-1-MANJARO/x86_64/log/make.log
+log size:        2108050 bytes
+log lines:       21628
+build dir:       /build/sources/PKGBUILDs/extra/linux73-extramodules/nvidia-580xx-open
 
 errors:          0
 warnings clean:  593  (unique: 30)
-warnings noise:  12937  (unique: 115)
+warnings noise:  13821  (unique: 2)
 suspicious:      0  (unique: 0)
 modules on disk: 5  [nvidia, nvidia-drm, nvidia-modeset, nvidia-peermem, nvidia-uvm]
 log LD [M]:      ['nvidia', 'nvidia-drm', 'nvidia-modeset', 'nvidia-peermem', 'nvidia-uvm']
