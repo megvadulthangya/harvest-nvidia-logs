@@ -1,2 +1,61 @@
-   13533  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK build
+   12464  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK build
      288  warning: objtool: <func>+0xADDR: data relocation to !ENDBR: <func>+0xADDR
+       2  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK buiTIGATION_RETHUNK build
+       2  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK build in MITIGATION_RETHUNK build
+       2  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK builMITIGATION_RETHUNK build
+       2  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK_RETHUNK build
+       2  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNKMITIGATION_RETHUNK build
+       2  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK buiRETHUNK build
+       2  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK buildN_RETHUNK build
+       2  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK buildMITIGATION_RETHUNK build
+       2  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK buildATION_RETHUNK build
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK buildIGATION_RETHUNK build
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGuild
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RHUNK build
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK buildbuild
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK buuild
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MIild
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK buiTHUNK build
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK buMITIGATION_RETHUNK build
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MIT
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK builN_RETHUNK build
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK builETHUNK build
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATIONd
+       1  warning: objtool: <func>+0xADDR: 'naked' return found build
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNKrn found in MITIGATION_RETHUNK build
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNKin MITIGATION_RETHUNK build
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_Rd
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUN_RETHUNK build
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK bund in MITIGATION_RETHUNK build
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK buRETHUNK build
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUETHUNK build
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK buiNK build
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK builITIGATION_RETHUNK build
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK builION_RETHUNK build
+       1  warning: objtool: _ZN11DisplayPort15ConnectorImpl2x19willLinkSupportModeERKNS_17LinkConfigurationERKNS_11Modesld
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK bd
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK buildTIGATION_RETHUNK build
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK buIGATION_RETHUNK build
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUuild
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK bETHUNK build
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATIOld
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK buiN_RETHUNK build
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK buildETHUNK build
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHTHUNK build
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUTION_RETHUNK build
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK builld
+       1  warning: objtool: _ZN11DisplayPort23ConnStatusNotifyMessage13processByTypeEPNS_14EncodedMessageEPNS_15BitStreabuild
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETH MITIGATION_RETHUNK build
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHin MITIGATION_RETHUNK build
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_REGATION_RETHUNK build
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNKTIGATION_RETHUNK build
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK bureturn found in MITIGATION_RETHUNK build
+       1  warning: objtool: <func>+0xADDR: build
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK bTION_RETHUNK build
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK buid' return found in MITIGATION_RETHUNK build
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATIONuild
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK buibuild
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK buiin MITIGATION_RETHUNK build
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_R
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK builK build
+       1  warning: objtool: _ZN16nvkmsDisplayPort12EvoInterface19monitorDenylistInfoEjjPN11DisplayPort21DpMonitorDenylisbuild

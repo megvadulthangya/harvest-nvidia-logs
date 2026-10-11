@@ -1,4 +1,4 @@
-# Harvest Index — 2026-10-09 14:16:00 
+# Harvest Index — 2026-10-11 15:21:56 
 
 ## TL;DR
 
@@ -58,7 +58,7 @@ Per-build detail lives in the harvest tree, one directory per kernel: `00-header
 | 22 | 470xx | rt | 6.12.100-1-rt20-MANJARO | 470.256.02 | ⚠ warnings | 0 | 52 / 60 | 0 | 63696 |  |
 | 23 | 470xx | rt | 6.6.151-1-rt78-MANJARO | 470.256.02 | ⚠ warnings | 0 | 14 / 16 | 0 | 63696 |  |
 | 24 | 470xx | rt | linux618-rt-nvidia-470xx | - | 🚫 not-built | 0 | 0 / 0 | 0 | 0 |  |
-| 25 | 580xx | normal | 6.1.189-1-MANJARO | 580.178.04 | ✅ clean | 0 | 0 / 0 | 0 | 137982 |  |
+| 25 | 580xx | normal | 6.1.189-1-MANJARO | 580.178.04 | ✅ clean | 0 | 0 / 0 | 0 | 137983 |  |
 | 26 | 580xx | normal | 6.12.112-1-MANJARO | 580.178.04 | ⚠ warnings | 0 | 1 / 7 | 0 | 47475 |  |
 | 27 | 580xx | normal | 6.18.55-1-MANJARO | 580.178.04 | ⚠ warnings | 0 | 2 / 8 | 0 | 47475 |  |
 | 28 | 580xx | normal | 6.6.158-1-MANJARO | 580.178.04 | ✅ clean | 0 | 0 / 0 | 0 | 47475 |  |
@@ -68,16 +68,16 @@ Per-build detail lives in the harvest tree, one directory per kernel: `00-header
 | 32 | 580xx | rt | 6.1.182-1-rt67-MANJARO | 580.178.04 | ✅ clean | 0 | 0 / 0 | 0 | 137983 |  |
 | 33 | 580xx | rt | 6.12.100-1-rt20-MANJARO | 580.178.04 | ⚠ warnings | 0 | 1 / 7 | 0 | 47475 |  |
 | 34 | 580xx | rt | 6.6.151-1-rt78-MANJARO | 580.178.04 | ✅ clean | 0 | 0 / 0 | 0 | 47475 |  |
-| 35 | 580xx-open | normal | 6.1.189-1-MANJARO | 580.178.04 | ⚠ warnings | 0 | 7 / 400 | 0 | 39133 |  |
+| 35 | 580xx-open | normal | 6.1.189-1-MANJARO | 580.178.04 | ⚠ warnings | 0 | 7 / 400 | 0 | 39132 |  |
 | 36 | 580xx-open | normal | 6.12.112-1-MANJARO | 580.178.04 | ⚠ warnings | 0 | 29 / 428 | 0 | 13756 |  |
 | 37 | 580xx-open | normal | 6.18.55-1-MANJARO | 580.178.04 | ⚠ warnings | 0 | 29 / 428 | 0 | 13821 |  |
-| 38 | 580xx-open | normal | 6.6.158-1-MANJARO | 580.178.04 | ⚠ warnings | 0 | 7 / 400 | 0 | 13404 |  |
-| 39 | 580xx-open | normal | 7.2.9-1-MANJARO | 580.178.04 | ⚠ warnings | 0 | 30 / 593 | 0 | 13821 |  |
-| 40 | 580xx-open | normal | 7.3.0-rc6-1-MANJARO | 580.178.04 | ⚠ warnings | 0 | 30 / 593 | 0 | 13821 |  |
+| 38 | 580xx-open | normal | 6.6.158-1-MANJARO | 580.178.04 | ⚠ warnings | 0 | 7 / 400 | 0 | 13417 |  |
+| 39 | 580xx-open | normal | 7.2.9-1-MANJARO | 580.178.04 | ⚠ warnings | 0 | 30 / 593 | 0 | 12820 |  |
+| 40 | 580xx-open | normal | 7.3.0-rc6-1-MANJARO | 580.178.04 | ⚠ warnings | 0 | 30 / 593 | 0 | 13731 |  |
 | 41 | 580xx-open | normal | linux71-nvidia-580xx-open | - | 🚫 not-built | 0 | 0 / 0 | 0 | 0 |  |
 | 42 | 580xx-open | rt | 6.1.182-1-rt67-MANJARO | 580.178.04 | ⚠ warnings | 0 | 7 / 400 | 0 | 39124 |  |
 | 43 | 580xx-open | rt | 6.12.100-1-rt20-MANJARO | 580.178.04 | ⚠ warnings | 0 | 29 / 428 | 0 | 13740 |  |
-| 44 | 580xx-open | rt | 6.6.151-1-rt78-MANJARO | 580.178.04 | ⚠ warnings | 0 | 7 / 400 | 0 | 9890 |  |
+| 44 | 580xx-open | rt | 6.6.151-1-rt78-MANJARO | 580.178.04 | ⚠ warnings | 0 | 7 / 400 | 0 | 10128 |  |
 | 45 | nvidia | normal | 6.1.189-1-MANJARO | 615.78.08 | ⚠ warnings | 0 | 2 / 4 | 0 | 132258 |  |
 | 46 | nvidia | normal | 6.12.112-1-MANJARO | 615.78.08 | ⚠ warnings | 0 | 2 / 4 | 0 | 44699 |  |
 | 47 | nvidia | normal | 6.18.55-1-MANJARO | 615.78.08 | ⚠ warnings | 0 | 3 / 5 | 0 | 44699 |  |
@@ -112,21 +112,21 @@ Full error list in each build's `01-errors.txt`. Excerpt below.
 Path: `390xx/normal/linux61-nvidia-390xx`
 
 ```
-193: /build/sources/PKGBUILDs/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:337:5: error: implicit declaration of function ‘vm_flags_set’; did you mean ‘nv_vm_flags_set’? [-Wimplicit-function-declaration]
-198: /build/sources/PKGBUILDs/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:348:5: error: implicit declaration of function ‘vm_flags_clear’; did you mean ‘nv_vm_flags_clear’? [-Wimplicit-function-declaration]
-204: /build/sources/PKGBUILDs/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-timer.h:70:19: error: static declaration of ‘timer_delete_sync’ follows non-static declaration
-224: /build/sources/PKGBUILDs/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:337:5: error: implicit declaration of function ‘vm_flags_set’; did you mean ‘nv_vm_flags_set’? [-Wimplicit-function-declaration]
-231: /build/sources/PKGBUILDs/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:337:5: error: implicit declaration of function ‘vm_flags_set’; did you mean ‘nv_vm_flags_set’? [-Wimplicit-function-declaration]
-238: /build/sources/PKGBUILDs/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:337:5: error: implicit declaration of function ‘vm_flags_set’; did you mean ‘nv_vm_flags_set’? [-Wimplicit-function-declaration]
-243: /build/sources/PKGBUILDs/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:348:5: error: implicit declaration of function ‘vm_flags_clear’; did you mean ‘nv_vm_flags_clear’? [-Wimplicit-function-declaration]
-249: /build/sources/PKGBUILDs/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-timer.h:70:19: error: static declaration of ‘timer_delete_sync’ follows non-static declaration
+196: /build/sources/PKGBUILDs/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:337:5: error: implicit declaration of function ‘vm_flags_set’; did you mean ‘nv_vm_flags_set’? [-Wimplicit-function-declaration]
+200: /build/sources/PKGBUILDs/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:337:5: error: implicit declaration of function ‘vm_flags_set’; did you mean ‘nv_vm_flags_set’? [-Wimplicit-function-declaration]
+210: /build/sources/PKGBUILDs/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:337:5: error: implicit declaration of function ‘vm_flags_set’; did you mean ‘nv_vm_flags_set’? [-Wimplicit-function-declaration]
+214: /build/sources/PKGBUILDs/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:337:5: error: implicit declaration of function ‘vm_flags_set’; did you mean ‘nv_vm_flags_set’? [-Wimplicit-function-declaration]
+220: /build/sources/PKGBUILDs/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:348:5: error: implicit declaration of function ‘vm_flags_clear’; did you mean ‘nv_vm_flags_clear’? [-Wimplicit-function-declaration]
+224: /build/sources/PKGBUILDs/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:348:5: error: implicit declaration of function ‘vm_flags_clear’; did you mean ‘nv_vm_flags_clear’? [-Wimplicit-function-declaration]
+232: /build/sources/PKGBUILDs/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-timer.h:70:19: error: static declaration of ‘timer_delete_sync’ follows non-static declaration
+235: /build/sources/PKGBUILDs/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-timer.h:70:19: error: static declaration of ‘timer_delete_sync’ follows non-static declaration
 267: /build/sources/PKGBUILDs/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:348:5: error: implicit declaration of function ‘vm_flags_clear’; did you mean ‘nv_vm_flags_clear’? [-Wimplicit-function-declaration]
-273: /build/sources/PKGBUILDs/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-timer.h:70:19: error: static declaration of ‘timer_delete_sync’ follows non-static declaration
-291: /build/sources/PKGBUILDs/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:348:5: error: implicit declaration of function ‘vm_flags_clear’; did you mean ‘nv_vm_flags_clear’? [-Wimplicit-function-declaration]
+272: /build/sources/PKGBUILDs/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:348:5: error: implicit declaration of function ‘vm_flags_clear’; did you mean ‘nv_vm_flags_clear’? [-Wimplicit-function-declaration]
+278: /build/sources/PKGBUILDs/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-timer.h:70:19: error: static declaration of ‘timer_delete_sync’ follows non-static declaration
 297: /build/sources/PKGBUILDs/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-timer.h:70:19: error: static declaration of ‘timer_delete_sync’ follows non-static declaration
 317: /build/sources/PKGBUILDs/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-linux.h:2026:20: error: static declaration of ‘vm_flags_set’ follows non-static declaration
 324: /build/sources/PKGBUILDs/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-linux.h:2031:20: error: static declaration of ‘vm_flags_clear’ follows non-static declaration
-332: make[2]: *** [scripts/Makefile.build:250: /build/sources/PKGBUILDs/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/nvidia/nv-gpu-numa.o] Error 1
+331: /build/sources/PKGBUILDs/extra/linux61-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-linux.h:2026:20: error: static declaration of ‘vm_flags_set’ follows non-static declaration
 ```
 
 ### 390xx / rt / linux61-rt-nvidia-390xx — ?  (26 errors)
@@ -135,9 +135,9 @@ Path: `390xx/rt/linux61-rt-nvidia-390xx`
 
 ```
 193: /build/sources/PKGBUILDs/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:337:5: error: implicit declaration of function ‘vm_flags_set’; did you mean ‘nv_vm_flags_set’? [-Wimplicit-function-declaration]
-198: /build/sources/PKGBUILDs/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:348:5: error: implicit declaration of function ‘vm_flags_clear’; did you mean ‘nv_vm_flags_clear’? [-Wimplicit-function-declaration]
-204: /build/sources/PKGBUILDs/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-timer.h:70:19: error: static declaration of ‘timer_delete_sync’ follows non-static declaration
-224: /build/sources/PKGBUILDs/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:337:5: error: implicit declaration of function ‘vm_flags_set’; did you mean ‘nv_vm_flags_set’? [-Wimplicit-function-declaration]
+200: /build/sources/PKGBUILDs/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:337:5: error: implicit declaration of function ‘vm_flags_set’; did you mean ‘nv_vm_flags_set’? [-Wimplicit-function-declaration]
+205: /build/sources/PKGBUILDs/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:348:5: error: implicit declaration of function ‘vm_flags_clear’; did you mean ‘nv_vm_flags_clear’? [-Wimplicit-function-declaration]
+211: /build/sources/PKGBUILDs/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-timer.h:70:19: error: static declaration of ‘timer_delete_sync’ follows non-static declaration
 231: /build/sources/PKGBUILDs/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:337:5: error: implicit declaration of function ‘vm_flags_set’; did you mean ‘nv_vm_flags_set’? [-Wimplicit-function-declaration]
 238: /build/sources/PKGBUILDs/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:337:5: error: implicit declaration of function ‘vm_flags_set’; did you mean ‘nv_vm_flags_set’? [-Wimplicit-function-declaration]
 243: /build/sources/PKGBUILDs/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-mm.h:348:5: error: implicit declaration of function ‘vm_flags_clear’; did you mean ‘nv_vm_flags_clear’? [-Wimplicit-function-declaration]
@@ -148,7 +148,7 @@ Path: `390xx/rt/linux61-rt-nvidia-390xx`
 297: /build/sources/PKGBUILDs/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-timer.h:70:19: error: static declaration of ‘timer_delete_sync’ follows non-static declaration
 317: /build/sources/PKGBUILDs/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-linux.h:2026:20: error: static declaration of ‘vm_flags_set’ follows non-static declaration
 324: /build/sources/PKGBUILDs/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-linux.h:2031:20: error: static declaration of ‘vm_flags_clear’ follows non-static declaration
-328: make[2]: *** [scripts/Makefile.build:250: /build/sources/PKGBUILDs/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/nvidia/nv-frontend.o] Error 1
+331: /build/sources/PKGBUILDs/extra/linux61-rt-extramodules/nvidia-390xx/src/nvidia/390.157/build/common/inc/nv-linux.h:2026:20: error: static declaration of ‘vm_flags_set’ follows non-static declaration
 ```
 
 ## 🔁 Cross-build warning signatures

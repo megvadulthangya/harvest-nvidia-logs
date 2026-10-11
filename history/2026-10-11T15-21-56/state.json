@@ -196,7 +196,7 @@
       "clean_total": 400,
       "clean_uniq": 7,
       "err_count": 0,
-      "noise_total": 39133,
+      "noise_total": 39132,
       "status": "warnings",
       "suspicious_total": 0
     },
@@ -220,7 +220,7 @@
       "clean_total": 400,
       "clean_uniq": 7,
       "err_count": 0,
-      "noise_total": 13404,
+      "noise_total": 13417,
       "status": "warnings",
       "suspicious_total": 0
     },
@@ -236,7 +236,7 @@
       "clean_total": 593,
       "clean_uniq": 30,
       "err_count": 0,
-      "noise_total": 13821,
+      "noise_total": 12820,
       "status": "warnings",
       "suspicious_total": 0
     },
@@ -244,7 +244,7 @@
       "clean_total": 593,
       "clean_uniq": 30,
       "err_count": 0,
-      "noise_total": 13821,
+      "noise_total": 13731,
       "status": "warnings",
       "suspicious_total": 0
     },
@@ -268,7 +268,7 @@
       "clean_total": 400,
       "clean_uniq": 7,
       "err_count": 0,
-      "noise_total": 9890,
+      "noise_total": 10128,
       "status": "warnings",
       "suspicious_total": 0
     },
@@ -276,7 +276,7 @@
       "clean_total": 0,
       "clean_uniq": 0,
       "err_count": 0,
-      "noise_total": 137982,
+      "noise_total": 137983,
       "status": "clean",
       "suspicious_total": 0
     },
@@ -2177,5 +2177,5 @@
       "hits": 18
     }
   },
-  "timestamp": "2026-10-09T14-16-00"
+  "timestamp": "2026-10-11T15-21-56"
 }
