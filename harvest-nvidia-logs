@@ -11,21 +11,29 @@ Install::
     sudo install -m 755 harvest-nvidia-logs /usr/local/bin/harvest-nvidia-logs
 
 No external dependencies — Python 3.10+ stdlib only.
+`zstd` is used for raw log compression when available; gzip is the
+fallback.
 
 Changelog
 ---------
+0.6.0
+  - New `--raw-logs {none,non-clean,all}` (default: non-clean) and
+    `--raw-logs-format {auto,zstd,gzip,none}` (default: auto) options.
+    When enabled, a compressed copy of each make.log is written into
+    the per-build directory alongside 00-header.txt (filename:
+    make.log.zst / make.log.gz / make.log).
+  - `non-clean` skips raw logs for clean builds, where the log is
+    only known noise.  `all` includes every build.
+  - zstd uses --ultra -22 --long=27 for maximum compression.
+
 0.5.6
-  - is_noise: reject short warning bodies (< 25 chars) that lack any
-    of the usual markers of a real compiler diagnostic (' " [ : . ;).
-    Fragments left over from interleaved `make -jN` output like
-    "warning:build", "warning:ild", "warning:UNK build" now fall
-    through this rule.
-  - is_noise: reject "warning: ob  LD [M]  …" fragments (objtool
-    prefix corrupted, "objtool:" broken into "ob" + linker line).
+  - is_noise: reject short warning bodies (< 25 chars) without any of
+    ' " [ : . ; — catches "warning:build", "warning:ild", etc.
+  - is_noise: reject "warning: ob  LD [M]  …" fragments.
 
 0.5.5
-  - is_noise: reject warnings whose body is empty or is only a
-    function+address reference.
+  - is_noise: reject warnings whose body is empty or only a function
+    plus address reference.
 
 0.5.4
   - is_noise: broaden fragment detection to any "warning: objt" prefix.
@@ -49,9 +57,12 @@ Changelog
 from __future__ import annotations
 
 import argparse
+import gzip
 import json
 import os
 import re
+import shutil
+import subprocess
 import sys
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
@@ -59,7 +70,7 @@ from datetime import datetime
 from pathlib import Path
 
 
-__version__ = "0.5.6"
+__version__ = "0.6.0"
 
 
 # ---------------------------------------------------------------------------
@@ -70,6 +81,8 @@ DEFAULT_HEADER_LINES = 10
 DEFAULT_DIAG_ROOT = Path.home() / "diag"
 DEFAULT_HARVEST_SUBDIR = "harvest"
 DEFAULT_HISTORY_KEEP = 20
+DEFAULT_RAW_LOGS = "non-clean"
+DEFAULT_RAW_LOGS_FORMAT = "auto"
 
 NOISE_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"warning: objtool:.*data relocation to !ENDBR"),
@@ -108,13 +121,7 @@ NOISE_KEYWORDS: tuple[str, ...] = (
     "call to __fentry__",
 )
 
-# A real objtool warning always has this structure:
-#   warning: objtool: <symbol>+0x<hex>: <message>
-# Fragments from interleaved parallel make output do not.
 RE_VALID_OBJTOOL = re.compile(r"^warning: objtool:\s+\S+\+0x[0-9a-fA-F]+:")
-
-# A warning whose body is just an address reference (no symbol name, no
-# message text) has no semantic content and is always a fragment.
 RE_ADDR_ONLY_BODY = re.compile(r"^<func>\+0xADDR$")
 
 RE_BEFORE_WARNING = re.compile(r"^.*(?=warning:)")
@@ -159,6 +166,10 @@ NOTHING_TO_DO_MARKERS = ("Nothing to be done", "is up to date")
 TRUNCATION_LOG_THRESHOLD = 1_000_000
 MAX_WARNING_LINE_LEN = 300
 
+# zstd tuning: maximum compression, big dictionary window.
+ZSTD_LEVEL = "-22"
+ZSTD_LONG_WINDOW = "27"
+
 
 # ---------------------------------------------------------------------------
 # Data model
@@ -195,6 +206,7 @@ class BuildResult:
     log_ld_modules: set[str] = field(default_factory=set)
     log_has_modpost: bool = False
     log_nothing_to_do: bool = False
+    raw_log_written: Path | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -242,31 +254,18 @@ def is_noise(signature: str) -> bool:
     if any(kw in signature for kw in NOISE_KEYWORDS):
         return True
 
-    # objtool prefix check (broadened in 0.5.4/0.5.5)
     if signature.startswith("warning: objt") and not RE_VALID_OBJTOOL.match(signature):
         return True
 
-    # "warning: ob  LD [M]  …" — objtool fragment where the prefix got
-    # cut to "ob" and mixed with a linker line (0.5.6).
     if signature.startswith("warning: ob "):
         return True
 
-    # Body content checks
     if signature.startswith("warning:"):
         body = signature[len("warning:"):].strip()
-
-        # Empty body
         if not body:
             return True
-
-        # Address-only body
         if RE_ADDR_ONLY_BODY.match(body):
             return True
-
-        # Short body without any typical warning markers (0.5.6).
-        # Real compiler diagnostics always contain at least one of
-        # these; fragments like "warning:build", "warning:ild",
-        # "warning:UNK build" contain none.
         if len(body) < 25:
             if not any(m in body for m in ("'", '"', "[", ":", ".", ";")):
                 return True
@@ -280,6 +279,74 @@ def is_actionable(signature: str) -> bool:
 
 def is_ignored_suspicious(line: str) -> bool:
     return any(p.search(line) for p in IGNORE_SUSPICIOUS_PATTERNS)
+
+
+# ---------------------------------------------------------------------------
+# Raw log archive
+# ---------------------------------------------------------------------------
+
+def _has_cmd(cmd: str) -> bool:
+    return shutil.which(cmd) is not None
+
+
+def _resolve_raw_format(fmt: str) -> str:
+    if fmt != "auto":
+        return fmt
+    if _has_cmd("zstd"):
+        return "zstd"
+    if _has_cmd("gzip"):
+        return "gzip"
+    return "none"
+
+
+def _write_raw_log(src: Path, out_dir: Path, fmt: str) -> Path | None:
+    """Write a compressed (or plain) copy of src into out_dir."""
+    if not src.is_file():
+        return None
+
+    resolved = _resolve_raw_format(fmt)
+
+    if resolved == "zstd":
+        dst = out_dir / "make.log.zst"
+        try:
+            subprocess.run(
+                ["zstd",
+                 f"--ultra", f"-{ZSTD_LEVEL.lstrip('-')}",
+                 f"--long={ZSTD_LONG_WINDOW}",
+                 "-T0",
+                 "-q", "-f",
+                 "-o", str(dst), str(src)],
+                check=True, capture_output=True,
+            )
+            return dst
+        except (FileNotFoundError, subprocess.CalledProcessError) as e:
+            print(f"[harvest][warn] zstd failed for {src}: {e}; "
+                  f"falling back to gzip", file=sys.stderr)
+            resolved = "gzip"
+
+    if resolved == "gzip":
+        dst = out_dir / "make.log.gz"
+        try:
+            with src.open("rb") as fin, \
+                 gzip.open(dst, "wb", compresslevel=9) as fout:
+                shutil.copyfileobj(fin, fout, length=1 << 20)
+            return dst
+        except OSError as e:
+            print(f"[harvest][warn] gzip failed for {src}: {e}; "
+                  f"falling back to plain copy", file=sys.stderr)
+            resolved = "none"
+
+    if resolved == "none":
+        dst = out_dir / "make.log"
+        try:
+            shutil.copy2(src, dst)
+            return dst
+        except OSError as e:
+            print(f"[harvest][warn] copy failed for {src}: {e}",
+                  file=sys.stderr)
+            return None
+
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -474,6 +541,12 @@ def _write_summary(r: BuildResult) -> None:
         out.append(f"log size:        {r.log_size} bytes")
         out.append(f"log lines:       {r.log_lines}")
     out.append(f"build dir:       {r.build_dir}")
+    if r.raw_log_written is not None:
+        try:
+            rel = r.raw_log_written.relative_to(r.out_dir)
+            out.append(f"raw log:         {rel.name}")
+        except ValueError:
+            pass
     out.append("")
     out.append(f"errors:          {r.err_count}")
     out.append(f"warnings clean:  {r.clean_total}  (unique: {r.clean_uniq})")
@@ -525,6 +598,8 @@ def process_build(
     build_dir: Path,
     harvest_root: Path,
     header_lines: int,
+    raw_logs: str = DEFAULT_RAW_LOGS,
+    raw_logs_format: str = DEFAULT_RAW_LOGS_FORMAT,
     quiet: bool = False,
 ) -> BuildResult:
     log_path = find_make_log(build_dir)
@@ -647,14 +722,24 @@ def process_build(
     else:
         result.status = "clean"
 
+    include_raw = (
+        raw_logs == "all"
+        or (raw_logs == "non-clean" and result.status != "clean")
+    )
+    if include_raw:
+        result.raw_log_written = _write_raw_log(log_path, out_dir, raw_logs_format)
+
     _write_summary(result)
 
     extra = ""
     if result.integrity_issues:
         extra = f"  integrity={len(result.integrity_issues)}"
+    raw_extra = ""
+    if result.raw_log_written is not None:
+        raw_extra = f"  raw={result.raw_log_written.name}"
     _log(
         f"{branch}/{variant}/{build_name}  kernel={kernel_ver or '?'}  "
-        f"status={result.status}{extra}  "
+        f"status={result.status}{extra}{raw_extra}  "
         f"({result.log_lines} lines / {result.log_size} B)",
         quiet,
     )
@@ -662,7 +747,7 @@ def process_build(
 
 
 # ---------------------------------------------------------------------------
-# Shared INDEX helpers
+# Shared helpers
 # ---------------------------------------------------------------------------
 
 STATUS_SYMBOL = {
@@ -954,6 +1039,7 @@ def generate_index(
     harvest_root: Path,
     diff_lines: list[str] | None = None,
     diff_data: dict | None = None,
+    raw_logs: str = DEFAULT_RAW_LOGS,
 ) -> None:
     idx_path = harvest_root / "README.md"
     by_status = Counter(r.status for r in results)
@@ -1053,6 +1139,15 @@ def generate_index(
     A("Per-build detail lives in the harvest tree, one directory per kernel: "
       "`00-header.txt`, `01-errors.txt`, `02-warnings.txt`, `03-noise.txt`, "
       "`04-suspicious.txt`, `summary.txt`.")
+    if raw_logs != "none":
+        A("")
+        if raw_logs == "all":
+            A("The raw `make.log` is also archived in every build directory "
+              "as `make.log.zst` (or `.gz` / plain).")
+        else:
+            A("For non-clean builds (warnings, suspicious, failures), the raw "
+              "`make.log` is archived in the same directory as `make.log.zst` "
+              "(or `.gz` / plain).")
     A("")
 
     A("## Status table")
@@ -1290,6 +1385,19 @@ def build_parser() -> argparse.ArgumentParser:
         help="Suppress progress output on stderr",
     )
     p.add_argument(
+        "--raw-logs", choices=["none", "non-clean", "all"],
+        default=DEFAULT_RAW_LOGS,
+        help=("Archive the raw make.log in each build directory. "
+              "'non-clean' (default) skips clean builds, 'all' archives "
+              "every build, 'none' disables archiving."),
+    )
+    p.add_argument(
+        "--raw-logs-format", choices=["auto", "zstd", "gzip", "none"],
+        default=DEFAULT_RAW_LOGS_FORMAT,
+        help=("Compression for archived raw logs. 'auto' (default) uses "
+              "zstd if available, else gzip, else plain copy."),
+    )
+    p.add_argument(
         "--diff", action="store_true",
         help="Prepend a 'Changes since last run' section to README.md "
              "by comparing against the most recent history snapshot.",
@@ -1326,6 +1434,7 @@ def main(argv: list[str] | None = None) -> int:
     harvest_root.mkdir(parents=True, exist_ok=True)
     _log(f"DIAG_ROOT={diag_root}", args.quiet)
     _log(f"HARVEST_DIR={harvest_root}", args.quiet)
+    _log(f"RAW_LOGS={args.raw_logs}  format={args.raw_logs_format}", args.quiet)
 
     builds = find_builds(diag_root)
     if not builds:
@@ -1337,7 +1446,10 @@ def main(argv: list[str] | None = None) -> int:
         try:
             r = process_build(
                 branch, variant, build_name, build_dir,
-                harvest_root, args.header_lines, args.quiet,
+                harvest_root, args.header_lines,
+                raw_logs=args.raw_logs,
+                raw_logs_format=args.raw_logs_format,
+                quiet=args.quiet,
             )
             results.append(r)
         except Exception as e:
@@ -1376,6 +1488,7 @@ def main(argv: list[str] | None = None) -> int:
         results, diag_root, harvest_root,
         diff_lines=diff_lines,
         diff_data=diff_data,
+        raw_logs=args.raw_logs,
     )
 
     index_text = (harvest_root / "README.md").read_text()

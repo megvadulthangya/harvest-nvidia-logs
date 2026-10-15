@@ -56,6 +56,16 @@ Platform APIs used:
   - GitLab           (gitlab.manjaro.org)
   - GitHub           (github.com)
 
+Changelog
+---------
+0.1.7
+  - phase_publish now creates a fresh orphan branch and force-pushes it.
+    The results branch always contains exactly one commit; no history
+    grows across runs.  All cross-run state (history/, driver-changelog.md)
+    is preserved as FILES in the working tree, so --diff still works.
+  - New --raw-logs and --raw-logs-format CLI flags, passed through to
+    harvest-nvidia-logs.  Defaults: 'non-clean' and 'auto'.
+
 Dependencies: Python 3.11+ (for tomllib), git.
 """
 
@@ -78,7 +88,7 @@ from urllib.parse import quote
 from urllib.request import Request, urlopen
 
 
-__version__ = "0.1.6"
+__version__ = "0.1.7"
 
 
 # ---------------------------------------------------------------------------
@@ -94,6 +104,9 @@ DEFAULT_HISTORY_KEEP = 30
 
 DEFAULT_SOURCE_URL = "https://code.manjaro.org/packages/PKGBUILDs.git"
 DEFAULT_RESULTS_BRANCH = "results"
+
+DEFAULT_RAW_LOGS = "non-clean"
+DEFAULT_RAW_LOGS_FORMAT = "auto"
 
 HARVEST_BINARY = "harvest-nvidia-logs"
 
@@ -115,17 +128,11 @@ SOURCE_INCLUDE_PATTERNS = [
     re.compile(r"^nvidia-\d+xx-open$"),
 ]
 
-# Legacy layout: linuxYY[-rt]-nvidia-XXX
 LEGACY_KERNEL_DIR_PATTERN = re.compile(r"^(linux\d+)(-rt)?-nvidia-(.+)$")
 
-# Recognising our own packages by name.  Anything that doesn't match
-# these is not an NVIDIA package and is skipped during inspection.
 NVIDIA_UTILS_NAME_PATTERN = re.compile(r"^nvidia(-\d+xx)?-utils$")
 NVIDIA_KERNEL_TOP_NAME_PATTERN = re.compile(r"^nvidia(-\d+xx)?(-open)?$")
 
-# Anything containing these characters is not a literal package name —
-# it's a bash variable or expansion we cannot safely evaluate.  Such
-# names are dropped from the EOL scan.
 _UNEXPANDABLE_CHARS = ("$", "{", "}", "(", ")")
 
 
@@ -246,6 +253,8 @@ class Config:
     results_branch: str = DEFAULT_RESULTS_BRANCH
     history_keep: int = DEFAULT_HISTORY_KEEP
     header_lines: int = 10
+    raw_logs: str = DEFAULT_RAW_LOGS
+    raw_logs_format: str = DEFAULT_RAW_LOGS_FORMAT
     quiet: bool = False
 
     @property
@@ -288,6 +297,12 @@ def merge_config(args: argparse.Namespace, toml: dict) -> Config:
     if "branch" in manj:
         cfg.manjaro_branch = manj["branch"]
 
+    raw = toml.get("raw_logs", {})
+    if "mode" in raw:
+        cfg.raw_logs = raw["mode"]
+    if "format" in raw:
+        cfg.raw_logs_format = raw["format"]
+
     harvest = toml.get("harvest", {})
     if "history_keep" in harvest:
         cfg.history_keep = int(harvest["history_keep"])
@@ -324,6 +339,10 @@ def merge_config(args: argparse.Namespace, toml: dict) -> Config:
         ]
     if args.manjaro_branch:
         cfg.manjaro_branch = args.manjaro_branch
+    if args.raw_logs:
+        cfg.raw_logs = args.raw_logs
+    if args.raw_logs_format:
+        cfg.raw_logs_format = args.raw_logs_format
     if args.publish:
         cfg.publish = True
     if args.results_branch:
@@ -727,7 +746,6 @@ def _kernel_prefix_variant(prefix_dir_name: str) -> tuple[str, str]:
 
 
 def _is_nvidia_related(parent: Path, top_name: str) -> bool:
-    """True if this PKGBUILD belongs to an NVIDIA package."""
     if top_name.startswith("nvidia"):
         return True
     if "nvidia" in str(parent).lower():
@@ -753,9 +771,6 @@ def _parse_all_pkgbuilds(cfg: Config) -> list[PackageInfo]:
         pkgbase: str | None = meta.get("pkgbase")
         top_name = pkgbase or (pkgname_list[0] if pkgname_list else parent.name)
 
-        # Early skip: only nvidia-related packages matter.  Non-nvidia
-        # PKGBUILDs that happen to live in the same flat repo (coreboot-utils,
-        # systemd-utils, …) must not end up in the plan.
         if not _is_nvidia_related(parent, top_name):
             continue
 
@@ -766,7 +781,6 @@ def _parse_all_pkgbuilds(cfg: Config) -> list[PackageInfo]:
         kernel_prefix = ""
         variant = ""
 
-        # --- Legacy layout: linuxYY[-rt]-nvidia-XXX ---------------------
         m_legacy = LEGACY_KERNEL_DIR_PATTERN.match(parent.name)
         if m_legacy:
             kernel_prefix = m_legacy.group(1) + (m_legacy.group(2) or "")
@@ -774,7 +788,6 @@ def _parse_all_pkgbuilds(cfg: Config) -> list[PackageInfo]:
             branch_label = m_legacy.group(3)
             kind = "kernel"
 
-        # --- Flat layout: linuxYY[-rt]-extramodules/nvidia-XXX ----------
         if kind == "unknown":
             extramod_idx = None
             for i, p in enumerate(parent.parts):
@@ -787,19 +800,14 @@ def _parse_all_pkgbuilds(cfg: Config) -> list[PackageInfo]:
                 branch_label = _branch_label_from_kernel_dir(nv_dir, kernel_prefix)
                 kind = "kernel"
 
-        # --- Utils: only nvidia-utils or nvidia-XXX-utils ---------------
         if kind == "unknown" and NVIDIA_UTILS_NAME_PATTERN.match(top_name):
             branch_label = _branch_label_from_utils_name(top_name)
             kind = "utils"
 
-        # --- Top-level non-flat kernel module ---------------------------
         if kind == "unknown" and NVIDIA_KERNEL_TOP_NAME_PATTERN.match(top_name):
             branch_label = _branch_label_from_kernel_dir(top_name, "")
             kind = "kernel"
 
-        # If still unknown after all the shape checks, this PKGBUILD is
-        # inside an nvidia directory but doesn't match any known pattern.
-        # Skip it — better to miss an odd case than to pollute the plan.
         if kind == "unknown":
             continue
 
@@ -1212,6 +1220,8 @@ def phase_harvest(cfg: Config) -> None:
         "--diff",
         "--history-keep", str(cfg.history_keep),
         "-n", str(cfg.header_lines),
+        "--raw-logs", cfg.raw_logs,
+        "--raw-logs-format", cfg.raw_logs_format,
         "-q",
     ]
     full_args = base_args + ["--changelog", str(changelog)]
@@ -1224,11 +1234,6 @@ def phase_harvest(cfg: Config) -> None:
         if proc.returncode != 0:
             die(f"harvest failed with exit {proc.returncode}")
 
-    # ------------------------------------------------------------------
-    # Post-process: the results branch should contain README.md, not
-    # INDEX.md.  harvest-nvidia-logs always writes INDEX.md, so we
-    # rename it here and remove any leftover INDEX.md files.
-    # ------------------------------------------------------------------
     index = cfg.harvest_dir / "INDEX.md"
     readme = cfg.harvest_dir / "README.md"
     if index.is_file():
@@ -1242,7 +1247,6 @@ def phase_harvest(cfg: Config) -> None:
             rme.write_text(idx.read_text())
             idx.unlink()
 
-    # Append the EOL section to the top-level README.md
     eol_path = cfg.workdir / "eol-list.json"
     if eol_path.is_file():
         eol_data = json.loads(eol_path.read_text())
@@ -1296,26 +1300,13 @@ def phase_publish(cfg: Config) -> None:
         cwd=tmp, check=True,
     )
 
-    has_branch = subprocess.run(
-        ["git", "ls-remote", "--exit-code", "origin", cfg.results_branch],
-        cwd=tmp, capture_output=True,
-    ).returncode == 0
-
-    if has_branch:
-        subprocess.run(
-            ["git", "fetch", "--depth", "1", "origin", cfg.results_branch],
-            cwd=tmp, check=True,
-        )
-        subprocess.run(
-            ["git", "checkout", "-B", cfg.results_branch,
-             f"origin/{cfg.results_branch}"],
-            cwd=tmp, check=True,
-        )
-    else:
-        subprocess.run(
-            ["git", "checkout", "-B", cfg.results_branch],
-            cwd=tmp, check=True,
-        )
+    # Fresh orphan branch — always exactly one commit, no history bloat.
+    # Cross-run state (history/, driver-changelog.md) is preserved as
+    # ordinary files in the working tree.
+    subprocess.run(
+        ["git", "checkout", "--orphan", cfg.results_branch],
+        cwd=tmp, check=True,
+    )
 
     # Wipe the working tree but keep .git
     for child in tmp.iterdir():
@@ -1346,7 +1337,10 @@ def phase_publish(cfg: Config) -> None:
 
     ts = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
     subprocess.run(["git", "commit", "-m", f"harvest: {ts}"], cwd=tmp, check=True)
-    subprocess.run(["git", "push", "origin", cfg.results_branch], cwd=tmp, check=True)
+    subprocess.run(
+        ["git", "push", "--force", "origin", cfg.results_branch],
+        cwd=tmp, check=True,
+    )
     log(f"publish: pushed to {cfg.results_branch}")
 
 
@@ -1385,6 +1379,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--manjaro-branch",
                    choices=["stable", "testing", "unstable"],
                    help=f"Manjaro branch (default: {DEFAULT_MANJARO_BRANCH})")
+
+    p.add_argument("--raw-logs",
+                   choices=["none", "non-clean", "all"],
+                   help=f"Archive raw make.log (default: {DEFAULT_RAW_LOGS})")
+    p.add_argument("--raw-logs-format",
+                   choices=["auto", "zstd", "gzip", "none"],
+                   help=f"Compression for raw logs (default: {DEFAULT_RAW_LOGS_FORMAT})")
 
     p.add_argument("--publish", action="store_true",
                    help="Push results to the results branch (GitHub Actions only)")

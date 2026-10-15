@@ -1,3 +1,14 @@
+# ============================================================================
+# Custom fork NVIDIA build + harvest
+# ============================================================================
+#
+# Builds the custom fork repositories (megvadulthangya/nvidia-*) and
+# pushes the harvest result to the `results` branch.
+#
+# Default: GitHub user megvadulthangya, develop branch for both the
+# utils and the kernel-module repositories.
+# ============================================================================
+
 name: Build NVIDIA modules and harvest logs
 
 on:
@@ -55,13 +66,29 @@ on:
         description: "History snapshots to keep"
         required: false
         default: "30"
+      raw-logs:
+        description: "Archive raw make.log (none | non-clean | all)"
+        type: choice
+        options:
+          - none
+          - non-clean
+          - all
+        default: non-clean
+      raw-logs-format:
+        description: "Compression for raw logs"
+        type: choice
+        options:
+          - auto
+          - zstd
+          - gzip
+          - none
+        default: auto
 
   schedule:
-    - cron: '0 3 * * 0'   # weekly, Sunday 03:00 UTC
+    - cron: '0 3 * * 0'
 
-# Prevent two runs from stomping on each other
 concurrency:
-  group: build-nvidia-${{ github.repository }}
+  group: build-nvidia-custom
   cancel-in-progress: false
 
 jobs:
@@ -70,13 +97,9 @@ jobs:
     container:
       image: manjarolinux/build:latest
     permissions:
-      contents: write       # needed for the results push
+      contents: write
 
     env:
-      # Inputs, with fallbacks for the scheduled trigger (where inputs
-      # are empty).  These defaults describe the *custom* profile.
-      # Duplicate this file as build-official.yml and change the
-      # defaults (URL + results-branch) for the official Manjaro run.
       URL:              ${{ inputs.url             || 'https://github.com/megvadulthangya' }}
       SOURCE_BRANCH:    ${{ inputs.source-branch   || '' }}
       DRIVERS_BRANCH:   ${{ inputs.drivers-branch  || 'develop' }}
@@ -89,6 +112,8 @@ jobs:
       RESULTS_BRANCH:   ${{ inputs.results-branch  || 'results' }}
       PUBLISH:          ${{ inputs.publish }}
       HISTORY_KEEP:     ${{ inputs.history-keep    || '30' }}
+      RAW_LOGS:         ${{ inputs.raw-logs        || 'non-clean' }}
+      RAW_LOGS_FORMAT:  ${{ inputs.raw-logs-format || 'auto' }}
 
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GITHUB_REPOSITORY: ${{ github.repository }}
@@ -110,8 +135,7 @@ jobs:
           pacman -Syy --noconfirm
           pacman -Suu --noconfirm
 
-          # python is required by nvidia-ci.py; sudo by the builder setup.
-          pacman -S --noconfirm --needed python sudo
+          pacman -S --noconfirm --needed python sudo zstd
 
       - name: Create builder user
         run: |
@@ -140,14 +164,14 @@ jobs:
         run: |
           set -euxo pipefail
 
-          # Build the argument list dynamically so we only pass
-          # non-empty optional values.
           args=(
             --all
             --url "${URL}"
             --manjaro-branch "${MANJARO_BRANCH}"
             --results-branch "${RESULTS_BRANCH}"
             --history-keep "${HISTORY_KEEP}"
+            --raw-logs "${RAW_LOGS}"
+            --raw-logs-format "${RAW_LOGS_FORMAT}"
           )
 
           if [ -n "${SOURCE_BRANCH}" ]; then
@@ -171,8 +195,6 @@ jobs:
           if [ -n "${EXCLUDE_KERNELS}" ]; then
             args+=(--exclude-kernels "${EXCLUDE_KERNELS}")
           fi
-          # publish is a boolean input; on the scheduled trigger it
-          # comes through as the empty string, which means "yes".
           if [ "${PUBLISH}" != "false" ]; then
             args+=(--publish)
           fi

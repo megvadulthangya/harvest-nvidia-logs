@@ -4,7 +4,7 @@
 #
 # Builds the official Manjaro nvidia packages and pushes the harvest
 # result to a dedicated `official-results` branch.  Kept separate from
-# build.yml so the two never interfere.
+# build.yaml so the two never interfere.
 #
 # ----------------------------------------------------------------------------
 # WHAT GETS BUILT — the `url` input decides
@@ -110,9 +110,25 @@ on:
         description: "History snapshots to keep"
         required: false
         default: "30"
+      raw-logs:
+        description: "Archive raw make.log (none | non-clean | all)"
+        type: choice
+        options:
+          - none
+          - non-clean
+          - all
+        default: non-clean
+      raw-logs-format:
+        description: "Compression for raw logs"
+        type: choice
+        options:
+          - auto
+          - zstd
+          - gzip
+          - none
+        default: auto
 
   schedule:
-    # Weekly on Sunday at 04:00 UTC (one hour after the custom run)
     - cron: '0 4 * * 0'
 
 concurrency:
@@ -128,9 +144,6 @@ jobs:
       contents: write
 
     env:
-      # Active settings — the flat Manjaro repository is the default.
-      # To run a different scenario, override `url` in the "Run
-      # workflow" dialog.  Nothing here needs editing to switch.
       URL:              ${{ inputs.url             || 'https://code.manjaro.org/packages/PKGBUILDs.git' }}
       SOURCE_BRANCH:    ${{ inputs.source-branch   || '' }}
       DRIVERS_BRANCH:   ${{ inputs.drivers-branch  || '' }}
@@ -143,6 +156,8 @@ jobs:
       RESULTS_BRANCH:   ${{ inputs.results-branch  || 'official-results' }}
       PUBLISH:          ${{ inputs.publish }}
       HISTORY_KEEP:     ${{ inputs.history-keep    || '30' }}
+      RAW_LOGS:         ${{ inputs.raw-logs        || 'non-clean' }}
+      RAW_LOGS_FORMAT:  ${{ inputs.raw-logs-format || 'auto' }}
 
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GITHUB_REPOSITORY: ${{ github.repository }}
@@ -164,7 +179,7 @@ jobs:
           pacman -Syy --noconfirm
           pacman -Suu --noconfirm
 
-          pacman -S --noconfirm --needed python sudo
+          pacman -S --noconfirm --needed python sudo zstd
 
       - name: Create builder user
         run: |
@@ -199,6 +214,8 @@ jobs:
             --manjaro-branch "${MANJARO_BRANCH}"
             --results-branch "${RESULTS_BRANCH}"
             --history-keep "${HISTORY_KEEP}"
+            --raw-logs "${RAW_LOGS}"
+            --raw-logs-format "${RAW_LOGS_FORMAT}"
           )
 
           if [ -n "${SOURCE_BRANCH}" ]; then
