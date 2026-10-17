@@ -58,6 +58,13 @@ Platform APIs used:
 
 Changelog
 ---------
+0.1.8
+  - LEGACY_KERNEL_DIR_PATTERN now matches non-numeric kernel prefixes
+    such as `linux-next` (and any `linux-<word>` form, including
+    `linux-rt`, `linux-lts`, `linux-ck`, …).  This lets the builder
+    recognise and build out-of-tree kernel modules against the
+    custom `linux-next` kernel available from the extra repository.
+
 0.1.7
   - phase_publish now creates a fresh orphan branch and force-pushes it.
     The results branch always contains exactly one commit; no history
@@ -88,7 +95,7 @@ from urllib.parse import quote
 from urllib.request import Request, urlopen
 
 
-__version__ = "0.1.7"
+__version__ = "0.1.8"
 
 
 # ---------------------------------------------------------------------------
@@ -128,7 +135,12 @@ SOURCE_INCLUDE_PATTERNS = [
     re.compile(r"^nvidia-\d+xx-open$"),
 ]
 
-LEGACY_KERNEL_DIR_PATTERN = re.compile(r"^(linux\d+)(-rt)?-nvidia-(.+)$")
+# Matches both the classic numeric kernel prefixes (linux61, linux66, …)
+# and the non-numeric ones like `linux-next`, `linux-rt`, `linux-lts`,
+# `linux-ck`, etc.
+LEGACY_KERNEL_DIR_PATTERN = re.compile(
+    r"^(linux(?:[0-9]+|-[a-zA-Z][a-zA-Z0-9]*))(-rt)?-nvidia-(.+)$"
+)
 
 NVIDIA_UTILS_NAME_PATTERN = re.compile(r"^nvidia(-\d+xx)?-utils$")
 NVIDIA_KERNEL_TOP_NAME_PATTERN = re.compile(r"^nvidia(-\d+xx)?(-open)?$")

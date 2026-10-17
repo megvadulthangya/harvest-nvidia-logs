@@ -137,6 +137,52 @@ jobs:
 
           pacman -S --noconfirm --needed python sudo zstd
 
+      - name: Configure manjaro-awesome repository (with GPG key)
+        continue-on-error: true
+        run: |
+          set -uo pipefail
+
+          REPO_NAME="manjaro-awesome"
+          REPO_SERVER_URL="https://repo.gshoots.hu/manjaro-awesome/x86_64"
+          KEY_ID="A9A569C8F797B6878E44C4F8FBF4AB57E9BB9D3C"
+          REPO_FILE="/etc/pacman.d/${REPO_NAME}"
+
+          echo "=== Configuring repository ${REPO_NAME} with GPG key ==="
+
+          if pacman-key --list-keys "$KEY_ID" >/dev/null 2>&1; then
+            echo "Key $KEY_ID already imported"
+          else
+            echo "Importing key $KEY_ID from keyserver..."
+            if ! pacman-key --keyserver keyserver.ubuntu.com --recv-keys "$KEY_ID"; then
+              echo "Keyserver failed, trying fallback URL..."
+              curl -fsSL "https://repo.gshoots.hu/${REPO_NAME}/x86_64/${REPO_NAME}.pub" | pacman-key --add -
+            fi
+          fi
+
+          pacman-key --lsign-key "$KEY_ID" || true
+
+          echo "Server = ${REPO_SERVER_URL}" > "$REPO_FILE"
+          chmod 644 "$REPO_FILE"
+
+          if ! grep -q "^\[${REPO_NAME}\]" /etc/pacman.conf; then
+            echo "Inserting [${REPO_NAME}] before [extra] in pacman.conf"
+            awk -v repo="[${REPO_NAME}]" -v inc="Include = ${REPO_FILE}" '
+              /^\[extra\]/ {
+                print repo
+                print "SigLevel = PackageRequired"
+                print inc
+                print ""
+              }
+              { print }
+            ' /etc/pacman.conf > /tmp/pacman.conf.tmp && mv /tmp/pacman.conf.tmp /etc/pacman.conf
+          else
+            echo "[${REPO_NAME}] already present in pacman.conf"
+          fi
+
+          pacman -Syy || echo "pacman -Syy failed, repository database may be missing - continuing"
+
+          echo "Repository ${REPO_NAME} configured successfully"
+
       - name: Create builder user
         run: |
           set -euxo pipefail
