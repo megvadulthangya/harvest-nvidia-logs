@@ -112,7 +112,7 @@ DEFAULT_HISTORY_KEEP = 30
 DEFAULT_SOURCE_URL = "https://code.manjaro.org/packages/PKGBUILDs.git"
 DEFAULT_RESULTS_BRANCH = "results"
 
-DEFAULT_RAW_LOGS = "non-clean"
+DEFAULT_RAW_LOGS = "all"
 DEFAULT_RAW_LOGS_FORMAT = "auto"
 
 HARVEST_BINARY = "harvest-nvidia-logs"
