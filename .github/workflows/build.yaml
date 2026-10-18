@@ -73,7 +73,7 @@ on:
           - none
           - non-clean
           - all
-        default: non-clean
+        default: all
       raw-logs-format:
         description: "Compression for raw logs"
         type: choice
