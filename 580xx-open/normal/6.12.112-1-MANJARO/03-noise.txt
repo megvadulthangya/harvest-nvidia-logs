@@ -1,0 +1,5 @@
+   13231  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK build
+     157  warning: objtool: <func>+0xADDR: data relocation to !ENDBR: <func>+0xADDR
+       1  warning: objtool: <func>+0xADDR: data relocation to !ENDBR: _ZN11DisplayPort13ConnectorImpl13freeTimesliceEPNS_9GroupImplE./build/sources/PKGBUILDs/extra/linux612-extramodules/nvidia-580xx-open/src/nvidia/580.178.04/build/kernel-open/nvidia.o: <func>+0xADDR
+       1  warning: objtool: <func>+0xADDR: data relocation to !ENDBR: _ZN11DisplayPort16DiscoveryManager15BranchDetection15detectComp/build/sources/PKGBUILDs/extra/linux612-extramodules/nvidia-580xx-open/src/nvidia/580.178.04/build/kernel-open/nvidia.o: <func>+0xADDR
+       1  warning: objtool: <func>+0xADDR: data relocation to !ENDBR: _ZN16nvkmsDisplayPortL26nvDPAddDeviceToActiveGroupEP12_NVDpyEvo/build/sources/PKGBUILDs/extra/linux612-extramodules/nvidia-580xx-open/src/nvidia/580.178.04/build/kernel-open/nvidia.o: <func>+0xADDR

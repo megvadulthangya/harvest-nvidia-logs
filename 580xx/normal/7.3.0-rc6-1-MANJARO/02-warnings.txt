@@ -1,0 +1,3 @@
+     165  warning: unused variable 'chip' [-Wunused-variable]
+       7  warning: this use of 'defined' may not be portable [-Wexpansion-to-defined]
+       1  warning: ignoring return value of 'refcount_sub_and_test' declared with attribute 'warn_unused_result' [-Wunused-result]
