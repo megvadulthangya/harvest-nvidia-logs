@@ -17,6 +17,8 @@ build actually failed is buried somewhere in there.
 This project automates the whole workflow — from cloning the source
 repositories to producing a single `README.md` that lists every
 build, its status, and the actionable warnings across all of them.
+When an `mpatch`-using PKGBUILD fails in `prepare()`, the dry-run
+debug output of every patch retry is harvested too.
 
 ---
 
@@ -31,7 +33,9 @@ For every NVIDIA driver branch found in the configured source:
 5. Runs the cleanup script between branches.
 6. Harvests the resulting `make.log` files into a single
    `README.md` with cross-build warning analysis.
-7. Optionally pushes the result to a dedicated results branch.
+7. Harvests the `mpatch-debug/` dry-run patch retries when an
+   `mpatch`-using utils package failed in `prepare()`.
+8. Optionally pushes the result to a dedicated results branch.
 
 It handles the two common layouts automatically:
 
@@ -45,13 +49,72 @@ is how the sources are discovered.
 
 ---
 
+## mpatch support
+
+`mpatch` (and `mpatch-git`) is a drop-in wrapper around `patch` that
+retries a failing hunk in dry-run mode and writes a human-readable
+report alongside the raw stdout. The two packages both install the
+same binary as `mpatch` and cannot be installed at the same time —
+this project only checks for the `mpatch` binary in `$PATH`, so it
+works identically with either one.
+
+The custom PKGBUILDs in this repository use `mpatch` instead of plain
+`patch`. The official Manjaro PKGBUILDs use plain `patch`, so this
+code path is a no-op there.
+
+**When it kicks in**
+
+Only when all of the following are true:
+
+1. The `mpatch` binary is on `$PATH` (i.e. `mpatch` or `mpatch-git`
+   is installed).
+2. A **userspace utils** package (e.g. `nvidia-390xx-utils`) fails
+   during `makepkg`.
+3. The failure produced `src/mpatch-debug/*.patch.report.md` and/or
+   `src/mpatch-debug/*.patch.stdout` files.
+
+**What gets harvested**
+
+For every `<patch>.patch.report.md` and `<patch>.patch.stdout` in
+`src/mpatch-debug/`, the files are compressed with the same settings
+as raw `make.log` archives (`zstd --ultra -22 --long=27`, falling
+back to `gzip` then plain copy). They land in:
+
+```
+harvest/<branch>/<utils_name>/mpatch-debug/
+    <patch>.patch.report.md.zst
+    <patch>.patch.stdout.zst
+```
+
+Note there is **no** `utils/` segment — the utils package name
+already contains it (e.g. `nvidia-390xx-utils`). This keeps the
+branch folder flat and self-describing: a failed 390xx utils build
+lives next to the 390xx kernel-module builds, under the same
+`390xx/` branch folder.
+
+**What the README shows**
+
+A "🧪 Utils build failures (mpatch debug)" section is added, with:
+
+- a compact summary table linking each failed branch to its
+  `mpatch-debug/` directory
+  (`[📁 open](390xx/nvidia-390xx-utils/mpatch-debug/)`),
+- a per-package detail block listing each harvested `<patch>.*` file
+  as a clickable link.
+
+All links are computed dynamically from the actual harvest tree, so
+a 340xx failure links to the 340xx folder, a 390xx failure to the
+390xx folder, and so on.
+
+---
+
 ## Repository contents
 
 Three tools, no external Python dependencies (stdlib only):
 
 | File | Purpose |
 |------|---------|
-| `harvest-nvidia-logs` | Parses `make.log` files, generates the README, keeps a history of snapshots. Pure analysis. Can be run on any tree of make.log files. |
+| `harvest-nvidia-logs` | Parses `make.log` files, generates the README, keeps a history of snapshots. Also collects `mpatch-debug/` artifacts. Pure analysis. Can be run on any tree of make.log files. |
 | `nvidia-ci.py` | The orchestrator. Drives discover → clone → inspect → eol → build → harvest → publish. Calls `harvest-nvidia-logs` internally. |
 | `clean-nvidia-container.sh` | Removes NVIDIA packages, DKMS modules, and their artifacts between driver branches. |
 
@@ -59,8 +122,8 @@ Two GitHub Actions workflows:
 
 | Workflow | Purpose |
 |----------|---------|
-| `.github/workflows/build.yaml` | The custom profile. Builds your own fork repositories. |
-| `.github/workflows/build-official.yaml` | The Manjaro official profile. Builds the upstream packages. |
+| `.github/workflows/build.yaml` | The custom profile. Builds your own fork repositories (with `mpatch`). |
+| `.github/workflows/build-official.yaml` | The Manjaro official profile. Builds the upstream packages (with plain `patch`). |
 
 Both workflows call `nvidia-ci.py --all`. All inputs are settable
 from the "Run workflow" dialog; the default values differ.
@@ -97,10 +160,29 @@ Everything goes into a `harvest/` directory:
 harvest/
 ├── README.md                     ← the only file you need to open
 ├── driver-changelog.md           ← append-only diff log
-└── history/
-    └── 2026-10-09T01-06-27/
-        ├── README.md             ← snapshot of that run
-        └── state.json            ← machine-readable state
+├── history/
+│   └── 2026-10-09T01-06-27/
+│       ├── README.md             ← snapshot of that run
+│       └── state.json            ← machine-readable state
+├── 390xx/
+│   ├── normal/
+│   │   └── linux61/
+│   │       ├── 00-header.txt
+│   │       ├── 01-errors.txt
+│   │       ├── 02-warnings.txt
+│   │       ├── 03-noise.txt
+│   │       ├── 04-suspicious.txt
+│   │       ├── summary.txt
+│   │       └── make.log.zst      ← raw log, non-clean only
+│   └── nvidia-390xx-utils/       ← only if utils build failed with mpatch
+│       ├── summary.txt
+│       └── mpatch-debug/
+│           ├── 0026-backport-….patch.report.md.zst
+│           ├── 0026-backport-….patch.stdout.zst
+│           └── …
+├── 470xx/
+│   └── …
+└── …
 ```
 
 Plus per-build directories, one per kernel, each containing:
@@ -115,12 +197,22 @@ Plus per-build directories, one per kernel, each containing:
 | `summary.txt` | per-build summary |
 | `Not-built` | empty marker when no make.log exists |
 
+And per-failed-utils directories, one per utils package (only when
+`mpatch` was in play):
+
+| File | Content |
+|------|---------|
+| `summary.txt` | utils build summary |
+| `mpatch-debug/<patch>.patch.report.md.zst` | compressed dry-run patch report |
+| `mpatch-debug/<patch>.patch.stdout.zst` | compressed raw `patch` stdout |
+
 ### `README.md`
 
 Sections, in order:
 
 1. **TL;DR** — build counts, top actionable warnings, informational
-   count, and a one-line "since last run" summary.
+   count, one-line "since last run" summary, and a shortcut link to
+   the utils failures section when it exists.
 2. **📊 Changes since …** — only with `--diff`. Resolved signatures,
    new signatures, status transitions, hit count changes.
 3. **Overview** — root paths, branch list, build counts.
@@ -129,17 +221,21 @@ Sections, in order:
 6. **🧱 Integrity issues** — log vs. build tree mismatches.
 7. **📝 Integrity notes** — non-critical observations.
 8. **❗ Failures** — errors excerpted from `01-errors.txt`.
-9. **🔍 Suspicious signatures** — cross-build table of unusual lines.
-10. **🔁 Cross-build warning signatures** — split into actionable
+9. **🧪 Utils build failures (mpatch debug)** — per-branch summary
+   table and per-package detail block, both with clickable links to
+   the harvested `mpatch-debug/` artifacts.
+10. **🔍 Suspicious signatures** — cross-build table of unusual lines.
+11. **🔁 Cross-build warning signatures** — split into actionable
     (driver source) and informational (build system).
-11. **🧩 Unique to one build** — single-build warnings.
-12. **🚫 Not built** — builds with no make.log.
-13. **⚠ EOL / Out-of-sync packages** — appended by `nvidia-ci.py`.
+12. **🧩 Unique to one build** — single-build warnings.
+13. **🚫 Not built** — builds with no make.log.
+14. **⚠ EOL / Out-of-sync packages** — appended by `nvidia-ci.py`.
     Lists every package that is not present in the Manjaro repos
     (or is present at a different version than the source).
 
 The file is designed to be consumed both by a human and by an LLM:
-stable section names, Markdown tables, fenced code blocks.
+stable section names, Markdown tables, fenced code blocks, stable
+anchor links (e.g. `#-utils-build-failures-mpatch-debug`).
 
 ---
 
@@ -174,6 +270,10 @@ Default inputs:
 
 Runs weekly on Sunday at 03:00 UTC.
 
+Builds against the custom PKGBUILDs (which use `mpatch` via the
+`manjaro-awesome` repository), so utils failures produce
+`mpatch-debug/` artifacts.
+
 ### `build-official.yaml` — Manjaro official profile
 
 Default inputs:
@@ -182,6 +282,10 @@ Default inputs:
 - `results-branch = official-results`
 
 Runs weekly on Sunday at 04:00 UTC.
+
+Builds against the upstream PKGBUILDs (which use plain `patch`), so
+`mpatch-debug/` artifacts do not appear, even if `mpatch` happens to
+be installed on the runner. The harvest detects this automatically.
 
 The file header documents the three supported URL forms (current
 flat repo, future non-flat Forgejo, historical GitLab) and how to
@@ -222,6 +326,12 @@ sudo install -m 755 harvest-nvidia-logs /usr/local/bin/harvest-nvidia-logs
 sudo install -m 755 clean-nvidia-container.sh /build/clean-nvidia-container.sh
 ```
 
+If you want to see every discovered `mpatch-debug/` file on stderr
+during harvesting, either pass `--mpatch-verbose` to
+`harvest-nvidia-logs` directly, or set the environment variable
+`HARVEST_MPATCH_VERBOSE=1` when calling `nvidia-ci.py` (it forwards
+the flag to the harvest subprocess).
+
 ---
 
 ## GitHub Actions setup
@@ -240,7 +350,10 @@ sudo install -m 755 clean-nvidia-container.sh /build/clean-nvidia-container.sh
 - **Manjaro 390xx on linux61 fails.** Real source-level incompatibility
   (`vm_flags_set`, `vm_flags_clear`, `timer_delete_sync`). Manjaro's
   patch set does not include the required backports; the harvest flags
-  this correctly, but the fix is a Manjaro-side concern.
+  this correctly, but the fix is a Manjaro-side concern. The
+  `mpatch-debug/` artifacts described above are exactly what you want
+  to look at when diagnosing this: they show per-patch why the hunk
+  did not apply.
 - **Flat layout folder listing requires a clone.** Forgejo and GitLab
   APIs do not expose the directory tree of a repository, so the flat
   `PKGBUILDs` repo must be cloned before its nvidia subdirectories can
@@ -248,6 +361,11 @@ sudo install -m 755 clean-nvidia-container.sh /build/clean-nvidia-container.sh
 - **No artifact caching between runs.** Every run rebuilds everything.
   This is intentional: it guarantees a fresh `make.log` from a known
   toolchain state.
+- **`mpatch-debug/` is only harvested when `mpatch` is installed.** If
+  the custom PKGBUILD uses `mpatch` but the runner does not have it,
+  `makepkg` fails at the `makedepends` resolution step and no debug
+  artifacts are produced. The official Manjaro PKGBUILDs never use
+  `mpatch`, so they are unaffected either way.
 
 ---
 
@@ -263,16 +381,21 @@ A projekt három eszközből áll, amelyek együtt egy teljes build- és
 elemző-pipeline-t alkotnak:
 
 - **`harvest-nvidia-logs`** — a `make.log` fájlokat dolgozza fel,
-  generál egy `README.md`-t és történelmi pillanatképeket.
+  generál egy `README.md`-t és történelmi pillanatképeket. Ha az
+  `mpatch` (vagy `mpatch-git`) telepítve van és egy utils csomag
+  buildje elbukik `prepare()`-ben, a `src/mpatch-debug/` alatti
+  dry-run riportokat is begyűjti, tömöríti és a README-ben linkeli.
 - **`nvidia-ci.py`** — az orchestrator. Felderíti a forrásokat,
   klónozza, elemzi, buildeli, majd hívja a `harvest-nvidia-logs`-ot.
 - **`clean-nvidia-container.sh`** — a driver branch-ek között takarít.
 
 Két GitHub Action használja mindezt: `build.yaml` a saját
-forkokhoz, `build-official.yaml` a Manjaro hivatalos
-csomagjaihoz. Az eredmény egyetlen `README.md` a `results` vagy
-`official-results` branch-en, benne minden build státusza, a
-cross-build warningok, és az EOL / elavult csomagok listája.
+forkokhoz (itt van `mpatch`), `build-official.yaml` a Manjaro
+hivatalos csomagjaihoz (ott plain `patch`, tehát nincs mpatch-debug).
+Az eredmény egyetlen `README.md` a `results` vagy `official-results`
+branch-en, benne minden build státusza, a cross-build warningok, az
+EOL / elavult csomagok listája, és — ha volt mpatch-es bukás — a
+branch-enkénti `mpatch-debug/` linkek.
 
 Lokálisan pontosan ugyanaz a parancs fut, csak `--publish` nélkül:
 a fájlok a gépen maradnak, semmi nem kerül fel a GitHubra.
