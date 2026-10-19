@@ -1,0 +1,10 @@
+build:           nvidia-390xx-utils
+driver:          390xx
+variant:         utils  (userspace utils package)
+status:          failed  (utils build failed)
+source dir:      /build/sources/nvidia-390xx-utils/src
+mpatch-debug:    2 file(s)
+
+harvested mpatch-debug artifacts:
+  - mpatch-debug/kernel-linux-next-drm-reset.patch.report.md.zst
+  - mpatch-debug/kernel-linux-next-drm-reset.patch.stdout.zst
