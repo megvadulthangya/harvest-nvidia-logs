@@ -58,6 +58,13 @@ Platform APIs used:
 
 Changelog
 ---------
+0.1.10
+  - Utils mpatch-debug harvesting path changed to
+    `harvest/<branch>/<utils_name>/mpatch-debug/` (no `utils/`
+    segment).  README now renders clickable per-branch links.
+    Set HARVEST_MPATCH_VERBOSE=1 in the environment to see each
+    discovered/harvested file on stderr.
+
 0.1.9
   - New: `mpatch` / `mpatch-git` detection.  When either is installed
     (both provide the same `mpatch` binary in $PATH), it is logged during
@@ -105,7 +112,7 @@ from urllib.parse import quote
 from urllib.request import Request, urlopen
 
 
-__version__ = "0.1.9"
+__version__ = "0.1.10"
 
 
 # ---------------------------------------------------------------------------
@@ -1288,6 +1295,11 @@ def phase_harvest(cfg: Config) -> None:
         "--raw-logs-format", cfg.raw_logs_format,
         "-q",
     ]
+    # Optional verbose mpatch diagnostics (env-gated so workflows don't
+    # need a new input).
+    if os.environ.get("HARVEST_MPATCH_VERBOSE", "") not in ("", "0", "false"):
+        base_args.append("--mpatch-verbose")
+
     full_args = base_args + ["--changelog", str(changelog)]
 
     proc = subprocess.run(full_args, check=False)

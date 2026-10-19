@@ -16,13 +16,28 @@ fallback.
 
 Changelog
 ---------
+0.7.1
+  - Utils mpatch-debug output moved from
+    `harvest/<branch>/utils/<pkg>/mpatch-debug/` to
+    `harvest/<branch>/<pkg>/mpatch-debug/` (no extra `utils/` segment).
+  - README: the utils failures section now renders a compact summary
+    table with a *clickable* directory link per failed package
+    (e.g. `[📁 open](390xx/nvidia-390xx-utils/mpatch-debug/)`), plus a
+    per-package detail block with clickable per-file links.  The links
+    are computed dynamically from the actual harvest tree, so a 340xx
+    failure links to the 340xx folder, a 390xx failure to the 390xx
+    folder, and so on.
+  - Added `--mpatch-verbose` debug logging on stderr when the utils
+    section is being populated (helps if the section ever appears
+    empty in a future regression).
+
 0.7.0
   - New: utils-package `mpatch`-debug harvesting.  When `mpatch`
     (or `mpatch-git`) is installed and a userspace utils package's
     prepare() fails, mpatch emits `src/mpatch-debug/<patch>.patch.report.md`
     and `<patch>.patch.stdout` for each patch it retried in dry mode.
     Those files are now compressed (same settings as raw make.log) and
-    archived under `harvest/<branch>/utils/<utils_name>/mpatch-debug/`,
+    archived under `harvest/<branch>/<utils_name>/mpatch-debug/`,
     and a "🧪 Utils build failures (mpatch debug)" section is added to
     the README.  Official Manjaro builds use plain `patch`, so this is a
     no-op there.  The mpatch binary is auto-detected via $PATH.
@@ -81,7 +96,7 @@ from datetime import datetime
 from pathlib import Path
 
 
-__version__ = "0.7.0"
+__version__ = "0.7.1"
 
 
 # ---------------------------------------------------------------------------
@@ -391,7 +406,7 @@ def _write_raw_log(
 
 
 # ---------------------------------------------------------------------------
-# Discovery — legacy layout + Manjaro flat layout
+# Discovery — legacy layout + Manjaro flat layout + utils mpatch-debug
 # ---------------------------------------------------------------------------
 
 def _find_builds_legacy(diag_root: Path) -> list[tuple[str, str, str, Path]]:
@@ -850,11 +865,12 @@ def process_utils_mpatch_debug(
         src/mpatch-debug/<patch>.patch.report.md
         src/mpatch-debug/<patch>.patch.stdout
 
-    We compress both into harvest/<branch>/utils/<utils_name>/mpatch-debug/
-    using the same settings as raw make.log archives.
+    We compress both into harvest/<branch>/<utils_name>/mpatch-debug/
+    (no intermediate `utils/` segment) using the same settings as raw
+    make.log archives.
     """
     mpatch_debug_dir = src_dir / "mpatch-debug"
-    out_dir = harvest_root / branch / "utils" / utils_name
+    out_dir = harvest_root / branch / utils_name
     out_dir.mkdir(parents=True, exist_ok=True)
     dest_debug = out_dir / "mpatch-debug"
     dest_debug.mkdir(exist_ok=True)
@@ -889,9 +905,10 @@ def process_utils_mpatch_debug(
 
     _write_utils_summary(result)
     _log(
-        f"{branch}/utils/{utils_name}  status=failed  "
+        f"{branch}/{utils_name}  status=failed  "
         f"mpatch-debug={len(result.mpatch_debug_files)} file(s)  "
-        f"harvested={len(result.mpatch_debug_written)}",
+        f"harvested={len(result.mpatch_debug_written)}  "
+        f"-> {out_dir}",
         quiet,
     )
     return result
@@ -937,6 +954,12 @@ def _group_build_keys(keys: list[str]) -> list[str]:
             shown = ", ".join(names[:8])
             out.append(f"- `{g}` ({len(names)}): {shown}, …")
     return out
+
+
+def _md_url(path: str) -> str:
+    """Make a path safe for use inside a markdown `](...)` link."""
+    # Percent-encode spaces and a few risky chars; keep `/` and `.` as-is.
+    return path.replace(" ", "%20").replace("(", "%28").replace(")", "%29")
 
 
 # ---------------------------------------------------------------------------
@@ -1148,9 +1171,15 @@ def _render_tldr(
     )
 
     if utils_failed:
+        names = ", ".join(
+            f"[`{r.branch}`](#-utils-build-failures-mpatch-debug)"
+            for r in utils_failed
+        )
         A(
             f"- **🧪 Utils failures (mpatch debug):** {len(utils_failed)} "
-            f"package(s) — see `## 🧪 Utils build failures` below"
+            f"package(s) — {names} — see "
+            f"[Utils build failures](#-utils-build-failures-mpatch-debug) "
+            f"below"
         )
 
     if integrity_hits:
@@ -1190,6 +1219,72 @@ def _render_tldr(
 # ---------------------------------------------------------------------------
 # README.md
 # ---------------------------------------------------------------------------
+
+def _render_utils_section(
+    utils_failed: list[BuildResult],
+    harvest_root: Path,
+) -> list[str]:
+    """Render the utils-mpatch-debug section with clickable per-branch links."""
+    out: list[str] = []
+    A = out.append
+    if not utils_failed:
+        return out
+
+    utils_sorted = sorted(utils_failed, key=lambda r: (r.branch, r.build_name))
+
+    A("## 🧪 Utils build failures (mpatch debug)")
+    A("")
+    A("The userspace utils package failed to build. Because `mpatch` "
+      "(or `mpatch-git`) was installed, it retried each failing patch "
+      "in dry-run mode and produced, per patch, one "
+      "`<patch>.patch.report.md` and one `<patch>.patch.stdout` under "
+      "`src/mpatch-debug/`. Those artifacts are archived here "
+      "(compressed the same way as raw make.logs).")
+    A("")
+    A("| Branch | Package | mpatch-debug |")
+    A("|:------:|---------|:-------------|")
+    for r in utils_sorted:
+        try:
+            rel_dir = r.out_dir.relative_to(harvest_root).as_posix()
+        except ValueError:
+            rel_dir = r.out_dir.as_posix()
+        link = _md_url(f"{rel_dir}/mpatch-debug/")
+        A(f"| `{r.branch}` | `{r.build_name}` | [📁 open]({link}) |")
+    A("")
+
+    for r in utils_sorted:
+        A(f"### {r.branch} / {r.build_name}")
+        A("")
+        try:
+            rel_dir = r.out_dir.relative_to(harvest_root).as_posix()
+        except ValueError:
+            rel_dir = r.out_dir.as_posix()
+        dir_link = _md_url(f"{rel_dir}/mpatch-debug/")
+        A(f"📁 [{rel_dir}/mpatch-debug/]({dir_link})")
+        A("")
+        A(f"- source: `{r.build_dir}`")
+        A(f"- mpatch-debug files found: {len(r.mpatch_debug_files)}")
+        A(f"- harvested (compressed): {len(r.mpatch_debug_written)}")
+        if r.mpatch_debug_written:
+            A("")
+            A("Harvested files:")
+            A("")
+            for p in r.mpatch_debug_written:
+                try:
+                    rel_file = p.relative_to(harvest_root).as_posix()
+                except ValueError:
+                    rel_file = p.as_posix()
+                file_link = _md_url(rel_file)
+                A(f"- [`{p.name}`]({file_link})")
+        else:
+            A("")
+            A("_No mpatch-debug artifacts (mpatch may not have been "
+              "installed at build time, or the failure happened outside "
+              "patch application)._")
+        A("")
+
+    return out
+
 
 def generate_index(
     results: list[BuildResult],
@@ -1389,35 +1484,7 @@ def generate_index(
             A("```")
             A("")
 
-    if utils_failed:
-        A("## 🧪 Utils build failures (mpatch debug)")
-        A("")
-        A("The userspace utils package failed to build. Because `mpatch` "
-          "(or `mpatch-git`) was installed, it retried each failing patch "
-          "in dry-run mode and produced, per patch, one "
-          "`<patch>.patch.report.md` and one `<patch>.patch.stdout` under "
-          "`src/mpatch-debug/`. Those artifacts are archived here "
-          "(compressed the same way as raw make.logs).")
-        A("")
-        for r in utils_failed:
-            A(f"### {r.branch} / {r.build_name}")
-            A("")
-            A(f"Path: `{r.out_dir.relative_to(harvest_root)}`  ·  "
-              f"mpatch-debug files: {len(r.mpatch_debug_files)}  ·  "
-              f"harvested: {len(r.mpatch_debug_written)}")
-            A("")
-            if r.mpatch_debug_written:
-                for p in r.mpatch_debug_written:
-                    try:
-                        rel = p.relative_to(r.out_dir)
-                        A(f"- `{rel}`")
-                    except ValueError:
-                        A(f"- `{p}`")
-            else:
-                A("_No mpatch-debug artifacts (mpatch may not have been "
-                  "installed at build time, or the failure happened outside "
-                  "patch application)._")
-            A("")
+    out.extend(_render_utils_section(utils_failed, harvest_root))
 
     if sus_multi:
         A("## 🔍 Suspicious signatures")
@@ -1612,6 +1679,10 @@ def build_parser() -> argparse.ArgumentParser:
              f"(default: {DEFAULT_HISTORY_KEEP}, 0 = keep all).",
     )
     p.add_argument(
+        "--mpatch-verbose", action="store_true",
+        help="Log each mpatch-debug file discovered/harvested on stderr.",
+    )
+    p.add_argument(
         "--version", action="version",
         version=f"%(prog)s {__version__}",
     )
@@ -1650,12 +1721,18 @@ def main(argv: list[str] | None = None) -> int:
     for branch, variant, build_name, build_dir in builds:
         try:
             if variant == "utils":
+                if args.mpatch_verbose:
+                    _log(f"utils: processing {branch}/{build_name} "
+                         f"from {build_dir}", args.quiet)
                 r = process_utils_mpatch_debug(
                     branch, build_name, build_dir,
                     harvest_root,
                     raw_logs_format=args.raw_logs_format,
                     quiet=args.quiet,
                 )
+                if args.mpatch_verbose:
+                    for p in r.mpatch_debug_written:
+                        _log(f"  wrote {p}", args.quiet)
             else:
                 r = process_build(
                     branch, variant, build_name, build_dir,
@@ -1667,6 +1744,11 @@ def main(argv: list[str] | None = None) -> int:
             results.append(r)
         except Exception as e:
             _warn(f"failed to process {build_dir}: {e}")
+
+    utils_count = sum(1 for r in results if r.kind == "utils")
+    if utils_count:
+        _log(f"utils mpatch-debug: {utils_count} package(s) harvested",
+             args.quiet)
 
     history_root = harvest_root / "history"
     history_root.mkdir(parents=True, exist_ok=True)
