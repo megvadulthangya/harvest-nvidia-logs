@@ -58,6 +58,16 @@ Platform APIs used:
 
 Changelog
 ---------
+0.1.9
+  - New: `mpatch` / `mpatch-git` detection.  When either is installed
+    (both provide the same `mpatch` binary in $PATH), it is logged during
+    the build phase, and after any utils package build failure the
+    presence of `src/mpatch-debug/` is checked and reported.  The actual
+    harvesting of the `<patch>.patch.report.md` / `<patch>.patch.stdout`
+    artifacts is done by harvest-nvidia-logs ≥ 0.7.0.  Official Manjaro
+    builds use plain `patch`, so mpatch detection is a no-op there and
+    no behaviour changes.
+
 0.1.8
   - LEGACY_KERNEL_DIR_PATTERN now matches non-numeric kernel prefixes
     such as `linux-next` (and any `linux-<word>` form, including
@@ -95,7 +105,7 @@ from urllib.parse import quote
 from urllib.request import Request, urlopen
 
 
-__version__ = "0.1.8"
+__version__ = "0.1.9"
 
 
 # ---------------------------------------------------------------------------
@@ -193,6 +203,36 @@ def _valid_pkgname(name: str) -> bool:
         if ch in name:
             return False
     return True
+
+
+# ---------------------------------------------------------------------------
+# mpatch helpers
+# ---------------------------------------------------------------------------
+
+def _mpatch_available() -> bool:
+    """True if the `mpatch` binary is on PATH (mpatch or mpatch-git)."""
+    return shutil.which("mpatch") is not None
+
+
+def _log_mpatch_debug(source_dir: Path, utils_name: str) -> None:
+    """
+    After a utils build failure, inspect the source tree for mpatch's
+    dry-run retry artifacts and log what was found.  The actual harvesting
+    of these files is done later by harvest-nvidia-logs ≥ 0.7.0.
+    """
+    mpatch_debug = source_dir / "src" / "mpatch-debug"
+    if not mpatch_debug.is_dir():
+        warn(f"  {utils_name}: mpatch installed but no src/mpatch-debug/ — "
+             f"build likely failed outside patch application")
+        return
+    reports = sorted(mpatch_debug.glob("*.patch.report.md"))
+    stdouts = sorted(mpatch_debug.glob("*.patch.stdout"))
+    if not reports and not stdouts:
+        warn(f"  {utils_name}: src/mpatch-debug/ exists but is empty")
+        return
+    log(f"  {utils_name}: mpatch-debug artifacts: "
+        f"{len(reports)} report(s), {len(stdouts)} stdout(s) "
+        f"in {mpatch_debug}")
 
 
 # ---------------------------------------------------------------------------
@@ -1153,6 +1193,14 @@ def phase_build(cfg: Config, plan: BuildPlan) -> None:
         warn(f"build: skipping kernels not in Manjaro repo: "
              f"{', '.join(skipped_kernels)}")
 
+    mpatch_ok = _mpatch_available()
+    if mpatch_ok:
+        log("build: mpatch detected — failed utils builds will produce "
+            "mpatch-debug artifacts")
+    else:
+        log("build: mpatch not installed — utils use plain patch, "
+            "no mpatch-debug artifacts")
+
     def build_modules(modules: list[PackageInfo]) -> None:
         for m in modules:
             if m.kernel_prefix and m.kernel_prefix not in plan.available_kernels:
@@ -1167,6 +1215,8 @@ def phase_build(cfg: Config, plan: BuildPlan) -> None:
         if not is_complex:
             if not _makepkg(up.utils.source_dir, install=True):
                 warn(f"skipping kernel modules for {up.utils.name}")
+                if mpatch_ok:
+                    _log_mpatch_debug(up.utils.source_dir, up.utils.name)
                 _cleanup(cfg, up.clean_label)
                 continue
             build_modules(up.closed_modules)
@@ -1175,6 +1225,8 @@ def phase_build(cfg: Config, plan: BuildPlan) -> None:
 
         if not _makepkg(up.utils.source_dir, install=False):
             warn(f"skipping kernel modules for {up.utils.name}")
+            if mpatch_ok:
+                _log_mpatch_debug(up.utils.source_dir, up.utils.name)
             _cleanup(cfg, up.clean_label)
             continue
 

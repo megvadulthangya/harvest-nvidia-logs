@@ -16,6 +16,17 @@ fallback.
 
 Changelog
 ---------
+0.7.0
+  - New: utils-package `mpatch`-debug harvesting.  When `mpatch`
+    (or `mpatch-git`) is installed and a userspace utils package's
+    prepare() fails, mpatch emits `src/mpatch-debug/<patch>.patch.report.md`
+    and `<patch>.patch.stdout` for each patch it retried in dry mode.
+    Those files are now compressed (same settings as raw make.log) and
+    archived under `harvest/<branch>/utils/<utils_name>/mpatch-debug/`,
+    and a "🧪 Utils build failures (mpatch debug)" section is added to
+    the README.  Official Manjaro builds use plain `patch`, so this is a
+    no-op there.  The mpatch binary is auto-detected via $PATH.
+
 0.6.0
   - New `--raw-logs {none,non-clean,all}` (default: non-clean) and
     `--raw-logs-format {auto,zstd,gzip,none}` (default: auto) options.
@@ -70,7 +81,7 @@ from datetime import datetime
 from pathlib import Path
 
 
-__version__ = "0.6.0"
+__version__ = "0.7.0"
 
 
 # ---------------------------------------------------------------------------
@@ -170,6 +181,10 @@ MAX_WARNING_LINE_LEN = 300
 ZSTD_LEVEL = "-22"
 ZSTD_LONG_WINDOW = "27"
 
+# utils package dir name:  nvidia-utils  nvidia-390xx-utils
+#                          nvidia-390xx-utils-mpatch  etc.
+UTILS_NAME_RE = re.compile(r"^nvidia(-\d+xx)?-utils(?:-[a-z0-9]+)*$")
+
 
 # ---------------------------------------------------------------------------
 # Data model
@@ -207,6 +222,10 @@ class BuildResult:
     log_has_modpost: bool = False
     log_nothing_to_do: bool = False
     raw_log_written: Path | None = None
+    # --- utils / mpatch-debug support -------------------------------------
+    kind: str = "kernel"
+    mpatch_debug_files: list[Path] = field(default_factory=list)
+    mpatch_debug_written: list[Path] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -282,6 +301,26 @@ def is_ignored_suspicious(line: str) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# mpatch helpers
+# ---------------------------------------------------------------------------
+
+def _mpatch_available() -> bool:
+    """True if the `mpatch` binary is on PATH (provided by mpatch OR mpatch-git)."""
+    return shutil.which("mpatch") is not None
+
+
+def _branch_from_utils_name(utils_name: str) -> str | None:
+    """nvidia-utils -> 'nvidia';  nvidia-390xx-utils -> '390xx'."""
+    m = re.match(r"^nvidia(-\d+xx)?-utils", utils_name)
+    if not m:
+        return None
+    suffix = m.group(1)
+    if suffix is None:
+        return "nvidia"
+    return suffix[1:]
+
+
+# ---------------------------------------------------------------------------
 # Raw log archive
 # ---------------------------------------------------------------------------
 
@@ -299,7 +338,9 @@ def _resolve_raw_format(fmt: str) -> str:
     return "none"
 
 
-def _write_raw_log(src: Path, out_dir: Path, fmt: str) -> Path | None:
+def _write_raw_log(
+    src: Path, out_dir: Path, fmt: str, dst_name: str = "make.log",
+) -> Path | None:
     """Write a compressed (or plain) copy of src into out_dir."""
     if not src.is_file():
         return None
@@ -307,7 +348,7 @@ def _write_raw_log(src: Path, out_dir: Path, fmt: str) -> Path | None:
     resolved = _resolve_raw_format(fmt)
 
     if resolved == "zstd":
-        dst = out_dir / "make.log.zst"
+        dst = out_dir / f"{dst_name}.zst"
         try:
             subprocess.run(
                 ["zstd",
@@ -325,7 +366,7 @@ def _write_raw_log(src: Path, out_dir: Path, fmt: str) -> Path | None:
             resolved = "gzip"
 
     if resolved == "gzip":
-        dst = out_dir / "make.log.gz"
+        dst = out_dir / f"{dst_name}.gz"
         try:
             with src.open("rb") as fin, \
                  gzip.open(dst, "wb", compresslevel=9) as fout:
@@ -337,7 +378,7 @@ def _write_raw_log(src: Path, out_dir: Path, fmt: str) -> Path | None:
             resolved = "none"
 
     if resolved == "none":
-        dst = out_dir / "make.log"
+        dst = out_dir / dst_name
         try:
             shutil.copy2(src, dst)
             return dst
@@ -407,8 +448,36 @@ def _find_builds_flat(diag_root: Path) -> list[tuple[str, str, str, Path]]:
     return results
 
 
+def _find_utils_mpatch_debug(diag_root: Path) -> list[tuple[str, str, str, Path]]:
+    """
+    Find utils source dirs that contain src/mpatch-debug/*.patch.report.md.
+    Only runs when the mpatch binary is on PATH — official Manjaro builds
+    use plain `patch`, so this is a no-op there.
+    """
+    if not _mpatch_available():
+        return []
+    results: list[tuple[str, str, str, Path]] = []
+    seen: set[Path] = set()
+    for report in diag_root.rglob("src/mpatch-debug/*.patch.report.md"):
+        src_dir = report.parent.parent
+        if not src_dir.is_dir() or src_dir.name != "src":
+            continue
+        utils_dir = src_dir.parent
+        if not UTILS_NAME_RE.match(utils_dir.name):
+            continue
+        if utils_dir in seen:
+            continue
+        seen.add(utils_dir)
+        branch = _branch_from_utils_name(utils_dir.name)
+        if branch is None:
+            continue
+        results.append((branch, "utils", utils_dir.name, src_dir))
+    return results
+
+
 def find_builds(diag_root: Path) -> list[tuple[str, str, str, Path]]:
     results = _find_builds_legacy(diag_root) + _find_builds_flat(diag_root)
+    results.extend(_find_utils_mpatch_debug(diag_root))
 
     seen: set[Path] = set()
     unique: list[tuple[str, str, str, Path]] = []
@@ -591,6 +660,26 @@ def _write_summary(r: BuildResult) -> None:
     (r.out_dir / "summary.txt").write_text("\n".join(out) + "\n")
 
 
+def _write_utils_summary(r: BuildResult) -> None:
+    out: list[str] = []
+    out.append(f"build:           {r.build_name}")
+    out.append(f"driver:          {r.branch}")
+    out.append(f"variant:         {r.variant}  (userspace utils package)")
+    out.append(f"status:          {r.status}  (utils build failed)")
+    out.append(f"source dir:      {r.build_dir}")
+    out.append(f"mpatch-debug:    {len(r.mpatch_debug_files)} file(s)")
+    if r.mpatch_debug_written:
+        out.append("")
+        out.append("harvested mpatch-debug artifacts:")
+        for p in r.mpatch_debug_written:
+            try:
+                rel = p.relative_to(r.out_dir)
+                out.append(f"  - {rel}")
+            except ValueError:
+                out.append(f"  - {p}")
+    (r.out_dir / "summary.txt").write_text("\n".join(out) + "\n")
+
+
 def process_build(
     branch: str,
     variant: str,
@@ -741,6 +830,68 @@ def process_build(
         f"{branch}/{variant}/{build_name}  kernel={kernel_ver or '?'}  "
         f"status={result.status}{extra}{raw_extra}  "
         f"({result.log_lines} lines / {result.log_size} B)",
+        quiet,
+    )
+    return result
+
+
+def process_utils_mpatch_debug(
+    branch: str,
+    utils_name: str,
+    src_dir: Path,
+    harvest_root: Path,
+    raw_logs_format: str = DEFAULT_RAW_LOGS_FORMAT,
+    quiet: bool = False,
+) -> BuildResult:
+    """
+    Process a utils package's src/mpatch-debug/ artifacts.
+
+    mpatch emits, for each patch it retried in dry-run mode:
+        src/mpatch-debug/<patch>.patch.report.md
+        src/mpatch-debug/<patch>.patch.stdout
+
+    We compress both into harvest/<branch>/utils/<utils_name>/mpatch-debug/
+    using the same settings as raw make.log archives.
+    """
+    mpatch_debug_dir = src_dir / "mpatch-debug"
+    out_dir = harvest_root / branch / "utils" / utils_name
+    out_dir.mkdir(parents=True, exist_ok=True)
+    dest_debug = out_dir / "mpatch-debug"
+    dest_debug.mkdir(exist_ok=True)
+
+    result = BuildResult(
+        branch=branch,
+        variant="utils",
+        build_name=utils_name,
+        build_dir=src_dir,
+        out_dir=out_dir,
+        kernel_ver=None,
+        driver_ver=None,
+        log_path=None,
+        status="failed",
+        kind="utils",
+    )
+
+    if mpatch_debug_dir.is_dir():
+        for src_file in sorted(mpatch_debug_dir.iterdir()):
+            if not src_file.is_file():
+                continue
+            if not (src_file.name.endswith(".patch.report.md")
+                    or src_file.name.endswith(".patch.stdout")):
+                continue
+            result.mpatch_debug_files.append(src_file)
+            dst_file = _write_raw_log(
+                src_file, dest_debug, raw_logs_format,
+                dst_name=src_file.name,
+            )
+            if dst_file is not None:
+                result.mpatch_debug_written.append(dst_file)
+
+    _write_utils_summary(result)
+    _log(
+        f"{branch}/utils/{utils_name}  status=failed  "
+        f"mpatch-debug={len(result.mpatch_debug_files)} file(s)  "
+        f"harvested={len(result.mpatch_debug_written)}",
         quiet,
     )
     return result
@@ -979,6 +1130,7 @@ def _render_tldr(
     multi_informational: list[tuple[str, int, int, set[str]]],
     integrity_hits: list[BuildResult],
     diff_data: dict | None,
+    utils_failed: list[BuildResult],
 ) -> list[str]:
     out: list[str] = []
     A = out.append
@@ -994,6 +1146,12 @@ def _render_tldr(
         f"✅{by_status['clean']} clean · "
         f"🚫{by_status['not-built']} not-built"
     )
+
+    if utils_failed:
+        A(
+            f"- **🧪 Utils failures (mpatch debug):** {len(utils_failed)} "
+            f"package(s) — see `## 🧪 Utils build failures` below"
+        )
 
     if integrity_hits:
         A(
@@ -1080,6 +1238,7 @@ def generate_index(
 
     integrity_hits = [r for r in results if r.integrity_issues]
     note_hits = [r for r in results if r.integrity_notes]
+    utils_failed = [r for r in results if r.kind == "utils"]
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S %z")
     out: list[str] = []
@@ -1094,6 +1253,7 @@ def generate_index(
         multi_informational,
         integrity_hits,
         diff_data,
+        utils_failed,
     ))
 
     if diff_lines:
@@ -1113,6 +1273,8 @@ def generate_index(
         f"✅{by_status['clean']} clean, "
         f"🚫{by_status['not-built']} not-built"
     )
+    if utils_failed:
+        A(f"- **Utils failures (mpatch debug):** {len(utils_failed)} package(s)")
     A(
         f"- **Warning signatures:** {len(sig_map)} total — "
         f"{len(multi_actionable)} actionable across multiple builds, "
@@ -1135,6 +1297,7 @@ def generate_index(
     A("| ⚠  | warnings   | built, no errors, non-noise warnings to review |")
     A("| ✅ | clean      | built, no errors, only known noise |")
     A("| 🚫 | not-built  | no make.log at all |")
+    A("| 🧪 | utils      | userspace utils failure, mpatch debug archived |")
     A("")
     A("Per-build detail lives in the harvest tree, one directory per kernel: "
       "`00-header.txt`, `01-errors.txt`, `02-warnings.txt`, `03-noise.txt`, "
@@ -1156,15 +1319,20 @@ def generate_index(
     A("|---|--------|---------|--------|--------|:------:|----:|-------------------:|-----:|------:|:-----:|")
     sorted_results = sorted(
         results,
-        key=lambda r: (r.branch, r.variant, r.kernel_ver or r.build_name),
+        key=lambda r: (r.branch, r.variant,
+                       r.kernel_ver or r.build_name),
     )
     for i, r in enumerate(sorted_results, 1):
         sym = STATUS_SYMBOL.get(r.status, "?")
-        kernel = r.kernel_ver or r.build_name
-        driver = r.driver_ver or "-"
+        if r.kind == "utils":
+            kernel_disp = "—"
+            driver_disp = r.branch
+        else:
+            kernel_disp = r.kernel_ver or r.build_name
+            driver_disp = r.driver_ver or "—"
         integ = "!" if r.integrity_issues else ("·" if r.integrity_notes else "")
         A(
-            f"| {i} | {r.branch} | {r.variant} | {kernel} | {driver} | "
+            f"| {i} | {r.branch} | {r.variant} | {kernel_disp} | {driver_disp} | "
             f"{sym} {r.status} | {r.err_count} | "
             f"{r.clean_uniq} / {r.clean_total} | "
             f"{r.suspicious_total} | {r.noise_total} | {integ} |"
@@ -1203,7 +1371,7 @@ def generate_index(
                 A(f"  - {note}")
         A("")
 
-    failed = [r for r in results if r.status == "failed"]
+    failed = [r for r in results if r.status == "failed" and r.kind != "utils"]
     if failed:
         A("## ❗ Failures — fix these first")
         A("")
@@ -1219,6 +1387,36 @@ def generate_index(
             for ln in r.error_excerpt[:15]:
                 A(ln)
             A("```")
+            A("")
+
+    if utils_failed:
+        A("## 🧪 Utils build failures (mpatch debug)")
+        A("")
+        A("The userspace utils package failed to build. Because `mpatch` "
+          "(or `mpatch-git`) was installed, it retried each failing patch "
+          "in dry-run mode and produced, per patch, one "
+          "`<patch>.patch.report.md` and one `<patch>.patch.stdout` under "
+          "`src/mpatch-debug/`. Those artifacts are archived here "
+          "(compressed the same way as raw make.logs).")
+        A("")
+        for r in utils_failed:
+            A(f"### {r.branch} / {r.build_name}")
+            A("")
+            A(f"Path: `{r.out_dir.relative_to(harvest_root)}`  ·  "
+              f"mpatch-debug files: {len(r.mpatch_debug_files)}  ·  "
+              f"harvested: {len(r.mpatch_debug_written)}")
+            A("")
+            if r.mpatch_debug_written:
+                for p in r.mpatch_debug_written:
+                    try:
+                        rel = p.relative_to(r.out_dir)
+                        A(f"- `{rel}`")
+                    except ValueError:
+                        A(f"- `{p}`")
+            else:
+                A("_No mpatch-debug artifacts (mpatch may not have been "
+                  "installed at build time, or the failure happened outside "
+                  "patch application)._")
             A("")
 
     if sus_multi:
@@ -1394,8 +1592,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--raw-logs-format", choices=["auto", "zstd", "gzip", "none"],
         default=DEFAULT_RAW_LOGS_FORMAT,
-        help=("Compression for archived raw logs. 'auto' (default) uses "
-              "zstd if available, else gzip, else plain copy."),
+        help=("Compression for archived raw logs (and mpatch-debug). "
+              "'auto' (default) uses zstd if available, else gzip, "
+              "else plain copy."),
     )
     p.add_argument(
         "--diff", action="store_true",
@@ -1435,6 +1634,12 @@ def main(argv: list[str] | None = None) -> int:
     _log(f"DIAG_ROOT={diag_root}", args.quiet)
     _log(f"HARVEST_DIR={harvest_root}", args.quiet)
     _log(f"RAW_LOGS={args.raw_logs}  format={args.raw_logs_format}", args.quiet)
+    if _mpatch_available():
+        _log("mpatch: binary found; utils mpatch-debug harvesting enabled",
+             args.quiet)
+    else:
+        _log("mpatch: binary not found; utils mpatch-debug harvesting disabled",
+             args.quiet)
 
     builds = find_builds(diag_root)
     if not builds:
@@ -1444,13 +1649,21 @@ def main(argv: list[str] | None = None) -> int:
     results: list[BuildResult] = []
     for branch, variant, build_name, build_dir in builds:
         try:
-            r = process_build(
-                branch, variant, build_name, build_dir,
-                harvest_root, args.header_lines,
-                raw_logs=args.raw_logs,
-                raw_logs_format=args.raw_logs_format,
-                quiet=args.quiet,
-            )
+            if variant == "utils":
+                r = process_utils_mpatch_debug(
+                    branch, build_name, build_dir,
+                    harvest_root,
+                    raw_logs_format=args.raw_logs_format,
+                    quiet=args.quiet,
+                )
+            else:
+                r = process_build(
+                    branch, variant, build_name, build_dir,
+                    harvest_root, args.header_lines,
+                    raw_logs=args.raw_logs,
+                    raw_logs_format=args.raw_logs_format,
+                    quiet=args.quiet,
+                )
             results.append(r)
         except Exception as e:
             _warn(f"failed to process {build_dir}: {e}")
