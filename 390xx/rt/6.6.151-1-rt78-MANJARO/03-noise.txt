@@ -1,0 +1,4 @@
+   65370  warning: objtool: <func>+0xADDR: data relocation to !ENDBR: <func>+0xADDR
+   29027  warning: objtool: <func>+0xADDR: 'naked' return found in RETHUNK build
+      76  warning: objtool: <func>+0xADDR: relocation to !ENDBR: <func>+0xADDR
+       1  warning: objtool: _nv0  LD [M]  /build/sources/nvidia-390xx/rt-kernels/linux66-rt-nvidia-390xx/src/nvidia/390.157/build/nvidia-drm.o
