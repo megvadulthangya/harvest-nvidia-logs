@@ -1,0 +1,5 @@
+   13525  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK build
+     246  warning: objtool: <func>+0xADDR: data relocation to !ENDBR: <func>+0xADDR
+       2  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK <func>+0xADDR
+       2  warning: objtool: <func>+0xADDR: 'naked' return found in <func>+0xADDR
+       1  warning: objtool: <func>+0xADDR: data relocation to !ENDBR: _ZN11DisplayPort10DeviceImpl9getRawEprEPjS1_NSd

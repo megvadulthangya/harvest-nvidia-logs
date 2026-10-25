@@ -1,0 +1,2 @@
+   11673  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK build
+       1  warning: ob  LD [M]  /build/sources/PKGBUILDs/extra/linux612-rt-extramodules/nvidia-open/src/nvidia/615.78.08/build/kernel-open/nvidia-modeset.o
