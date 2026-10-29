@@ -1,0 +1,11 @@
+267: make[4]: *** [/usr/lib/modules/7.3.0-next-20261027-1-MANJARO/build/scripts/Makefile.modpost:147: Module.symvers] Error 1
+268: make[3]: *** [/usr/lib/modules/7.3.0-next-20261027-1-MANJARO/build/Makefile:2194: modpost] Error 2
+269: make[2]: *** [/usr/lib/modules/7.3.0-next-20261027-1-MANJARO/build/Makefile:248: __sub-make] Error 2
+271: make[1]: *** [Makefile:248: __sub-make] Error 2
+273: make: *** [Makefile:224: nvidia.ko] Error 2
+293: make[5]: *** No rule to make target 'Makefile'.  Stop.
+294: make[4]: *** [/usr/lib/modules/7.3.0-next-20261027-1-MANJARO/build/Makefile:2244: .] Error 2
+295: make[3]: *** [/usr/lib/modules/7.3.0-next-20261027-1-MANJARO/build/Makefile:248: __sub-make] Error 2
+297: make[2]: *** [Makefile:248: __sub-make] Error 2
+299: make[1]: *** [Makefile:224: nvidia.ko] Error 2
+301: make: *** [Makefile:226: ../Module.symvers] Error 2

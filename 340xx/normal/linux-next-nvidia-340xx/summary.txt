@@ -1,0 +1,40 @@
+build:           linux-next-nvidia-340xx
+driver:          340xx
+variant:         normal
+kernel:          unknown
+nvidia version:  unknown
+status:          failed
+log path:        /build/sources/nvidia-340xx/normal-kernels/linux-next-nvidia-340xx/src/nvidia/340.108/build/make.log
+log size:        104441 bytes
+log lines:       306
+build dir:       /build/sources/nvidia-340xx/normal-kernels/linux-next-nvidia-340xx
+raw log:         make.log.zst
+
+errors:          11
+warnings clean:  0  (unique: 0)
+warnings noise:  0  (unique: 0)
+suspicious:      3  (unique: 2)
+modules on disk: 0  [—]
+log LD [M]:      ['nvidia']
+log MODPOST:     yes
+log cached:      no
+
+=== Integrity issues ===
+  ! log claims to link modules ['nvidia'] but no matching .ko/.ko.zst found on disk
+
+=== Suspicious groups ===
+       2  mkdir: cannot create directory '.tmp_NNN': Permission denied
+       1  /usr/lib/modules/7.3.0-next-20261027-1-MANJARO/build/scripts/Makefile.build:38: Makefile: No such file or directory
+
+=== Error excerpt (first 20) ===
+267: make[4]: *** [/usr/lib/modules/7.3.0-next-20261027-1-MANJARO/build/scripts/Makefile.modpost:147: Module.symvers] Error 1
+268: make[3]: *** [/usr/lib/modules/7.3.0-next-20261027-1-MANJARO/build/Makefile:2194: modpost] Error 2
+269: make[2]: *** [/usr/lib/modules/7.3.0-next-20261027-1-MANJARO/build/Makefile:248: __sub-make] Error 2
+271: make[1]: *** [Makefile:248: __sub-make] Error 2
+273: make: *** [Makefile:224: nvidia.ko] Error 2
+293: make[5]: *** No rule to make target 'Makefile'.  Stop.
+294: make[4]: *** [/usr/lib/modules/7.3.0-next-20261027-1-MANJARO/build/Makefile:2244: .] Error 2
+295: make[3]: *** [/usr/lib/modules/7.3.0-next-20261027-1-MANJARO/build/Makefile:248: __sub-make] Error 2
+297: make[2]: *** [Makefile:248: __sub-make] Error 2
+299: make[1]: *** [Makefile:224: nvidia.ko] Error 2
+301: make: *** [Makefile:226: ../Module.symvers] Error 2
