@@ -1,0 +1,47 @@
+{
+  "builds": {
+    "340xx/normal/linux-next-nvidia-340xx": {
+      "clean_total": 2,
+      "clean_uniq": 2,
+      "err_count": 0,
+      "noise_total": 0,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "340xx/normal/linux72-nvidia-340xx": {
+      "clean_total": 2,
+      "clean_uniq": 2,
+      "err_count": 0,
+      "noise_total": 0,
+      "status": "warnings",
+      "suspicious_total": 0
+    },
+    "340xx/normal/linux73-nvidia-340xx": {
+      "clean_total": 2,
+      "clean_uniq": 2,
+      "err_count": 0,
+      "noise_total": 0,
+      "status": "warnings",
+      "suspicious_total": 0
+    }
+  },
+  "clean_signatures": {
+    "warning: ignoring old recipe for target 'Module.symvers'": {
+      "builds": [
+        "340xx/normal/linux-next-nvidia-340xx",
+        "340xx/normal/linux72-nvidia-340xx",
+        "340xx/normal/linux73-nvidia-340xx"
+      ],
+      "hits": 3
+    },
+    "warning: overriding recipe for target 'Module.symvers'": {
+      "builds": [
+        "340xx/normal/linux-next-nvidia-340xx",
+        "340xx/normal/linux72-nvidia-340xx",
+        "340xx/normal/linux73-nvidia-340xx"
+      ],
+      "hits": 3
+    }
+  },
+  "timestamp": "2026-10-29T16-17-27"
+}
