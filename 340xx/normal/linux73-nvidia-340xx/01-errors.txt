@@ -1,0 +1,12 @@
+231: nv-mmap.c:479:6: error: redefinition of ‘nv_vma_start_write’
+237: make[4]: *** [/usr/lib/modules/7.3.1-1-MANJARO/build/scripts/Makefile.build:290: nv-mmap.o] Error 1
+239: make[3]: *** [/usr/lib/modules/7.3.1-1-MANJARO/build/Makefile:2229: .] Error 2
+240: make[2]: *** [/usr/lib/modules/7.3.1-1-MANJARO/build/Makefile:248: __sub-make] Error 2
+242: make[1]: *** [Makefile:248: __sub-make] Error 2
+244: make: *** [Makefile:224: nvidia.ko] Error 2
+288: make[5]: *** No rule to make target 'Makefile'.  Stop.
+289: make[4]: *** [/usr/lib/modules/7.3.1-1-MANJARO/build/Makefile:2229: .] Error 2
+290: make[3]: *** [/usr/lib/modules/7.3.1-1-MANJARO/build/Makefile:248: __sub-make] Error 2
+292: make[2]: *** [Makefile:248: __sub-make] Error 2
+294: make[1]: *** [Makefile:224: nvidia.ko] Error 2
+296: make: *** [Makefile:226: ../Module.symvers] Error 2

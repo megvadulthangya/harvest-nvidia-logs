@@ -1,0 +1,34 @@
+build:           linux-next-nvidia-340xx
+driver:          340xx
+variant:         normal
+kernel:          unknown
+nvidia version:  unknown
+status:          failed
+log path:        /build/sources/nvidia-340xx/normal-kernels/linux-next-nvidia-340xx/src/nvidia/340.108/build/make.log
+log size:        168052 bytes
+log lines:       488
+build dir:       /build/sources/nvidia-340xx/normal-kernels/linux-next-nvidia-340xx
+raw log:         make.log.zst
+
+errors:          5
+warnings clean:  2  (unique: 2)
+warnings noise:  0  (unique: 0)
+suspicious:      0  (unique: 0)
+modules on disk: 0  [—]
+log LD [M]:      ['nvidia', 'nvidia-uvm']
+log MODPOST:     yes
+log cached:      no
+
+=== Integrity issues ===
+  ! log claims to link modules ['nvidia', 'nvidia-uvm'] but no matching .ko/.ko.zst found on disk
+
+=== Top clean warning groups ===
+       1  warning: overriding recipe for target 'Module.symvers'
+       1  warning: ignoring old recipe for target 'Module.symvers'
+
+=== Error excerpt (first 20) ===
+477: make[4]: *** [/usr/lib/modules/7.3.0-next-20261027-1-MANJARO/build/scripts/Makefile.modpost:147: Module.symvers] Error 1
+478: make[3]: *** [/usr/lib/modules/7.3.0-next-20261027-1-MANJARO/build/Makefile:2194: modpost] Error 2
+479: make[2]: *** [/usr/lib/modules/7.3.0-next-20261027-1-MANJARO/build/Makefile:248: __sub-make] Error 2
+481: make[1]: *** [Makefile:248: __sub-make] Error 2
+483: make: *** [Makefile:223: nvidia-uvm.ko] Error 2

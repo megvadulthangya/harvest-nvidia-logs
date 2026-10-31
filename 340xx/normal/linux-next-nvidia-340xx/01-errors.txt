@@ -1,0 +1,5 @@
+477: make[4]: *** [/usr/lib/modules/7.3.0-next-20261027-1-MANJARO/build/scripts/Makefile.modpost:147: Module.symvers] Error 1
+478: make[3]: *** [/usr/lib/modules/7.3.0-next-20261027-1-MANJARO/build/Makefile:2194: modpost] Error 2
+479: make[2]: *** [/usr/lib/modules/7.3.0-next-20261027-1-MANJARO/build/Makefile:248: __sub-make] Error 2
+481: make[1]: *** [Makefile:248: __sub-make] Error 2
+483: make: *** [Makefile:223: nvidia-uvm.ko] Error 2

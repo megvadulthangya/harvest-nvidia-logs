@@ -1,0 +1,37 @@
+build:           linux618-nvidia-340xx
+driver:          340xx
+variant:         normal
+kernel:          unknown
+nvidia version:  unknown
+status:          failed
+log path:        /build/sources/nvidia-340xx/normal-kernels/linux618-nvidia-340xx/src/nvidia/340.108/build/make.log
+log size:        58699 bytes
+log lines:       304
+build dir:       /build/sources/nvidia-340xx/normal-kernels/linux618-nvidia-340xx
+raw log:         make.log.zst
+
+errors:          12
+warnings clean:  0  (unique: 0)
+warnings noise:  0  (unique: 0)
+suspicious:      30  (unique: 2)
+modules on disk: 0  [—]
+log MODPOST:     no
+log cached:      no
+
+=== Suspicious groups ===
+      29  mkdir: cannot create directory '.tmp_NNN': Permission denied
+       1  /usr/lib/modules/6.18.60-1-MANJARO/build/scripts/Makefile.build:37: Makefile: No such file or directory
+
+=== Error excerpt (first 20) ===
+231: nv-mmap.c:479:6: error: redefinition of ‘nv_vma_start_write’
+237: make[4]: *** [/usr/lib/modules/6.18.60-1-MANJARO/build/scripts/Makefile.build:287: nv-mmap.o] Error 1
+239: make[3]: *** [/usr/lib/modules/6.18.60-1-MANJARO/build/Makefile:2050: .] Error 2
+240: make[2]: *** [/usr/lib/modules/6.18.60-1-MANJARO/build/Makefile:248: __sub-make] Error 2
+242: make[1]: *** [Makefile:248: __sub-make] Error 2
+244: make: *** [Makefile:224: nvidia.ko] Error 2
+291: make[5]: *** No rule to make target 'Makefile'.  Stop.
+292: make[4]: *** [/usr/lib/modules/6.18.60-1-MANJARO/build/Makefile:2050: .] Error 2
+293: make[3]: *** [/usr/lib/modules/6.18.60-1-MANJARO/build/Makefile:248: __sub-make] Error 2
+295: make[2]: *** [Makefile:248: __sub-make] Error 2
+297: make[1]: *** [Makefile:224: nvidia.ko] Error 2
+299: make: *** [Makefile:226: ../Module.symvers] Error 2

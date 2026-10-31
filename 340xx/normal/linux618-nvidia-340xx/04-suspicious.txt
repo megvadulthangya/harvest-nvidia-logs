@@ -1,0 +1,2 @@
+      29  mkdir: cannot create directory '.tmp_NNN': Permission denied
+       1  /usr/lib/modules/6.18.60-1-MANJARO/build/scripts/Makefile.build:37: Makefile: No such file or directory
