@@ -1,0 +1,9 @@
+   68975  warning: objtool: <func>+0xADDR: 'naked' return found in RETHUNK build
+   68974  warning: objtool: <func>+0xADDR: missing int3 after ret
+      25  warning: objtool: <func>+0xADDR: return with modified stack frame
+       8  warning: objtool: <func>+0xADDR: stack state mismatch: reg1[5]=-1+0 reg2[5]=-2-112
+       3  warning: objtool: <func>+0xADDR: stack state mismatch: reg1[5]=-1+0 reg2[5]=-2-48
+       1  warning: objtool:  LD [M]  /build/sources/PKGBUILDs/extra/linux61-extramodules/nvidia-580xx/src/nvidia/580.196.07/build/nvidia-drm.o
+       1  warning: objtool: <func>+0xADDR: stack state mismatch: reg1[5]=-1+0 reg2[5]=-2-72
+       1  warning: objtool: <func>+0xADDR: stack state mismatch: reg1[5]=-1+0 reg2[5]=-2-64
+       1  warning: objtool: <func>+0xADDR: stack state mismatch: reg1[5]=-1+0 reg2[5]=-2-56

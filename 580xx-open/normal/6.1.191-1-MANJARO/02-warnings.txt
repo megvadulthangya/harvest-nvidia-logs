@@ -1,0 +1,8 @@
+     390  warning: variable 'aggregate_mask' set but not used [-Wunused-but-set-variable=]
+       3  warning: 'virtual void DisplayPort::EvoMainLink::clearFlushMode(unsigned int, bool)' was hidden [-Woverloaded-virtual=]
+       3  warning: 'virtual bool DisplayPort::EvoMainLink::setFlushMode()' was hidden [-Woverloaded-virtual=]
+       1  warning: variable 'DIDT10Count' set but not used [-Wunused-but-set-variable=]
+       1  warning: variable 'extDTDCount' set but not used [-Wunused-but-set-variable=]
+       1  warning: variable 'i' set but not used [-Wunused-but-set-variable=]
+       1  warning: unused variable 'size' [-Wunused-variable]
+       1  warning:  LD [M]  /build/sources/PKGBUILDs/extra/linux61-extramodules/nvidia-580xx-open/src/nvidia/580.196.07/build/kernel-open/nvidia-peermem.o
