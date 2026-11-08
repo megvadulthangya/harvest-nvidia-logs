@@ -1,0 +1,2 @@
+       4  warning: conflicting types for 'vm_flags_set'; have 'void(struct vm_area_struct *, vm_flags_t)' {aka 'void(struct vm_area_struct *, long unsigned int)'}
+       4  warning: conflicting types for 'vm_flags_clear'; have 'void(struct vm_area_struct *, vm_flags_t)' {aka 'void(struct vm_area_struct *, long unsigned int)'}

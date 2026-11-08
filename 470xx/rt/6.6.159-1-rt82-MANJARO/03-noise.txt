@@ -1,0 +1,3 @@
+   32499  warning: objtool: <func>+0xADDR: 'naked' return found in RETHUNK build
+   31156  warning: objtool: <func>+0xADDR: data relocation to !ENDBR: <func>+0xADDR
+      41  warning: objtool: <func>+0xADDR: relocation to !ENDBR: <func>+0xADDR

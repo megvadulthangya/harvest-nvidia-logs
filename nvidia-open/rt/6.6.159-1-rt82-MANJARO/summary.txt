@@ -1,0 +1,25 @@
+build:           linux66-rt-nvidia-open
+driver:          nvidia-open
+variant:         rt
+kernel:          6.6.159-1-rt82-MANJARO
+nvidia version:  620.70.06
+status:          warnings
+log path:        /build/sources/PKGBUILDs/extra/linux66-rt-extramodules/nvidia-open/src/nvidia/620.70.06/6.6.159-1-rt82-MANJARO/x86_64/log/make.log
+log size:        2632361 bytes
+log lines:       13764
+build dir:       /build/sources/PKGBUILDs/extra/linux66-rt-extramodules/nvidia-open
+raw log:         make.log.zst
+
+errors:          0
+warnings clean:  3  (unique: 3)
+warnings noise:  11874  (unique: 1)
+suspicious:      0  (unique: 0)
+modules on disk: 5  [nvidia, nvidia-drm, nvidia-modeset, nvidia-peermem, nvidia-uvm]
+log LD [M]:      ['nvidia', 'nvidia-drm', 'nvidia-modeset', 'nvidia-peermem', 'nvidia-uvm']
+log MODPOST:     yes
+log cached:      no
+
+=== Top clean warning groups ===
+       1  warning: variable 'DIDT10Count' set but not used [-Wunused-but-set-variable=]
+       1  warning: variable 'extDTDCount' set but not used [-Wunused-but-set-variable=]
+       1  warning: variable 'i' set but not used [-Wunused-but-set-variable=]

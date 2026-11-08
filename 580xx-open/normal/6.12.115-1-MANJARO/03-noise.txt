@@ -1,0 +1,4 @@
+   12545  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK build
+     286  warning: objtool: <func>+0xADDR: data relocation to !ENDBR: <func>+0xADDR
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK buil/build/sources/PKGBUILDs/extra/linux612-extramodules/nvidia-580xx-open/src/nvidia/580.196.07/build/kernel-open/nvidia.o: warningd
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK bu/build/sources/PKGBUILDs/extra/linux612-extramodules/nvidia-580xx-open/src/nvidia/580.196.07/build/kernel-open/nvidia.o: warningild

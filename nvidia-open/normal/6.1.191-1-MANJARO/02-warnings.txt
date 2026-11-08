@@ -1,0 +1,3 @@
+       1  warning: variable 'DIDT10Count' set but not used [-Wunused-but-set-variable=]
+       1  warning: variable 'extDTDCount' set but not used [-Wunused-but-set-variable=]
+       1  warning: variable 'i' set but not used [-Wunused-but-set-variable=]

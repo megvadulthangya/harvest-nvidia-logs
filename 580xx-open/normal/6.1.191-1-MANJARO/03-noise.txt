@@ -1,0 +1,43 @@
+   17427  warning: objtool: <func>+0xADDR: missing int3 after ret
+   15582  warning: objtool: <func>+0xADDR: 'naked' return found in RETHUNK build
+     286  warning: objtool: <func>+0xADDR: data relocation to !ENDBR: <func>+0xADDR
+      10  warning:
+       9  warning:d
+       7  warning:build
+       7  warning:ound in RETHUNK build
+       6  warning:ild
+       5  warning:in RETHUNK build
+       5  warning:found in RETHUNK build
+       5  warning:HUNK build
+       5  warning:n RETHUNK build
+       4  warning:ld
+       4  warning:uild
+       4  warning:' return found in RETHUNK build
+       4  warning: return found in RETHUNK build
+       4  warning:ed' return found in RETHUNK build
+       4  warning:ked' return found in RETHUNK build
+       3  warning:nd in RETHUNK build
+       3  warning: RETHUNK build
+       3  warning: build
+       3  warning:und in RETHUNK build
+       3  warning:n found in RETHUNK build
+       3  warning:d' return found in RETHUNK build
+       2  warning:RETHUNK build
+       2  warning:d in RETHUNK build
+       2  warning:eturn found in RETHUNK build
+       2  warning: found in RETHUNK build
+       2  warning:ETHUNK build
+       2  warning:rn found in RETHUNK build
+       2  warning:turn found in RETHUNK build
+       2  warning:THUNK build
+       2  warning:aked' return found in RETHUNK build
+       2  warning:'naked' return found in RETHUNK build
+       1  warning:UNK build
+       1  warning:NK build
+       1  warning: 'naked' return found in RETHUNK build
+       1  warning:+0xADDR: 'naked' return found in RETHUNK build
+       1  warning:xd4: 'naked' return found in RETHUNK build
+       1  warning:c6: 'naked' return found in RETHUNK build
+       1  warning:xaa: 'naked' return found in RETHUNK build
+       1  warning:return found in RETHUNK build
+       1  warning:naked' return found in RETHUNK build

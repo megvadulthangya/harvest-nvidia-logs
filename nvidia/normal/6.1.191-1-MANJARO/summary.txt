@@ -1,0 +1,19 @@
+build:           linux61-nvidia
+driver:          nvidia
+variant:         normal
+kernel:          6.1.191-1-MANJARO
+nvidia version:  620.70.06
+status:          clean
+log path:        /build/sources/PKGBUILDs/extra/linux61-extramodules/nvidia/src/nvidia/620.70.06/6.1.191-1-MANJARO/x86_64/log/make.log
+log size:        21878348 bytes
+log lines:       134771
+build dir:       /build/sources/PKGBUILDs/extra/linux61-extramodules/nvidia
+
+errors:          0
+warnings clean:  0  (unique: 0)
+warnings noise:  134272  (unique: 12)
+suspicious:      0  (unique: 0)
+modules on disk: 5  [nvidia, nvidia-drm, nvidia-modeset, nvidia-peermem, nvidia-uvm]
+log LD [M]:      ['nvidia', 'nvidia-drm', 'nvidia-modeset', 'nvidia-peermem', 'nvidia-uvm']
+log MODPOST:     yes
+log cached:      no
