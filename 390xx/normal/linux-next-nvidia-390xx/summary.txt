@@ -1,0 +1,28 @@
+build:           linux-next-nvidia-390xx
+driver:          390xx
+variant:         normal
+kernel:          unknown
+nvidia version:  unknown
+status:          failed
+log path:        /build/sources/nvidia-390xx/normal-kernels/linux-next-nvidia-390xx/src/nvidia/390.157/build/make.log
+log size:        32769 bytes
+log lines:       682
+build dir:       /build/sources/nvidia-390xx/normal-kernels/linux-next-nvidia-390xx
+raw log:         make.log.zst
+
+errors:          7
+warnings clean:  0  (unique: 0)
+warnings noise:  0  (unique: 0)
+suspicious:      0  (unique: 0)
+modules on disk: 0  [—]
+log MODPOST:     no
+log cached:      no
+
+=== Error excerpt (first 20) ===
+664: nvidia-drm/nvidia-drm-connector.c:224:6: error: ‘struct drm_connector_funcs’ has no member named ‘reset’
+667: nvidia-drm/nvidia-drm-connector.c:224:31: error: ‘drm_atomic_helper_connector_reset’ undeclared here (not in a function); did you mean ‘drm_atomic_helper_connector_tv_check’?
+671: make[4]: *** [/usr/lib/modules/7.4.0-rc2-next-20261113-1-MANJARO/build/scripts/Makefile.build:321: nvidia-drm/nvidia-drm-connector.o] Error 1
+673: make[3]: *** [/usr/lib/modules/7.4.0-rc2-next-20261113-1-MANJARO/build/Makefile:2257: .] Error 2
+674: make[2]: *** [/usr/lib/modules/7.4.0-rc2-next-20261113-1-MANJARO/build/Makefile:248: __sub-make] Error 2
+676: make[1]: *** [Makefile:248: __sub-make] Error 2
+678: make: *** [Makefile:93: modules] Error 2
