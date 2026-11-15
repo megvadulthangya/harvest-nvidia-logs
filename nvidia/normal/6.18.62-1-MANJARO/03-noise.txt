@@ -1,0 +1,2 @@
+   45297  warning: objtool: <func>+0xADDR: 'naked' return found in MITIGATION_RETHUNK build
+       1  warning: objtool: _nv004531rm() falls through to next function _nv005572rm()

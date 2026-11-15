@@ -1,0 +1,56 @@
+build:           linux74-nvidia-580xx-open
+driver:          580xx-open
+variant:         normal
+kernel:          unknown
+nvidia version:  unknown
+status:          failed
+log path:        /build/sources/PKGBUILDs/extra/linux74-extramodules/nvidia-580xx-open/src/nvidia/580.196.07/build/make.log
+log size:        432186 bytes
+log lines:       6616
+build dir:       /build/sources/PKGBUILDs/extra/linux74-extramodules/nvidia-580xx-open
+raw log:         make.log.zst
+
+errors:          8
+warnings clean:  428  (unique: 29)
+warnings noise:  0  (unique: 0)
+suspicious:      0  (unique: 0)
+modules on disk: 0  [—]
+log MODPOST:     no
+log cached:      no
+
+=== Top clean warning groups ===
+     390  warning: variable 'aggregate_mask' set but not used [-Wunused-but-set-variable=]
+       7  warning: this use of 'defined' may not be portable [-Wexpansion-to-defined]
+       3  warning: 'virtual void DisplayPort::EvoMainLink::clearFlushMode(unsigned int, bool)' was hidden [-Woverloaded-virtual=]
+       3  warning: 'virtual bool DisplayPort::EvoMainLink::setFlushMode()' was hidden [-Woverloaded-virtual=]
+       1  warning: variable 'DIDT10Count' set but not used [-Wunused-but-set-variable=]
+       1  warning: variable 'extDTDCount' set but not used [-Wunused-but-set-variable=]
+       1  warning: variable 'i' set but not used [-Wunused-but-set-variable=]
+       1  warning: no previous prototype for 'libspdm_random_seed' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'libspdm_check_crypto_backend' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'libspdm_hkdf_sha256_extract_and_expand' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'libspdm_hkdf_sha384_extract_and_expand' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'libspdm_hkdf_sha512_extract_and_expand' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'libspdm_ec_set_pub_key' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'libspdm_ec_get_pub_key' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'libspdm_ec_check_key' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'libspdm_x509_construct_certificate' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'libspdm_x509_construct_certificate_stack' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'libspdm_x509_free' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'libspdm_x509_stack_free' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'libspdm_encode_base64' [-Wmissing-prototypes]
+       1  warning: unused variable 'size' [-Wunused-variable]
+       1  warning: no previous prototype for 'libspdm_decode_base64' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'libspdm_x509_get_common_name' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'libspdm_x509_get_organization_name' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'libspdm_x509_get_tbs_cert' [-Wmissing-prototypes]
+
+=== Error excerpt (first 20) ===
+6596: nvidia-uvm/uvm_hmm.c:3974:29: error: ‘VM_SPECIAL’ undeclared (first use in this function)
+6600: nvidia-uvm/uvm_hmm.c:3976:12: error: implicit declaration of function ‘is_vm_hugetlb_page’ [-Wimplicit-function-declaration]
+6603: make[5]: *** [/usr/lib/modules/7.4.0-rc2-1-MANJARO/build/scripts/Makefile.build:290: nvidia-uvm/uvm_hmm.o] Error 1
+6605: make[4]: *** [/usr/lib/modules/7.4.0-rc2-1-MANJARO/build/Makefile:2244: .] Error 2
+6606: make[3]: *** [/usr/lib/modules/7.4.0-rc2-1-MANJARO/build/Makefile:248: __sub-make] Error 2
+6608: make[2]: *** [Makefile:248: __sub-make] Error 2
+6610: make[1]: *** [Makefile:115: modules] Error 2
+6612: make: *** [Makefile:59: modules] Error 2

@@ -1,0 +1,13 @@
+452: nvidia-drm/nvidia-drm-drv.c:67:10: fatal error: drm/drm_fb_helper.h: No such file or directory
+456: make[4]: *** [/usr/lib/modules/7.4.0-rc2-1-MANJARO/build/scripts/Makefile.build:290: nvidia-drm/nvidia-drm-drv.o] Error 1
+459: nvidia-drm/nvidia-drm-crtc.c:1930:5: error: implicit declaration of function ‘drm_atomic_helper_plane_reset’; did you mean ‘drm_atomic_helper_page_flip’? [-Wimplicit-function-declaration]
+464: nvidia-drm/nvidia-drm-crtc.c:2059:6: error: ‘const struct drm_plane_funcs’ has no member named ‘reset’
+467: nvidia-drm/nvidia-drm-crtc.c:2059:31: error: initialization of ‘int (*)(struct drm_plane *, struct drm_property *, uint64_t)’ {aka ‘int (*)(struct drm_plane *, struct drm_property *, long long unsigned int)’} from incompatible pointer type ‘void (*)(struct drm_plane *)’ [-Wincompatible-pointer-types]
+475: nvidia-drm/nvidia-drm-crtc.c:2160:5: error: implicit declaration of function ‘drm_atomic_helper_crtc_reset’; did you mean ‘drm_atomic_helper_check_modeset’? [-Wimplicit-function-declaration]
+480: nvidia-drm/nvidia-drm-crtc.c:2268:6: error: ‘struct drm_crtc_funcs’ has no member named ‘reset’
+483: nvidia-drm/nvidia-drm-crtc.c:2268:31: error: initialization of ‘int (*)(struct drm_crtc *, struct drm_framebuffer *, struct drm_pending_vblank_event *, uint32_t,  uint32_t,  struct drm_modeset_acquire_ctx *)’ {aka ‘int (*)(struct drm_crtc *, struct drm_framebuffer *, struct drm_pending_vblank_event *, unsigned int,  unsigned int,  struct drm_modeset_acquire_ctx *)’} from incompatible pointer type ‘void (*)(struct drm_crtc *)’ [-Wincompatible-pointer-types]
+490: make[4]: *** [/usr/lib/modules/7.4.0-rc2-1-MANJARO/build/scripts/Makefile.build:290: nvidia-drm/nvidia-drm-crtc.o] Error 1
+491: make[3]: *** [/usr/lib/modules/7.4.0-rc2-1-MANJARO/build/Makefile:2244: .] Error 2
+492: make[2]: *** [/usr/lib/modules/7.4.0-rc2-1-MANJARO/build/Makefile:248: __sub-make] Error 2
+494: make[1]: *** [Makefile:248: __sub-make] Error 2
+496: make: *** [Makefile:115: modules] Error 2

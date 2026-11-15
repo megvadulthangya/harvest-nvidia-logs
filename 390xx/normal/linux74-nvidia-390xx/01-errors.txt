@@ -1,0 +1,9 @@
+568: nvidia-drm/nvidia-drm-crtc.c:181:6: error: ‘const struct drm_plane_funcs’ has no member named ‘reset’
+571: nvidia-drm/nvidia-drm-crtc.c:181:31: error: ‘drm_atomic_helper_plane_reset’ undeclared here (not in a function); did you mean ‘drm_atomic_helper_page_flip’?
+575: nvidia-drm/nvidia-drm-crtc.c:294:6: error: ‘struct drm_crtc_funcs’ has no member named ‘reset’
+578: nvidia-drm/nvidia-drm-crtc.c:294:31: error: ‘drm_atomic_helper_crtc_reset’ undeclared here (not in a function); did you mean ‘drm_atomic_helper_check_modeset’?
+582: make[4]: *** [/usr/lib/modules/7.4.0-rc2-1-MANJARO/build/scripts/Makefile.build:290: nvidia-drm/nvidia-drm-crtc.o] Error 1
+585: make[3]: *** [/usr/lib/modules/7.4.0-rc2-1-MANJARO/build/Makefile:2244: .] Error 2
+586: make[2]: *** [/usr/lib/modules/7.4.0-rc2-1-MANJARO/build/Makefile:248: __sub-make] Error 2
+588: make[1]: *** [Makefile:248: __sub-make] Error 2
+590: make: *** [Makefile:81: modules] Error 2

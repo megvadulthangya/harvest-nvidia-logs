@@ -1,0 +1,57 @@
+build:           linux74-nvidia-390xx
+driver:          390xx
+variant:         normal
+kernel:          unknown
+nvidia version:  unknown
+status:          failed
+log path:        /build/sources/PKGBUILDs/extra/linux74-extramodules/nvidia-390xx/src/nvidia/390.157/build/make.log
+log size:        34053 bytes
+log lines:       594
+build dir:       /build/sources/PKGBUILDs/extra/linux74-extramodules/nvidia-390xx
+raw log:         make.log.zst
+
+errors:          9
+warnings clean:  78  (unique: 74)
+warnings noise:  0  (unique: 0)
+suspicious:      0  (unique: 0)
+modules on disk: 0  [—]
+log MODPOST:     no
+log cached:      no
+
+=== Top clean warning groups ===
+       3  warning: 'static' is not at beginning of declaration [-Wold-style-declaration]
+       3  warning: implicit conversion from 'uvm_fault_access_type_t' to 'uvm_fault_type_t' [-Wenum-conversion]
+       1  warning: no previous prototype for 'nv_pci_register_driver' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'nvidia_init_module' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'nvidia_exit_module' [-Wmissing-prototypes]
+       1  warning: unused variable 'device' [-Wunused-variable]
+       1  warning: no previous prototype for 'nv_load_dma_map_scatterlist' [-Wmissing-prototypes]
+       1  warning: this statement may fall through [-Wimplicit-fallthrough=]
+       1  warning: no previous prototype for 'exercise_error_forwarding_va' [-Wmissing-prototypes]
+       1  warning: no previous prototype for '_raw_q_flush' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'on_nvq_assert' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'nv_init_ibmnpu_info' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'nv_destroy_ibmnpu_info' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'nv_init_ibmnpu_devices' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'nvlink_core_init' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'nvlink_core_exit' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'uvm_tools_init' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'uvm_tools_exit' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'uvm8_test_set_prefetch_filtering' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'uvm_api_enable_peer_access' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'uvm_api_disable_peer_access' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'uvm8_test_flush_deferred_work' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'uvm_channel_manager_print_pending_pushes' [-Wmissing-prototypes]
+       1  warning: no previous prototype for 'uvm_va_range_remove_gpu_va_space_managed' [-Wmissing-prototypes]
+       1  warning: implicit conversion from 'uvm_fault_type_t' to 'uvm_fault_access_type_t' [-Wenum-conversion]
+
+=== Error excerpt (first 20) ===
+568: nvidia-drm/nvidia-drm-crtc.c:181:6: error: ‘const struct drm_plane_funcs’ has no member named ‘reset’
+571: nvidia-drm/nvidia-drm-crtc.c:181:31: error: ‘drm_atomic_helper_plane_reset’ undeclared here (not in a function); did you mean ‘drm_atomic_helper_page_flip’?
+575: nvidia-drm/nvidia-drm-crtc.c:294:6: error: ‘struct drm_crtc_funcs’ has no member named ‘reset’
+578: nvidia-drm/nvidia-drm-crtc.c:294:31: error: ‘drm_atomic_helper_crtc_reset’ undeclared here (not in a function); did you mean ‘drm_atomic_helper_check_modeset’?
+582: make[4]: *** [/usr/lib/modules/7.4.0-rc2-1-MANJARO/build/scripts/Makefile.build:290: nvidia-drm/nvidia-drm-crtc.o] Error 1
+585: make[3]: *** [/usr/lib/modules/7.4.0-rc2-1-MANJARO/build/Makefile:2244: .] Error 2
+586: make[2]: *** [/usr/lib/modules/7.4.0-rc2-1-MANJARO/build/Makefile:248: __sub-make] Error 2
+588: make[1]: *** [Makefile:248: __sub-make] Error 2
+590: make: *** [Makefile:81: modules] Error 2

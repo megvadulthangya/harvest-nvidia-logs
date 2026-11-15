@@ -1,0 +1,35 @@
+   10121  warning: objtool: <func>+0xADDR: 'naked' return found in RETHUNK build
+     180  warning: objtool: <func>+0xADDR: data relocation to !ENDBR: <func>+0xADDR
+       5  warning:ild
+       4  warning:build
+       4  warning:ld
+       4  warning:ound in RETHUNK build
+       3  warning:NK build
+       3  warning:HUNK build
+       3  warning:THUNK build
+       3  warning:<func>+0xADDR
+       2  warning:
+       2  warning:UNK build
+       2  warning: found in RETHUNK build
+       2  warning:d
+       2  warning:found in RETHUNK build
+       2  warning:' return found in RETHUNK build
+       2  warning:n RETHUNK build
+       2  warning: build
+       2  warning:d' return found in RETHUNK build
+       1  warning:d in RETHUNK build
+       1  warning:nd in RETHUNK build
+       1  warning:uild
+       1  warning:RETHUNK build
+       1  warning:in RETHUNK build
+       1  warning:urn found in RETHUNK build
+       1  warning:b: 'naked' return found in RETHUNK build
+       1  warning:und in RETHUNK build
+       1  warning:K build
+       1  warning:turn found in RETHUNK build
+       1  warning:ed' return found in RETHUNK build
+       1  warning:c6: 'naked' return found in RETHUNK build
+       1  warning:ked' return found in RETHUNK build
+       1  warning:n found in RETHUNK build
+       1  warning:rn found in RETHUNK build
+       1  warning:naked' return found in RETHUNK build

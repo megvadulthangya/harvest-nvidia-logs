@@ -1,0 +1,8 @@
+6596: nvidia-uvm/uvm_hmm.c:3974:29: error: ‘VM_SPECIAL’ undeclared (first use in this function)
+6600: nvidia-uvm/uvm_hmm.c:3976:12: error: implicit declaration of function ‘is_vm_hugetlb_page’ [-Wimplicit-function-declaration]
+6603: make[5]: *** [/usr/lib/modules/7.4.0-rc2-1-MANJARO/build/scripts/Makefile.build:290: nvidia-uvm/uvm_hmm.o] Error 1
+6605: make[4]: *** [/usr/lib/modules/7.4.0-rc2-1-MANJARO/build/Makefile:2244: .] Error 2
+6606: make[3]: *** [/usr/lib/modules/7.4.0-rc2-1-MANJARO/build/Makefile:248: __sub-make] Error 2
+6608: make[2]: *** [Makefile:248: __sub-make] Error 2
+6610: make[1]: *** [Makefile:115: modules] Error 2
+6612: make: *** [Makefile:59: modules] Error 2
