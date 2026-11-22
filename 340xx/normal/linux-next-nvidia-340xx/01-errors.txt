@@ -1,0 +1,42 @@
+237: nv-linux.h:1975:29: error: ‘nv_proc_ops_t’ {aka ‘const struct proc_ops’} has no member named ‘proc_read’; did you mean ‘proc_mmap’?
+246: nv-linux.h:2082:32: error: positional initialization of field in ‘struct’ declared with ‘designated_init’ attribute [-Werror=designated-init]
+256: nv-linux.h:2082:32: error: initialization of ‘loff_t (*)(struct file *, loff_t,  int)’ {aka ‘long long int (*)(struct file *, long long int,  int)’} from incompatible pointer type ‘ssize_t (*)(struct file *, char *, size_t,  loff_t *)’ {aka ‘long int (*)(struct file *, char *, long unsigned int,  long long int *)’} [-Wincompatible-pointer-types]
+270: nv-linux.h:1975:29: error: ‘nv_proc_ops_t’ {aka ‘const struct proc_ops’} has no member named ‘proc_read’; did you mean ‘proc_mmap’?
+279: nv-linux.h:2082:32: error: positional initialization of field in ‘struct’ declared with ‘designated_init’ attribute [-Werror=designated-init]
+289: nv-linux.h:2082:32: error: initialization of ‘loff_t (*)(struct file *, loff_t,  int)’ {aka ‘long long int (*)(struct file *, long long int,  int)’} from incompatible pointer type ‘ssize_t (*)(struct file *, char *, size_t,  loff_t *)’ {aka ‘long int (*)(struct file *, char *, long unsigned int,  long long int *)’} [-Wincompatible-pointer-types]
+300: nv-linux.h:1975:29: error: ‘nv_proc_ops_t’ {aka ‘const struct proc_ops’} has no member named ‘proc_read’; did you mean ‘proc_mmap’?
+309: nv-linux.h:2082:32: error: positional initialization of field in ‘struct’ declared with ‘designated_init’ attribute [-Werror=designated-init]
+319: nv-linux.h:2082:32: error: initialization of ‘loff_t (*)(struct file *, loff_t,  int)’ {aka ‘long long int (*)(struct file *, long long int,  int)’} from incompatible pointer type ‘ssize_t (*)(struct file *, char *, size_t,  loff_t *)’ {aka ‘long int (*)(struct file *, char *, long unsigned int,  long long int *)’} [-Wincompatible-pointer-types]
+330: nv-linux.h:1975:29: error: ‘nv_proc_ops_t’ {aka ‘struct proc_ops’} has no member named ‘proc_read’; did you mean ‘proc_mmap’?
+336: nv-procfs.c:415:28: error: positional initialization of field in ‘struct’ declared with ‘designated_init’ attribute [-Werror=designated-init]
+340: nv-procfs.c:415:28: error: initialization of ‘loff_t (*)(struct file *, loff_t,  int)’ {aka ‘long long int (*)(struct file *, long long int,  int)’} from incompatible pointer type ‘ssize_t (*)(struct file *, char *, size_t,  loff_t *)’ {aka ‘long int (*)(struct file *, char *, long unsigned int,  long long int *)’} [-Wincompatible-pointer-types]
+345: nv-linux.h:1976:29: error: ‘nv_proc_ops_t’ {aka ‘struct proc_ops’} has no member named ‘proc_write’; did you mean ‘proc_write_buf’?
+351: nv-procfs.c:416:28: error: positional initialization of field in ‘struct’ declared with ‘designated_init’ attribute [-Werror=designated-init]
+355: nv-procfs.c:416:28: error: initialization of ‘int (*)(struct inode *, struct file *)’ from incompatible pointer type ‘ssize_t (*)(struct file *, const char *, size_t,  loff_t *)’ {aka ‘long int (*)(struct file *, const char *, long unsigned int,  long long int *)’} [-Wincompatible-pointer-types]
+360: nv-linux.h:1975:29: error: ‘nv_proc_ops_t’ {aka ‘struct proc_ops’} has no member named ‘proc_read’; did you mean ‘proc_mmap’?
+366: nv-procfs.c:544:28: error: positional initialization of field in ‘struct’ declared with ‘designated_init’ attribute [-Werror=designated-init]
+370: nv-procfs.c:544:28: error: initialization of ‘loff_t (*)(struct file *, loff_t,  int)’ {aka ‘long long int (*)(struct file *, long long int,  int)’} from incompatible pointer type ‘ssize_t (*)(struct file *, char *, size_t,  loff_t *)’ {aka ‘long int (*)(struct file *, char *, long unsigned int,  long long int *)’} [-Wincompatible-pointer-types]
+375: nv-linux.h:1976:29: error: ‘nv_proc_ops_t’ {aka ‘struct proc_ops’} has no member named ‘proc_write’; did you mean ‘proc_write_buf’?
+381: nv-procfs.c:545:28: error: positional initialization of field in ‘struct’ declared with ‘designated_init’ attribute [-Werror=designated-init]
+385: nv-procfs.c:545:28: error: initialization of ‘int (*)(struct inode *, struct file *)’ from incompatible pointer type ‘ssize_t (*)(struct file *, const char *, size_t,  loff_t *)’ {aka ‘long int (*)(struct file *, const char *, long unsigned int,  long long int *)’} [-Wincompatible-pointer-types]
+390: nv-linux.h:1975:29: error: ‘nv_proc_ops_t’ {aka ‘const struct proc_ops’} has no member named ‘proc_read’; did you mean ‘proc_mmap’?
+399: nv-linux.h:2082:32: error: positional initialization of field in ‘struct’ declared with ‘designated_init’ attribute [-Werror=designated-init]
+409: nv-linux.h:2082:32: error: initialization of ‘loff_t (*)(struct file *, loff_t,  int)’ {aka ‘long long int (*)(struct file *, long long int,  int)’} from incompatible pointer type ‘ssize_t (*)(struct file *, char *, size_t,  loff_t *)’ {aka ‘long int (*)(struct file *, char *, long unsigned int,  long long int *)’} [-Wincompatible-pointer-types]
+421: nv-linux.h:1976:29: error: ‘nv_proc_ops_t’ {aka ‘const struct proc_ops’} has no member named ‘proc_write’; did you mean ‘proc_write_buf’?
+431: nv-linux.h:1976:29: error: ‘nv_proc_ops_t’ {aka ‘const struct proc_ops’} has no member named ‘proc_write’; did you mean ‘proc_write_buf’?
+440: nv-linux.h:1976:29: error: ‘nv_proc_ops_t’ {aka ‘const struct proc_ops’} has no member named ‘proc_write’; did you mean ‘proc_write_buf’?
+449: nv-linux.h:1976:29: error: ‘nv_proc_ops_t’ {aka ‘const struct proc_ops’} has no member named ‘proc_write’; did you mean ‘proc_write_buf’?
+459: nv-linux.h:1976:29: error: ‘nv_proc_ops_t’ {aka ‘const struct proc_ops’} has no member named ‘proc_write’; did you mean ‘proc_write_buf’?
+468: nv-linux.h:1976:29: error: ‘nv_proc_ops_t’ {aka ‘const struct proc_ops’} has no member named ‘proc_write’; did you mean ‘proc_write_buf’?
+477: nv-linux.h:1976:29: error: ‘nv_proc_ops_t’ {aka ‘const struct proc_ops’} has no member named ‘proc_write’; did you mean ‘proc_write_buf’?
+489: make[4]: *** [/usr/lib/modules/7.4.0-rc3-next-20261119-1-MANJARO/build/scripts/Makefile.build:321: nv-procfs.o] Error 1
+491: make[3]: *** [/usr/lib/modules/7.4.0-rc3-next-20261119-1-MANJARO/build/Makefile:2257: .] Error 2
+492: make[2]: *** [/usr/lib/modules/7.4.0-rc3-next-20261119-1-MANJARO/build/Makefile:248: __sub-make] Error 2
+494: make[1]: *** [Makefile:248: __sub-make] Error 2
+496: make: *** [Makefile:224: nvidia.ko] Error 2
+517: make[5]: *** No rule to make target 'Makefile'.  Stop.
+518: make[4]: *** [/usr/lib/modules/7.4.0-rc3-next-20261119-1-MANJARO/build/Makefile:2257: .] Error 2
+519: make[3]: *** [/usr/lib/modules/7.4.0-rc3-next-20261119-1-MANJARO/build/Makefile:248: __sub-make] Error 2
+521: make[2]: *** [Makefile:248: __sub-make] Error 2
+523: make[1]: *** [Makefile:224: nvidia.ko] Error 2
+525: make: *** [Makefile:226: ../Module.symvers] Error 2

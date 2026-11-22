@@ -1,0 +1,40 @@
+549: ././common/inc/nv-procfs.h:37:29: error: ‘nv_proc_ops_t’ {aka ‘const struct proc_ops’} has no member named ‘proc_read’; did you mean ‘proc_mmap’?
+558: ././common/inc/nv-procfs.h:144:32: error: positional initialization of field in ‘struct’ declared with ‘designated_init’ attribute [-Werror=designated-init]
+568: ././common/inc/nv-procfs.h:144:32: error: initialization of ‘loff_t (*)(struct file *, loff_t,  int)’ {aka ‘long long int (*)(struct file *, long long int,  int)’} from incompatible pointer type ‘ssize_t (*)(struct file *, char *, size_t,  loff_t *)’ {aka ‘long int (*)(struct file *, char *, long unsigned int,  long long int *)’} [-Wincompatible-pointer-types]
+582: ././common/inc/nv-procfs.h:37:29: error: ‘nv_proc_ops_t’ {aka ‘const struct proc_ops’} has no member named ‘proc_read’; did you mean ‘proc_mmap’?
+591: ././common/inc/nv-procfs.h:144:32: error: positional initialization of field in ‘struct’ declared with ‘designated_init’ attribute [-Werror=designated-init]
+601: ././common/inc/nv-procfs.h:144:32: error: initialization of ‘loff_t (*)(struct file *, loff_t,  int)’ {aka ‘long long int (*)(struct file *, long long int,  int)’} from incompatible pointer type ‘ssize_t (*)(struct file *, char *, size_t,  loff_t *)’ {aka ‘long int (*)(struct file *, char *, long unsigned int,  long long int *)’} [-Wincompatible-pointer-types]
+612: ././common/inc/nv-procfs.h:37:29: error: ‘nv_proc_ops_t’ {aka ‘const struct proc_ops’} has no member named ‘proc_read’; did you mean ‘proc_mmap’?
+621: ././common/inc/nv-procfs.h:144:32: error: positional initialization of field in ‘struct’ declared with ‘designated_init’ attribute [-Werror=designated-init]
+631: ././common/inc/nv-procfs.h:144:32: error: initialization of ‘loff_t (*)(struct file *, loff_t,  int)’ {aka ‘long long int (*)(struct file *, long long int,  int)’} from incompatible pointer type ‘ssize_t (*)(struct file *, char *, size_t,  loff_t *)’ {aka ‘long int (*)(struct file *, char *, long unsigned int,  long long int *)’} [-Wincompatible-pointer-types]
+642: ././common/inc/nv-procfs.h:37:29: error: ‘nv_proc_ops_t’ {aka ‘struct proc_ops’} has no member named ‘proc_read’; did you mean ‘proc_mmap’?
+648: nvidia/nv-procfs.c:420:28: error: positional initialization of field in ‘struct’ declared with ‘designated_init’ attribute [-Werror=designated-init]
+652: nvidia/nv-procfs.c:420:28: error: initialization of ‘loff_t (*)(struct file *, loff_t,  int)’ {aka ‘long long int (*)(struct file *, long long int,  int)’} from incompatible pointer type ‘ssize_t (*)(struct file *, char *, size_t,  loff_t *)’ {aka ‘long int (*)(struct file *, char *, long unsigned int,  long long int *)’} [-Wincompatible-pointer-types]
+657: ././common/inc/nv-procfs.h:38:29: error: ‘nv_proc_ops_t’ {aka ‘struct proc_ops’} has no member named ‘proc_write’; did you mean ‘proc_write_buf’?
+663: nvidia/nv-procfs.c:421:28: error: positional initialization of field in ‘struct’ declared with ‘designated_init’ attribute [-Werror=designated-init]
+667: nvidia/nv-procfs.c:421:28: error: initialization of ‘int (*)(struct inode *, struct file *)’ from incompatible pointer type ‘ssize_t (*)(struct file *, const char *, size_t,  loff_t *)’ {aka ‘long int (*)(struct file *, const char *, long unsigned int,  long long int *)’} [-Wincompatible-pointer-types]
+672: ././common/inc/nv-procfs.h:38:29: error: ‘nv_proc_ops_t’ {aka ‘struct proc_ops’} has no member named ‘proc_write’; did you mean ‘proc_write_buf’?
+678: nvidia/nv-procfs.c:523:28: error: positional initialization of field in ‘struct’ declared with ‘designated_init’ attribute [-Werror=designated-init]
+682: nvidia/nv-procfs.c:523:28: error: initialization of ‘loff_t (*)(struct file *, loff_t,  int)’ {aka ‘long long int (*)(struct file *, long long int,  int)’} from incompatible pointer type ‘ssize_t (*)(struct file *, const char *, size_t,  loff_t *)’ {aka ‘long int (*)(struct file *, const char *, long unsigned int,  long long int *)’} [-Wincompatible-pointer-types]
+687: ././common/inc/nv-procfs.h:37:29: error: ‘nv_proc_ops_t’ {aka ‘struct proc_ops’} has no member named ‘proc_read’; did you mean ‘proc_mmap’?
+693: nvidia/nv-procfs.c:656:28: error: positional initialization of field in ‘struct’ declared with ‘designated_init’ attribute [-Werror=designated-init]
+697: nvidia/nv-procfs.c:656:28: error: initialization of ‘loff_t (*)(struct file *, loff_t,  int)’ {aka ‘long long int (*)(struct file *, long long int,  int)’} from incompatible pointer type ‘ssize_t (*)(struct file *, char *, size_t,  loff_t *)’ {aka ‘long int (*)(struct file *, char *, long unsigned int,  long long int *)’} [-Wincompatible-pointer-types]
+702: ././common/inc/nv-procfs.h:38:29: error: ‘nv_proc_ops_t’ {aka ‘struct proc_ops’} has no member named ‘proc_write’; did you mean ‘proc_write_buf’?
+708: nvidia/nv-procfs.c:657:28: error: positional initialization of field in ‘struct’ declared with ‘designated_init’ attribute [-Werror=designated-init]
+712: nvidia/nv-procfs.c:657:28: error: initialization of ‘int (*)(struct inode *, struct file *)’ from incompatible pointer type ‘ssize_t (*)(struct file *, const char *, size_t,  loff_t *)’ {aka ‘long int (*)(struct file *, const char *, long unsigned int,  long long int *)’} [-Wincompatible-pointer-types]
+717: ././common/inc/nv-procfs.h:37:29: error: ‘nv_proc_ops_t’ {aka ‘const struct proc_ops’} has no member named ‘proc_read’; did you mean ‘proc_mmap’?
+726: ././common/inc/nv-procfs.h:144:32: error: positional initialization of field in ‘struct’ declared with ‘designated_init’ attribute [-Werror=designated-init]
+736: ././common/inc/nv-procfs.h:144:32: error: initialization of ‘loff_t (*)(struct file *, loff_t,  int)’ {aka ‘long long int (*)(struct file *, long long int,  int)’} from incompatible pointer type ‘ssize_t (*)(struct file *, char *, size_t,  loff_t *)’ {aka ‘long int (*)(struct file *, char *, long unsigned int,  long long int *)’} [-Wincompatible-pointer-types]
+748: ././common/inc/nv-procfs.h:38:29: error: ‘nv_proc_ops_t’ {aka ‘const struct proc_ops’} has no member named ‘proc_write’; did you mean ‘proc_write_buf’?
+758: ././common/inc/nv-procfs.h:38:29: error: ‘nv_proc_ops_t’ {aka ‘const struct proc_ops’} has no member named ‘proc_write’; did you mean ‘proc_write_buf’?
+767: ././common/inc/nv-procfs.h:38:29: error: ‘nv_proc_ops_t’ {aka ‘const struct proc_ops’} has no member named ‘proc_write’; did you mean ‘proc_write_buf’?
+776: ././common/inc/nv-procfs.h:38:29: error: ‘nv_proc_ops_t’ {aka ‘const struct proc_ops’} has no member named ‘proc_write’; did you mean ‘proc_write_buf’?
+786: ././common/inc/nv-procfs.h:38:29: error: ‘nv_proc_ops_t’ {aka ‘const struct proc_ops’} has no member named ‘proc_write’; did you mean ‘proc_write_buf’?
+795: ././common/inc/nv-procfs.h:38:29: error: ‘nv_proc_ops_t’ {aka ‘const struct proc_ops’} has no member named ‘proc_write’; did you mean ‘proc_write_buf’?
+804: ././common/inc/nv-procfs.h:38:29: error: ‘nv_proc_ops_t’ {aka ‘const struct proc_ops’} has no member named ‘proc_write’; did you mean ‘proc_write_buf’?
+813: ././common/inc/nv-procfs.h:38:29: error: ‘nv_proc_ops_t’ {aka ‘const struct proc_ops’} has no member named ‘proc_write’; did you mean ‘proc_write_buf’?
+823: make[4]: *** [/usr/lib/modules/7.4.0-rc3-next-20261119-1-MANJARO/build/scripts/Makefile.build:321: nvidia/nv-procfs.o] Error 1
+825: make[3]: *** [/usr/lib/modules/7.4.0-rc3-next-20261119-1-MANJARO/build/Makefile:2257: .] Error 2
+826: make[2]: *** [/usr/lib/modules/7.4.0-rc3-next-20261119-1-MANJARO/build/Makefile:248: __sub-make] Error 2
+828: make[1]: *** [Makefile:248: __sub-make] Error 2
+830: make: *** [Makefile:93: modules] Error 2
