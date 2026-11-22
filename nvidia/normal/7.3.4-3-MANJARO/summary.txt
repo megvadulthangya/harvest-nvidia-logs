@@ -1,0 +1,23 @@
+build:           linux73-nvidia
+driver:          nvidia
+variant:         normal
+kernel:          7.3.4-3-MANJARO
+nvidia version:  620.73.04
+status:          warnings
+log path:        /build/sources/PKGBUILDs/extra/linux73-extramodules/nvidia/src/nvidia/620.73.04/7.3.4-3-MANJARO/x86_64/log/make.log
+log size:        4329372 bytes
+log lines:       45862
+build dir:       /build/sources/PKGBUILDs/extra/linux73-extramodules/nvidia
+raw log:         make.log.zst
+
+errors:          0
+warnings clean:  1  (unique: 1)
+warnings noise:  45353  (unique: 2)
+suspicious:      0  (unique: 0)
+modules on disk: 5  [nvidia, nvidia-drm, nvidia-modeset, nvidia-peermem, nvidia-uvm]
+log LD [M]:      ['nvidia', 'nvidia-drm', 'nvidia-modeset', 'nvidia-peermem', 'nvidia-uvm']
+log MODPOST:     yes
+log cached:      no
+
+=== Top clean warning groups ===
+       1  warning: ignoring return value of 'refcount_sub_and_test' declared with attribute 'warn_unused_result' [-Wunused-result]

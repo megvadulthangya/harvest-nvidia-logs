@@ -1,0 +1,2 @@
+   19168  warning: objtool: <func>+0xADDR: 'naked' return found in RETHUNK build
+   19168  warning: objtool: <func>+0xADDR: missing int3 after ret

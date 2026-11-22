@@ -1,0 +1,17 @@
+   10654  warning: objtool: <func>+0xADDR: 'naked' return found in RETHUNK build
+     286  warning: objtool: <func>+0xADDR: data relocation to !ENDBR: <func>+0xADDR
+       4  warning: objtool: <func>+0xADDR: 'naked' return found in RETHUNK build/build/sources/PKGBUILDs/extra/linux66-rt-extramodules/nvidia-580xx-open/src/nvidia/580.196.07/build/kernel-open/nvidia.o: warni
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in RETHUNK/build/sources/PKGBUILDs/extra/linux66-rt-extramodules/nvidia-580xx-open/src/nvidia/580.196.07/build/kernel-open/nvidia.o: warni build
+       1  warning: objtool: <func>+0xADDR: 'naked' return found /build/sources/PKGBUILDs/extra/linux66-rt-extramodules/nvidia-580xx-open/src/nvidia/580.196.07/build/kernel-open/nvidia.o: warniin RETHUNK build
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in RETHUNK bui/build/sources/PKGBUILDs/extra/linux66-rt-extramodules/nvidia-580xx-open/src/nvidia/580.196.07/build/kernel-open/nvidia.o: warnild
+       1  warning: objtool: <func>+0xADDR: 'naked' return f/build/sources/PKGBUILDs/extra/linux66-rt-extramodules/nvidia-580xx-open/src/nvidia/580.196.07/build/kernel-open/nvidia.o: warniound in RETHUNK build
+       1  warning: objtool: <func>+0xADDR: 'naked' retur/build/sources/PKGBUILDs/extra/linux66-rt-extramodules/nvidia-580xx-open/src/nvidia/580.196.07/build/kernel-open/nvidia.o: warnin found in RETHUNK build
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in R/build/sources/PKGBUILDs/extra/linux66-rt-extramodules/nvidia-580xx-open/src/nvidia/580.196.07/build/kernel-open/nvidia.o: warniETHUNK build
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in RETHUN/build/sources/PKGBUILDs/extra/linux66-rt-extramodules/nvidia-580xx-open/src/nvidia/580.196.07/build/kernel-open/nvidia.o: warniK build
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in /build/sources/PKGBUILDs/extra/linux66-rt-extramodules/nvidia-580xx-open/src/nvidia/580.196.07/build/kernel-open/nvidia.o: warniRETHUNK build
+       1  warning: objtool: <func>+0xADDR: 'naked' return found in RETHUNK b/build/sources/PKGBUILDs/extra/linux66-rt-extramodules/nvidia-580xx-open/src/nvidia/580.196.07/build/kernel-open/nvidia.o: warniuild
+       1  warning: objtool: <func>+0xADDR: '<path>' return found in RETHUNK build
+       1  warning: objtool: <func>+0xADDR: 'naked' return found/build/sources/PKGBUILDs/extra/linux66-rt-extramodules/nvidia-580xx-open/src/nvidia/580.196.07/build/kernel-open/nvidia.o: warni in RETHUNK build
+       1  warning: objtool: <func>+0xADDR: 'naked'/build/sources/PKGBUILDs/extra/linux66-rt-extramodules/nvidia-580xx-open/src/nvidia/580.196.07/build/kernel-open/nvidia.o: warni return found in RETHUNK build
+       1  warning: objtool: <func>+0xADDR: 'naked/build/sources/PKGBUILDs/extra/linux66-rt-extramodules/nvidia-580xx-open/src/nvidia/580.196.07/build/kernel-open/nvidia.o: warni' return found in RETHUNK build
+       1  warning: objtool: <func>+0xADDR: /build/sources/PKGBUILDs/extra/linux66-rt-extramodules/nvidia-580xx-open/src/nvidia/580.196.07/build/kernel-open/nvidia.o: warni'naked' return found in RETHUNK build
