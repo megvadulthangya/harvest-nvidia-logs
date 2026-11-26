@@ -1,0 +1,6 @@
+533: nvidia/nv.c:1054:9: error: implicit declaration of function ‘rdmsr’; did you mean ‘rdmsrq’? [-Wimplicit-function-declaration]
+537: make[4]: *** [/usr/lib/modules/7.4.0-rc4-next-20261124-1-MANJARO/build/scripts/Makefile.build:321: nvidia/nv.o] Error 1
+539: make[3]: *** [/usr/lib/modules/7.4.0-rc4-next-20261124-1-MANJARO/build/Makefile:2252: .] Error 2
+540: make[2]: *** [/usr/lib/modules/7.4.0-rc4-next-20261124-1-MANJARO/build/Makefile:248: __sub-make] Error 2
+542: make[1]: *** [Makefile:248: __sub-make] Error 2
+544: make: *** [Makefile:93: modules] Error 2

@@ -1,0 +1,44 @@
+build:           linux-next-nvidia-470xx
+driver:          470xx
+variant:         normal
+kernel:          unknown
+nvidia version:  unknown
+status:          failed
+log path:        /build/sources/nvidia-470xx/normal-kernels/linux-next-nvidia-470xx/src/nvidia/470.256.02/build/make.log
+log size:        78341 bytes
+log lines:       1219
+build dir:       /build/sources/nvidia-470xx/normal-kernels/linux-next-nvidia-470xx
+raw log:         make.log.zst
+
+errors:          71
+warnings clean:  1  (unique: 1)
+warnings noise:  0  (unique: 0)
+suspicious:      0  (unique: 0)
+modules on disk: 0  [—]
+log MODPOST:     no
+log cached:      no
+
+=== Top clean warning groups ===
+       1  warning: ignoring return value of 'refcount_sub_and_test' declared with attribute 'warn_unused_result' [-Wunused-result]
+
+=== Error excerpt (first 20) ===
+669: nvidia/nv-pat.c:37:43: error: implicit declaration of function ‘rdmsr’; did you mean ‘rdmsrq’? [-Wimplicit-function-declaration]
+675: make[4]: *** [/usr/lib/modules/7.4.0-rc4-next-20261124-1-MANJARO/build/scripts/Makefile.build:321: nvidia/nv-pat.o] Error 1
+679: ././common/inc/nv-procfs-utils.h:37:29: error: ‘nv_proc_ops_t’ {aka ‘const struct proc_ops’} has no member named ‘proc_read’; did you mean ‘proc_mmap’?
+691: ././common/inc/nv-procfs-utils.h:144:32: error: positional initialization of field in ‘struct’ declared with ‘designated_init’ attribute [-Werror=designated-init]
+707: ././common/inc/nv-procfs-utils.h:144:32: error: initialization of ‘loff_t (*)(struct file *, loff_t,  int)’ {aka ‘long long int (*)(struct file *, long long int,  int)’} from incompatible pointer type ‘ssize_t (*)(struct file *, char *, size_t,  loff_t *)’ {aka ‘long int (*)(struct file *, char *, long unsigned int,  long long int *)’} [-Wincompatible-pointer-types]
+728: ././common/inc/nv-procfs-utils.h:37:29: error: ‘nv_proc_ops_t’ {aka ‘const struct proc_ops’} has no member named ‘proc_read’; did you mean ‘proc_mmap’?
+740: ././common/inc/nv-procfs-utils.h:144:32: error: positional initialization of field in ‘struct’ declared with ‘designated_init’ attribute [-Werror=designated-init]
+756: ././common/inc/nv-procfs-utils.h:144:32: error: initialization of ‘loff_t (*)(struct file *, loff_t,  int)’ {aka ‘long long int (*)(struct file *, long long int,  int)’} from incompatible pointer type ‘ssize_t (*)(struct file *, char *, size_t,  loff_t *)’ {aka ‘long int (*)(struct file *, char *, long unsigned int,  long long int *)’} [-Wincompatible-pointer-types]
+773: ././common/inc/nv-procfs-utils.h:37:29: error: ‘nv_proc_ops_t’ {aka ‘const struct proc_ops’} has no member named ‘proc_read’; did you mean ‘proc_mmap’?
+785: ././common/inc/nv-procfs-utils.h:144:32: error: positional initialization of field in ‘struct’ declared with ‘designated_init’ attribute [-Werror=designated-init]
+801: ././common/inc/nv-procfs-utils.h:144:32: error: initialization of ‘loff_t (*)(struct file *, loff_t,  int)’ {aka ‘long long int (*)(struct file *, long long int,  int)’} from incompatible pointer type ‘ssize_t (*)(struct file *, char *, size_t,  loff_t *)’ {aka ‘long int (*)(struct file *, char *, long unsigned int,  long long int *)’} [-Wincompatible-pointer-types]
+818: ././common/inc/nv-procfs-utils.h:37:29: error: ‘nv_proc_ops_t’ {aka ‘const struct proc_ops’} has no member named ‘proc_read’; did you mean ‘proc_mmap’?
+830: ././common/inc/nv-procfs-utils.h:144:32: error: positional initialization of field in ‘struct’ declared with ‘designated_init’ attribute [-Werror=designated-init]
+846: ././common/inc/nv-procfs-utils.h:144:32: error: initialization of ‘loff_t (*)(struct file *, loff_t,  int)’ {aka ‘long long int (*)(struct file *, long long int,  int)’} from incompatible pointer type ‘ssize_t (*)(struct file *, char *, size_t,  loff_t *)’ {aka ‘long int (*)(struct file *, char *, long unsigned int,  long long int *)’} [-Wincompatible-pointer-types]
+863: ././common/inc/nv-procfs-utils.h:37:29: error: ‘nv_proc_ops_t’ {aka ‘struct proc_ops’} has no member named ‘proc_read’; did you mean ‘proc_mmap’?
+869: nvidia/nv-procfs.c:516:28: error: positional initialization of field in ‘struct’ declared with ‘designated_init’ attribute [-Werror=designated-init]
+873: nvidia/nv-procfs.c:516:28: error: initialization of ‘loff_t (*)(struct file *, loff_t,  int)’ {aka ‘long long int (*)(struct file *, long long int,  int)’} from incompatible pointer type ‘ssize_t (*)(struct file *, char *, size_t,  loff_t *)’ {aka ‘long int (*)(struct file *, char *, long unsigned int,  long long int *)’} [-Wincompatible-pointer-types]
+878: ././common/inc/nv-procfs-utils.h:38:29: error: ‘nv_proc_ops_t’ {aka ‘struct proc_ops’} has no member named ‘proc_write’; did you mean ‘proc_write_buf’?
+884: nvidia/nv-procfs.c:517:28: error: positional initialization of field in ‘struct’ declared with ‘designated_init’ attribute [-Werror=designated-init]
+888: nvidia/nv-procfs.c:517:28: error: initialization of ‘int (*)(struct inode *, struct file *)’ from incompatible pointer type ‘ssize_t (*)(struct file *, const char *, size_t,  loff_t *)’ {aka ‘long int (*)(struct file *, const char *, long unsigned int,  long long int *)’} [-Wincompatible-pointer-types]

@@ -1,0 +1,34 @@
+build:           linux74-nvidia-390xx
+driver:          390xx
+variant:         normal
+kernel:          unknown
+nvidia version:  unknown
+status:          failed
+log path:        /build/sources/nvidia-390xx/normal-kernels/linux74-nvidia-390xx/src/nvidia/390.157/build/make.log
+log size:        38471 bytes
+log lines:       761
+build dir:       /build/sources/nvidia-390xx/normal-kernels/linux74-nvidia-390xx
+raw log:         make.log.zst
+
+errors:          9
+warnings clean:  5  (unique: 2)
+warnings noise:  0  (unique: 0)
+suspicious:      0  (unique: 0)
+modules on disk: 0  [—]
+log MODPOST:     no
+log cached:      no
+
+=== Top clean warning groups ===
+       4  warning: Please avoid flushing system-wide workqueues. [-Wattribute-warning]
+       1  warning: ignoring return value of 'refcount_sub_and_test' declared with attribute 'warn_unused_result' [-Wunused-result]
+
+=== Error excerpt (first 20) ===
+735: nvidia-drm/nvidia-drm-crtc.c:181:6: error: ‘const struct drm_plane_funcs’ has no member named ‘reset’
+739: nvidia-drm/nvidia-drm-crtc.c:181:31: error: ‘drm_atomic_helper_plane_reset’ undeclared here (not in a function); did you mean ‘drm_atomic_helper_page_flip’?
+743: nvidia-drm/nvidia-drm-crtc.c:294:6: error: ‘struct drm_crtc_funcs’ has no member named ‘reset’
+746: nvidia-drm/nvidia-drm-crtc.c:294:31: error: ‘drm_atomic_helper_crtc_reset’ undeclared here (not in a function); did you mean ‘drm_atomic_helper_check_modeset’?
+750: make[4]: *** [/usr/lib/modules/7.4.0-rc2-3-MANJARO/build/scripts/Makefile.build:290: nvidia-drm/nvidia-drm-crtc.o] Error 1
+752: make[3]: *** [/usr/lib/modules/7.4.0-rc2-3-MANJARO/build/Makefile:2244: .] Error 2
+753: make[2]: *** [/usr/lib/modules/7.4.0-rc2-3-MANJARO/build/Makefile:248: __sub-make] Error 2
+755: make[1]: *** [Makefile:248: __sub-make] Error 2
+757: make: *** [Makefile:93: modules] Error 2

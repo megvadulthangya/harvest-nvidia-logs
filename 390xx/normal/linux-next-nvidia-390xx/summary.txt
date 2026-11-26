@@ -1,0 +1,27 @@
+build:           linux-next-nvidia-390xx
+driver:          390xx
+variant:         normal
+kernel:          unknown
+nvidia version:  unknown
+status:          failed
+log path:        /build/sources/nvidia-390xx/normal-kernels/linux-next-nvidia-390xx/src/nvidia/390.157/build/make.log
+log size:        27429 bytes
+log lines:       548
+build dir:       /build/sources/nvidia-390xx/normal-kernels/linux-next-nvidia-390xx
+raw log:         make.log.zst
+
+errors:          6
+warnings clean:  0  (unique: 0)
+warnings noise:  0  (unique: 0)
+suspicious:      0  (unique: 0)
+modules on disk: 0  [—]
+log MODPOST:     no
+log cached:      no
+
+=== Error excerpt (first 20) ===
+533: nvidia/nv.c:1054:9: error: implicit declaration of function ‘rdmsr’; did you mean ‘rdmsrq’? [-Wimplicit-function-declaration]
+537: make[4]: *** [/usr/lib/modules/7.4.0-rc4-next-20261124-1-MANJARO/build/scripts/Makefile.build:321: nvidia/nv.o] Error 1
+539: make[3]: *** [/usr/lib/modules/7.4.0-rc4-next-20261124-1-MANJARO/build/Makefile:2252: .] Error 2
+540: make[2]: *** [/usr/lib/modules/7.4.0-rc4-next-20261124-1-MANJARO/build/Makefile:248: __sub-make] Error 2
+542: make[1]: *** [Makefile:248: __sub-make] Error 2
+544: make: *** [Makefile:93: modules] Error 2

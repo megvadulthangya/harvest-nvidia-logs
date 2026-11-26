@@ -1,0 +1,23 @@
+build:           linux618-nvidia-470xx
+driver:          470xx
+variant:         normal
+kernel:          6.18.63-3-MANJARO
+nvidia version:  470.256.02
+status:          warnings
+log path:        /build/sources/nvidia-470xx/normal-kernels/linux618-nvidia-470xx/src/nvidia/470.256.02/6.18.63-3-MANJARO/x86_64/log/make.log
+log size:        6006917 bytes
+log lines:       64556
+build dir:       /build/sources/nvidia-470xx/normal-kernels/linux618-nvidia-470xx
+raw log:         make.log.zst
+
+errors:          0
+warnings clean:  1  (unique: 1)
+warnings noise:  63696  (unique: 3)
+suspicious:      0  (unique: 0)
+modules on disk: 5  [nvidia, nvidia-drm, nvidia-modeset, nvidia-peermem, nvidia-uvm]
+log LD [M]:      ['nvidia', 'nvidia-drm', 'nvidia-modeset', 'nvidia-peermem', 'nvidia-uvm']
+log MODPOST:     yes
+log cached:      no
+
+=== Top clean warning groups ===
+       1  warning: ignoring return value of 'refcount_sub_and_test' declared with attribute 'warn_unused_result' [-Wunused-result]
