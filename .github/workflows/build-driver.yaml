@@ -1,0 +1,184 @@
+name: Reusable NVIDIA driver build and harvest
+
+on:
+  workflow_call:
+    inputs:
+      driver-family:
+        description: "Legacy NVIDIA driver family, e.g. 340xx / 390xx / 470xx"
+        required: true
+        type: string
+      source-repository:
+        description: "Utils repository in owner/repo form"
+        required: true
+        type: string
+      source-branch:
+        description: "Branch that triggered the caller workflow"
+        required: true
+        type: string
+      source-sha:
+        description: "Exact commit SHA from the push event"
+        required: true
+        type: string
+      kernel-repository:
+        description: "Matching kernel-module repository in owner/repo form"
+        required: true
+        type: string
+      kernel-branch:
+        description: "Kernel-module branch to build"
+        required: false
+        type: string
+        default: develop
+      manjaro-branch:
+        description: "Manjaro package repository branch"
+        required: false
+        type: string
+        default: testing
+      results-branch:
+        description: "Branch in the caller repo where results are published"
+        required: true
+        type: string
+      history-keep:
+        description: "Number of history snapshots to retain (0 = unlimited)"
+        required: false
+        type: number
+        default: 30
+      raw-logs:
+        description: "Raw make.log retention: none, non-clean, all"
+        required: false
+        type: string
+        default: all
+      raw-logs-format:
+        description: "Raw log compression: auto, zstd, gzip, none"
+        required: false
+        type: string
+        default: auto
+      kernels:
+        description: "Optional comma-separated kernel prefix whitelist"
+        required: false
+        type: string
+        default: ""
+    secrets:
+      github_token:
+        description: "GITHUB_TOKEN from the calling repository"
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: harvest-${{ github.repository }}-${{ inputs.results-branch }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: manjarolinux/build:latest
+    permissions:
+      contents: write
+    env:
+      GITHUB_TOKEN: ${{ secrets.github_token }}
+      GITHUB_REPOSITORY: ${{ github.repository }}
+    steps:
+      - name: Configure pacman (multilib + branch)
+        shell: bash
+        env:
+          MANJARO_BRANCH: ${{ inputs.manjaro-branch }}
+        run: |
+          set -euxo pipefail
+          if ! grep -q '^\[multilib\]' /etc/pacman.conf; then
+            sed -i 's/^#\(\[multilib\]\)/\1/' /etc/pacman.conf
+            sed -i 's/^#\(Include = \/etc\/pacman\.d\/mirrorlist\)/\1/' /etc/pacman.conf
+          fi
+          pacman-mirrors --api -B "${MANJARO_BRANCH}" -R || true
+          pacman -Syy --noconfirm
+          pacman -Suu --noconfirm
+          pacman -S --noconfirm --needed python sudo git zstd
+
+      - name: Checkout central harvest tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --quiet --depth=1 --single-branch --branch main \
+            https://github.com/megvadulthangya/harvest-nvidia-logs.git \
+            "${GITHUB_WORKSPACE}/harvest-nvidia-logs"
+
+      - name: Configure manjaro-awesome repository (mpatch dependencies)
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -uo pipefail
+          REPO_NAME="manjaro-awesome"
+          REPO_SERVER_URL="https://repo.gshoots.hu/manjaro-awesome/x86_64"
+          KEY_ID="A9A569C8F797B6878E44C4F8FBF4AB57E9BB9D3C"
+          REPO_FILE="/etc/pacman.d/${REPO_NAME}"
+          if ! pacman-key --list-keys "$KEY_ID" >/dev/null 2>&1; then
+            if ! pacman-key --keyserver keyserver.ubuntu.com --recv-keys "$KEY_ID"; then
+              curl -fsSL "https://repo.gshoots.hu/${REPO_NAME}/x86_64/${REPO_NAME}.pub" | pacman-key --add -
+            fi
+          fi
+          pacman-key --lsign-key "$KEY_ID" || true
+          echo "Server = ${REPO_SERVER_URL}" > "$REPO_FILE"
+          chmod 644 "$REPO_FILE"
+          if ! grep -q "^\[${REPO_NAME}\]" /etc/pacman.conf; then
+            awk -v repo="[${REPO_NAME}]" -v inc="Include = ${REPO_FILE}" '
+              /^\[extra\]/ {
+                print repo
+                print "SigLevel = PackageRequired"
+                print inc
+                print ""
+              }
+              { print }
+            ' /etc/pacman.conf > /tmp/pacman.conf.tmp && mv /tmp/pacman.conf.tmp /etc/pacman.conf
+          fi
+          pacman -Syy || echo "Custom repository database unavailable; continuing"
+
+      - name: Prepare builder account and tools
+        shell: bash
+        run: |
+          set -euxo pipefail
+          if ! id builder >/dev/null 2>&1; then
+            useradd -m -G wheel -s /bin/bash builder
+          fi
+          echo 'builder ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/builder
+          chmod 440 /etc/sudoers.d/builder
+          mkdir -p /build
+          chown -R builder:builder /build
+          chown -R builder:builder "${GITHUB_WORKSPACE}/harvest-nvidia-logs"
+          install -m 755 harvest-nvidia-logs/harvest-nvidia-logs /usr/local/bin/harvest-nvidia-logs
+          install -m 755 harvest-nvidia-logs/clean-nvidia-container.sh /build/clean-nvidia-container.sh
+          chown builder:builder /build/clean-nvidia-container.sh
+
+      - name: Build exact source commit and harvest kernel matrix
+        shell: bash
+        env:
+          DRIVER_FAMILY: ${{ inputs.driver-family }}
+          SOURCE_REPOSITORY: ${{ inputs.source-repository }}
+          SOURCE_BRANCH: ${{ inputs.source-branch }}
+          SOURCE_SHA: ${{ inputs.source-sha }}
+          KERNEL_REPOSITORY: ${{ inputs.kernel-repository }}
+          KERNEL_BRANCH: ${{ inputs.kernel-branch }}
+          MANJARO_BRANCH: ${{ inputs.manjaro-branch }}
+          RESULTS_BRANCH: ${{ inputs.results-branch }}
+          HISTORY_KEEP: ${{ inputs.history-keep }}
+          RAW_LOGS: ${{ inputs.raw-logs }}
+          RAW_LOGS_FORMAT: ${{ inputs.raw-logs-format }}
+          KERNELS: ${{ inputs.kernels }}
+        run: |
+          set -euo pipefail
+          sudo -u builder -H env \
+            GITHUB_TOKEN="${GITHUB_TOKEN}" \
+            GITHUB_REPOSITORY="${GITHUB_REPOSITORY}" \
+            python3 harvest-nvidia-logs/nvidia-ci-driver.py \
+              --driver-family "${DRIVER_FAMILY}" \
+              --source-repository "${SOURCE_REPOSITORY}" \
+              --source-branch "${SOURCE_BRANCH}" \
+              --source-sha "${SOURCE_SHA}" \
+              --kernel-repository "${KERNEL_REPOSITORY}" \
+              --kernel-branch "${KERNEL_BRANCH}" \
+              --manjaro-branch "${MANJARO_BRANCH}" \
+              --results-branch "${RESULTS_BRANCH}" \
+              --history-keep "${HISTORY_KEEP}" \
+              --raw-logs "${RAW_LOGS}" \
+              --raw-logs-format "${RAW_LOGS_FORMAT}" \
+              --kernels "${KERNELS}"

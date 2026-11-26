@@ -204,6 +204,14 @@ jobs:
           install -m 755 clean-nvidia-container.sh /build/clean-nvidia-container.sh
           chown builder:builder /build/clean-nvidia-container.sh
 
+      - name: Restore previous harvest history
+        run: |
+          set -euo pipefail
+          python3 restore_harvest_history.py \
+            --repository "${GITHUB_REPOSITORY}" \
+            --results-branch "${RESULTS_BRANCH}" \
+            --harvest-dir /build/harvest
+          chown -R builder:builder /build/harvest
       - name: Run nvidia-ci
         run: |
           set -euxo pipefail
