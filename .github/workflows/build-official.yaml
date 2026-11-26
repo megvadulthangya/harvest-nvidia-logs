@@ -164,7 +164,7 @@ jobs:
 
     steps:
       - name: Checkout harvest-nvidia-logs
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Configure pacman (multilib + branch)
         run: |
